@@ -1,0 +1,110 @@
+export interface CommTemplate {
+  id: string
+  label: string
+  category: "generic" | "engagement"
+  message: string
+}
+
+export interface ChatMessage {
+  id: string
+  type: "sent" | "received"
+  text: string
+  timestamp: string
+  status?: "sent" | "delivered" | "read"
+}
+
+export interface CommContact {
+  id: string
+  name: string
+  phone: string
+  role: string           // e.g. "Mentor · Google" or "Mentee · Akanksha"
+  lastMessage: string
+  lastTime: string
+  unread: number
+  contactType: "volunteer" | "mentee"
+}
+
+export const commsTemplates: CommTemplate[] = [
+  // Generic
+  { id: "T1", category: "generic", label: "Complete Profile", message: "Hi {name}! 👋 We noticed your WeDoGood volunteer profile is almost complete. Adding your skills and experience helps us match you with the right mentee. Can you take 2 minutes to finish it? 🙏" },
+  { id: "T2", category: "generic", label: "Complete Orientation", message: "Hi {name}! Your orientation session is pending. It's a quick 30-minute call that helps you get started with mentoring. Would you like to pick a slot? Reply with a preferred date and time. 😊" },
+  { id: "T3", category: "generic", label: "Recommend a Friend", message: "Hi {name}! We're looking for more skilled mentors to support youth from NGO partners. If you know someone who'd be a great mentor, do share this link: [wedogood.org/volunteer]. Thank you! 🌟" },
+  { id: "T4", category: "generic", label: "Generic Feedback", message: "Hi {name}! We'd love your feedback on your volunteering experience with WeDoGood so far. Could you share what's working well and what we can improve? Your input matters a lot to us. 🙌" },
+  // Engagement
+  { id: "T5", category: "engagement", label: "Confirm Interest in Engagement", message: "Hi {name}! We'd like to match you with a mentee for a {skill} engagement. The mentee is {menteeName} from {ngo}. Are you available and interested? Please reply Yes or No. 🤝" },
+  { id: "T6", category: "engagement", label: "Relevant Pre-Read", message: "Hi {name}! Before your upcoming call with {menteeName}, here's a quick read to help you prepare: [resource link]. Let us know if you have any questions. 📚" },
+  { id: "T7", category: "engagement", label: "Confirm If Call Happened", message: "Hi {name}! Just checking in — did your call with {menteeName} happen as planned? Please reply Yes or No so we can update the engagement log. Thanks! 📞" },
+  { id: "T8", category: "engagement", label: "Feedback for Request Call", message: "Hi {name}! How did your recent call with {menteeName} go? We'd love to hear your thoughts — any wins, challenges, or next steps? Your feedback helps us improve the program. 💬" },
+]
+
+export const mockVolunteerContacts: CommContact[] = [
+  { id: "VOL-001", name: "Rahul Mehta", phone: "+91 98765 11001", role: "Mentor · Infosys", lastMessage: "Yes, the call went well!", lastTime: "10:32 AM", unread: 0, contactType: "volunteer" },
+  { id: "VOL-002", name: "Sneha Rao", phone: "+91 98765 11002", role: "Mentor · Google", lastMessage: "Sure, I'll complete it today.", lastTime: "Yesterday", unread: 2, contactType: "volunteer" },
+  { id: "VOL-003", name: "Amit Joshi", phone: "+91 98765 11003", role: "Mentor · Swiggy", lastMessage: "Orientation slot confirmed ✅", lastTime: "Mon", unread: 0, contactType: "volunteer" },
+  { id: "VOL-004", name: "Pooja Verma", phone: "+91 98765 11004", role: "Mentor · HDFC Bank", lastMessage: "I'll be back from leave on June 15.", lastTime: "Mon", unread: 1, contactType: "volunteer" },
+  { id: "VOL-005", name: "Kiran Bhat", phone: "+91 98765 11005", role: "Mentor · Razorpay", lastMessage: "Interested! When do we start?", lastTime: "2 Jun", unread: 0, contactType: "volunteer" },
+  { id: "VOL-006", name: "Divya Krishnan", phone: "+91 98765 11006", role: "Mentor · Zomato", lastMessage: "Thanks for the pre-read link!", lastTime: "1 Jun", unread: 0, contactType: "volunteer" },
+]
+
+export const mockMenteeContacts: CommContact[] = [
+  { id: "M-001", name: "Priya Sharma", phone: "+91 77001 20001", role: "Mentee · Akanksha Foundation", lastMessage: "Thank you so much!", lastTime: "11:00 AM", unread: 1, contactType: "mentee" },
+  { id: "M-002", name: "Arjun Patel", phone: "+91 77001 20002", role: "Mentee · NavGurukul", lastMessage: "Can we reschedule to Thursday?", lastTime: "Yesterday", unread: 3, contactType: "mentee" },
+  { id: "M-003", name: "Kavya Nair", phone: "+91 77001 20003", role: "Mentee · Parivarthan", lastMessage: "I haven't heard from my mentor yet.", lastTime: "Mon", unread: 0, contactType: "mentee" },
+  { id: "M-004", name: "Rohan Das", phone: "+91 77001 20004", role: "Mentee · Akanksha Foundation", lastMessage: "Session was great 🙌", lastTime: "30 May", unread: 0, contactType: "mentee" },
+  { id: "M-005", name: "Meena Iyer", phone: "+91 77001 20005", role: "Mentee · NavGurukul", lastMessage: "Okay, I'll try the exercise.", lastTime: "29 May", unread: 0, contactType: "mentee" },
+]
+
+type ConversationMap = Record<string, ChatMessage[]>
+
+export const mockConversations: ConversationMap = {
+  "VOL-001": [
+    { id: "c1", type: "sent", text: "Hi Rahul! 👋 Just checking in — did your call with Priya Sharma happen as planned?", timestamp: "10:00 AM", status: "read" },
+    { id: "c2", type: "received", text: "Yes, the call went well! We covered resume structuring and she has some great experience to highlight.", timestamp: "10:32 AM" },
+    { id: "c3", type: "sent", text: "That's wonderful! Would you be able to share a brief summary for the engagement log? 🙏", timestamp: "10:35 AM", status: "delivered" },
+  ],
+  "VOL-002": [
+    { id: "c4", type: "sent", text: "Hi Sneha! We noticed your WeDoGood volunteer profile is almost complete. Adding your skills helps with matching. Can you finish it?", timestamp: "9:00 AM", status: "read" },
+    { id: "c5", type: "received", text: "Sure, I'll complete it today.", timestamp: "Yesterday 2:15 PM" },
+    { id: "c6", type: "sent", text: "Also, your orientation is still pending. Would you like to book a slot? 😊", timestamp: "Yesterday 2:20 PM", status: "read" },
+    { id: "c7", type: "received", text: "Yes please! Can we do Friday at 4pm?", timestamp: "Yesterday 3:00 PM" },
+    { id: "c8", type: "received", text: "Or Monday morning works too.", timestamp: "Yesterday 3:01 PM" },
+  ],
+  "VOL-003": [
+    { id: "c9", type: "sent", text: "Hi Amit! Your orientation slot is confirmed for June 5th. Looking forward to it! ✅", timestamp: "Mon 11:00 AM", status: "read" },
+    { id: "c10", type: "received", text: "Orientation slot confirmed ✅", timestamp: "Mon 11:15 AM" },
+  ],
+  "VOL-004": [
+    { id: "c11", type: "sent", text: "Hi Pooja! Hope you're doing well. Just a gentle reminder that you have a pending mentee match. When are you back from leave?", timestamp: "Mon 9:30 AM", status: "read" },
+    { id: "c12", type: "received", text: "I'll be back from leave on June 15.", timestamp: "Mon 10:00 AM" },
+  ],
+  "VOL-005": [
+    { id: "c13", type: "sent", text: "Hi Kiran! We'd like to match you with a mentee for a Product Management engagement. Are you interested?", timestamp: "2 Jun 3:00 PM", status: "read" },
+    { id: "c14", type: "received", text: "Interested! When do we start?", timestamp: "2 Jun 4:30 PM" },
+  ],
+  "VOL-006": [
+    { id: "c15", type: "sent", text: "Hi Divya! Before your upcoming call with Meena Iyer, here's a quick read to help you prepare: [resource link] 📚", timestamp: "1 Jun 10:00 AM", status: "read" },
+    { id: "c16", type: "received", text: "Thanks for the pre-read link!", timestamp: "1 Jun 10:45 AM" },
+  ],
+  "M-001": [
+    { id: "m1", type: "sent", text: "Hi Priya! 👋 How did your last session with Rahul go? We'd love to hear your feedback!", timestamp: "10:45 AM", status: "read" },
+    { id: "m2", type: "received", text: "Thank you so much!", timestamp: "11:00 AM" },
+  ],
+  "M-002": [
+    { id: "m3", type: "sent", text: "Hi Arjun! Your next session with Sneha Rao is scheduled for tomorrow. Let us know if you have any questions.", timestamp: "Yesterday 1:00 PM", status: "read" },
+    { id: "m4", type: "received", text: "Can we reschedule to Thursday?", timestamp: "Yesterday 2:00 PM" },
+    { id: "m5", type: "received", text: "I have an exam on Wednesday.", timestamp: "Yesterday 2:01 PM" },
+    { id: "m6", type: "received", text: "Sorry for the inconvenience!", timestamp: "Yesterday 2:02 PM" },
+  ],
+  "M-003": [
+    { id: "m7", type: "sent", text: "Hi Kavya! We're actively working on finding the right mentor for your request. We'll have an update for you soon. 🙏", timestamp: "Mon 12:00 PM", status: "read" },
+    { id: "m8", type: "received", text: "I haven't heard from my mentor yet.", timestamp: "Mon 3:00 PM" },
+  ],
+  "M-004": [
+    { id: "m9", type: "sent", text: "Hi Rohan! How did your last data analysis session go?", timestamp: "30 May 4:00 PM", status: "read" },
+    { id: "m10", type: "received", text: "Session was great 🙌", timestamp: "30 May 5:00 PM" },
+  ],
+  "M-005": [
+    { id: "m11", type: "sent", text: "Hi Meena! Divya shared some exercises for you to practice communication skills. Give it a try and let us know how it goes!", timestamp: "29 May 10:00 AM", status: "read" },
+    { id: "m12", type: "received", text: "Okay, I'll try the exercise.", timestamp: "29 May 10:30 AM" },
+  ],
+}

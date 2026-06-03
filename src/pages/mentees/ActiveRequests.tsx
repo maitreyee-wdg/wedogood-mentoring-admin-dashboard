@@ -31,11 +31,13 @@ const typeVariant: Record<string, string> = {
   "Existing Mentor": "bg-purple-100 text-purple-700",
 }
 
+// ── Helper: format relative time ─────────────────────────────────────────────
+
 function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
 }
 
-// ── Request Side Pane (shared with ActiveRequests) ────────────────────────────
+// ── Request Side Pane ────────────────────────────────────────────────────────
 
 function RequestPane({ request: initial, onClose, onUpdate }: {
   request: MentoringRequest
@@ -47,13 +49,19 @@ function RequestPane({ request: initial, onClose, onUpdate }: {
   const [selectedTemplate, setSelectedTemplate] = useState(req.approvedTemplate ?? "")
   const [candidates, setCandidates] = useState<MatchCandidate[]>(req.matchCandidates)
 
+  // ── Match approval actions ────────────────────────────────────────────────
+
   const moveUp = (i: number) => {
     if (i === 0) return
-    const next = [...candidates]; [next[i - 1], next[i]] = [next[i], next[i - 1]]; setCandidates(next)
+    const next = [...candidates]
+    ;[next[i - 1], next[i]] = [next[i], next[i - 1]]
+    setCandidates(next)
   }
   const moveDown = (i: number) => {
     if (i === candidates.length - 1) return
-    const next = [...candidates]; [next[i], next[i + 1]] = [next[i + 1], next[i]]; setCandidates(next)
+    const next = [...candidates]
+    ;[next[i], next[i + 1]] = [next[i + 1], next[i]]
+    setCandidates(next)
   }
   const removeCandidate = (id: string) => setCandidates(candidates.filter((c) => c.id !== id))
 
@@ -64,12 +72,15 @@ function RequestPane({ request: initial, onClose, onUpdate }: {
       approvedTemplate: selectedTemplate,
       matchCandidates: candidates.map((c) => ({ ...c, outreachStatus: "Sent", outreachSentAt: new Date().toISOString() })),
     }
-    setReq(updated); setCandidates(updated.matchCandidates); onUpdate(updated)
+    setReq(updated)
+    setCandidates(updated.matchCandidates)
+    onUpdate(updated)
   }
 
   const outreachStatusIcon = (s: MatchCandidate["outreachStatus"]) => {
     if (s === "Accepted") return <Check className="w-3.5 h-3.5 text-green-500" />
-    if (s === "No Response" || s === "Declined") return <X className="w-3.5 h-3.5 text-red-400" />
+    if (s === "No Response") return <X className="w-3.5 h-3.5 text-red-400" />
+    if (s === "Declined") return <X className="w-3.5 h-3.5 text-red-400" />
     if (s === "Sent") return <Clock className="w-3.5 h-3.5 text-amber-500 animate-pulse" />
     return <div className="w-2.5 h-2.5 rounded-full border-2 border-gray-300" />
   }
@@ -84,6 +95,7 @@ function RequestPane({ request: initial, onClose, onUpdate }: {
 
   return (
     <div className="w-[500px] border-l border-gray-200 bg-white flex flex-col overflow-hidden shrink-0">
+      {/* Header */}
       <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 shrink-0">
         <div>
           <p className="font-semibold text-gray-900 text-sm">{req.id}</p>
@@ -95,6 +107,7 @@ function RequestPane({ request: initial, onClose, onUpdate }: {
         </div>
       </div>
 
+      {/* Tabs */}
       <div className="flex border-b border-gray-200 shrink-0">
         {([
           { key: "overview", label: "Overview" },
@@ -108,8 +121,10 @@ function RequestPane({ request: initial, onClose, onUpdate }: {
         ))}
       </div>
 
+      {/* Tab Content */}
       <div className="flex-1 overflow-y-auto">
 
+        {/* ── OVERVIEW ── */}
         {tab === "overview" && (
           <div className="px-5 py-4 space-y-5 text-sm">
             <PaneSection label="Request Details">
@@ -122,22 +137,35 @@ function RequestPane({ request: initial, onClose, onUpdate }: {
                 </div>
               </div>
             </PaneSection>
-            <PaneSection label="Theme / Summary"><p className="text-gray-800">{req.theme}</p></PaneSection>
-            <PaneSection label="Target Domain & Role">
-              <p className="text-gray-800 font-medium">{req.targetDomain}</p>
-              <p className="text-gray-500 text-xs">{req.targetRole}</p>
+
+            <PaneSection label="Theme / Summary">
+              <p className="text-gray-800">{req.theme}</p>
             </PaneSection>
-            <PaneSection label="Skills Needed">
-              <div className="flex flex-wrap gap-1.5">
-                {req.skillsNeeded.map((s) => <span key={s} className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">{s}</span>)}
+
+            <PaneSection label="Target Domain & Role">
+              <div className="space-y-0.5">
+                <p className="text-gray-800 font-medium">{req.targetDomain}</p>
+                <p className="text-gray-500 text-xs">{req.targetRole}</p>
               </div>
             </PaneSection>
+
+            <PaneSection label="Skills Needed">
+              <div className="flex flex-wrap gap-1.5">
+                {req.skillsNeeded.map((s) => (
+                  <span key={s} className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">{s}</span>
+                ))}
+              </div>
+            </PaneSection>
+
             <PaneSection label="Matched Mentor">
-              {req.matchedMentor ? <p className="text-gray-800 font-medium">{req.matchedMentor}</p> : <p className="text-gray-400 italic text-xs">No mentor matched yet</p>}
+              {req.matchedMentor
+                ? <p className="text-gray-800 font-medium">{req.matchedMentor}</p>
+                : <p className="text-gray-400 italic text-xs">No mentor matched yet</p>}
             </PaneSection>
           </div>
         )}
 
+        {/* ── AI CHAT ── */}
         {tab === "ai-chat" && (
           <div className="px-5 py-4">
             <p className="text-xs text-gray-400 mb-4 flex items-center gap-1.5">
@@ -166,9 +194,11 @@ function RequestPane({ request: initial, onClose, onUpdate }: {
           </div>
         )}
 
+        {/* ── MATCH ── */}
         {tab === "match" && (
           <div className="px-5 py-4 space-y-5 text-sm">
 
+            {/* NEW — trigger matching */}
             {req.status === "New" && (
               <div className="text-center py-8 space-y-3">
                 <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center mx-auto">
@@ -180,22 +210,26 @@ function RequestPane({ request: initial, onClose, onUpdate }: {
               </div>
             )}
 
+            {/* MATCH APPROVAL PENDING — editable candidate list */}
             {req.status === "Match Approval Pending" && (
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <p className="text-xs font-semibold text-gray-700 uppercase tracking-wide">AI Suggested Mentors</p>
                   <span className="text-xs text-gray-400">{candidates.length} candidates</span>
                 </div>
+
                 <div className="space-y-2">
                   {candidates.map((c, i) => (
                     <div key={c.id} className="border border-gray-200 rounded-lg p-3 bg-white">
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex items-start gap-2 flex-1 min-w-0">
+                          {/* Priority + reorder */}
                           <div className="flex flex-col items-center gap-0.5">
                             <button onClick={() => moveUp(i)} disabled={i === 0} className="text-gray-300 hover:text-gray-600 disabled:opacity-30"><ChevronUp className="w-3.5 h-3.5" /></button>
                             <span className="text-xs font-bold text-gray-500 w-4 text-center">{i + 1}</span>
                             <button onClick={() => moveDown(i)} disabled={i === candidates.length - 1} className="text-gray-300 hover:text-gray-600 disabled:opacity-30"><ChevronDown className="w-3.5 h-3.5" /></button>
                           </div>
+                          {/* Mentor info */}
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
                               <p className="text-xs font-semibold text-gray-900">{c.name}</p>
@@ -210,17 +244,22 @@ function RequestPane({ request: initial, onClose, onUpdate }: {
                     </div>
                   ))}
                 </div>
+
                 <button className="flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 font-medium">
                   <Plus className="w-3.5 h-3.5" /> Add Mentor
                 </button>
+
                 <div>
                   <label className="text-xs font-medium text-gray-500 block mb-1">Matchmaking Message Template</label>
                   <select value={selectedTemplate} onChange={(e) => setSelectedTemplate(e.target.value)}
                     className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 outline-none focus:border-blue-400 bg-white">
                     <option value="">Select a template…</option>
-                    {matchingTemplates.map((t) => <option key={t.id} value={t.id}>{t.name} — {t.description}</option>)}
+                    {matchingTemplates.map((t) => (
+                      <option key={t.id} value={t.id}>{t.name} — {t.description}</option>
+                    ))}
                   </select>
                 </div>
+
                 <Button className="w-full" disabled={!selectedTemplate || candidates.length === 0} onClick={handleApprove}>
                   Approve & Notify Mentors
                 </Button>
@@ -230,20 +269,26 @@ function RequestPane({ request: initial, onClose, onUpdate }: {
               </div>
             )}
 
+            {/* MENTOR RESPONSE PENDING — outreach timeline */}
             {req.status === "Mentor Response Pending" && (
               <div className="space-y-4">
                 <p className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Outreach Progress</p>
                 <div className="space-y-0">
                   {candidates.map((c, i) => {
                     const isCurrent = c.outreachStatus === "Sent"
-                    const isDone = ["Accepted", "No Response", "Declined"].includes(c.outreachStatus)
+                    const isDone = c.outreachStatus === "Accepted" || c.outreachStatus === "No Response" || c.outreachStatus === "Declined"
                     const isPending = c.outreachStatus === "Pending"
                     return (
                       <div key={c.id} className="relative flex gap-3">
-                        {i < candidates.length - 1 && <div className="absolute left-[13px] top-8 w-0.5 h-full bg-gray-200" />}
+                        {/* Connector line */}
+                        {i < candidates.length - 1 && (
+                          <div className="absolute left-[13px] top-8 w-0.5 h-full bg-gray-200" />
+                        )}
+                        {/* Icon */}
                         <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 z-10 mt-0.5 ${isCurrent ? "bg-amber-100" : isDone && c.outreachStatus !== "Accepted" ? "bg-red-50" : c.outreachStatus === "Accepted" ? "bg-green-100" : "bg-gray-100"}`}>
                           {outreachStatusIcon(c.outreachStatus)}
                         </div>
+                        {/* Content */}
                         <div className={`flex-1 pb-4 ${isPending ? "opacity-50" : ""}`}>
                           <div className="flex items-center gap-2">
                             <p className="text-xs font-semibold text-gray-900">{c.name}</p>
@@ -263,6 +308,7 @@ function RequestPane({ request: initial, onClose, onUpdate }: {
               </div>
             )}
 
+            {/* MATCHED */}
             {req.status === "Matched" && (
               <div className="space-y-4">
                 <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-center space-y-2">
@@ -276,14 +322,18 @@ function RequestPane({ request: initial, onClose, onUpdate }: {
                 {candidates.map((c) => (
                   <div key={c.id} className="flex items-center gap-3 text-xs">
                     <div className={`w-2 h-2 rounded-full shrink-0 ${c.outreachStatus === "Accepted" ? "bg-green-500" : c.outreachStatus === "Pending" ? "bg-gray-300" : "bg-red-300"}`} />
-                    <div className="flex-1"><span className="font-medium text-gray-800">{c.name}</span><span className="text-gray-400 ml-1">· {c.company}</span></div>
+                    <div className="flex-1">
+                      <span className="font-medium text-gray-800">{c.name}</span>
+                      <span className="text-gray-400 ml-1">· {c.company}</span>
+                    </div>
                     <span className="text-gray-500">{c.matchPercent}%</span>
-                    <span className={c.outreachStatus === "Accepted" ? "text-green-600" : c.outreachStatus === "Pending" ? "text-gray-400" : "text-red-400"}>{c.outreachStatus}</span>
+                    <span className={`${c.outreachStatus === "Accepted" ? "text-green-600" : c.outreachStatus === "Pending" ? "text-gray-400" : "text-red-400"}`}>{c.outreachStatus}</span>
                   </div>
                 ))}
               </div>
             )}
 
+            {/* NO MATCH FOUND */}
             {req.status === "No Match Found" && (
               <div className="space-y-4">
                 <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-center space-y-2">
@@ -294,7 +344,10 @@ function RequestPane({ request: initial, onClose, onUpdate }: {
                 <p className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Contacted Mentors</p>
                 {candidates.map((c) => (
                   <div key={c.id} className="flex items-center gap-3 text-xs py-1.5 border-b border-gray-100 last:border-0">
-                    <div className="flex-1"><p className="font-medium text-gray-800">{c.name}</p><p className="text-gray-400">{c.role} · {c.company}</p></div>
+                    <div className="flex-1">
+                      <p className="font-medium text-gray-800">{c.name}</p>
+                      <p className="text-gray-400">{c.role} · {c.company}</p>
+                    </div>
                     <span className="text-red-400 font-medium">{c.outreachStatus}</span>
                   </div>
                 ))}
@@ -302,13 +355,15 @@ function RequestPane({ request: initial, onClose, onUpdate }: {
               </div>
             )}
 
+            {/* DRAFT */}
             {req.status === "Draft" && (
               <div className="text-center py-8 space-y-3">
                 <p className="text-sm font-medium text-gray-600">Request is in draft</p>
-                <p className="text-xs text-gray-400">The mentee has not yet submitted this request.</p>
+                <p className="text-xs text-gray-400">The mentee has not yet submitted this request. Once submitted it will move to "New".</p>
               </div>
             )}
 
+            {/* CLOSED / EXPIRED */}
             {(req.status === "Closed - With Feedback" || req.status === "Closed - Feedback Pending" || req.status === "Expired") && (
               <div className="space-y-4">
                 <div className={`border rounded-xl p-4 text-center space-y-2 ${req.status === "Closed - With Feedback" ? "bg-green-50 border-green-200" : "bg-gray-50 border-gray-200"}`}>
@@ -347,41 +402,33 @@ function PaneSection({ label, children }: { label: string; children: React.React
   )
 }
 
-// ── All statuses for the filter dropdown ──────────────────────────────────────
-
-const ALL_STATUSES: RequestStatus[] = [
-  "Draft", "New", "Match Approval Pending", "Mentor Response Pending",
-  "No Match Found", "Matched", "Closed - Feedback Pending", "Expired", "Closed - With Feedback",
-]
-
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
-export default function AllRequests() {
-  const [requests, setRequests] = useState<MentoringRequest[]>(mockRequests)
+export default function ActiveRequests() {
+  const [requests, setRequests] = useState<MentoringRequest[]>(
+    mockRequests.filter((r) => ACTIVE_STATUSES.includes(r.status))
+  )
   const [search, setSearch] = useState("")
   const [filterNGO, setFilterNGO] = useState("All")
   const [filterStatus, setFilterStatus] = useState("All")
   const [filterType, setFilterType] = useState("All")
-  const [filterActive, setFilterActive] = useState<"all" | "active" | "inactive">("all")
   const [selectedReq, setSelectedReq] = useState<MentoringRequest | null>(null)
 
   const filtered = useMemo(() => requests.filter((r) => {
     const q = search.toLowerCase()
-    const isActive = ACTIVE_STATUSES.includes(r.status)
     return (
       (r.menteeName.toLowerCase().includes(q) || r.id.toLowerCase().includes(q) || r.theme.toLowerCase().includes(q) || r.skillsNeeded.some((s) => s.toLowerCase().includes(q))) &&
       (filterNGO === "All" || r.ngo === filterNGO) &&
       (filterStatus === "All" || r.status === filterStatus) &&
-      (filterType === "All" || r.requestType === filterType) &&
-      (filterActive === "all" || (filterActive === "active" ? isActive : !isActive))
+      (filterType === "All" || r.requestType === filterType)
     )
-  }), [requests, search, filterNGO, filterStatus, filterType, filterActive])
+  }), [requests, search, filterNGO, filterStatus, filterType])
 
   const stats = {
     total: requests.length,
-    active: requests.filter((r) => ACTIVE_STATUSES.includes(r.status)).length,
+    approvalPending: requests.filter((r) => r.status === "Match Approval Pending").length,
+    responsePending: requests.filter((r) => r.status === "Mentor Response Pending").length,
     matched: requests.filter((r) => r.status === "Matched").length,
-    closed: requests.filter((r) => r.status === "Closed - With Feedback").length,
   }
 
   const handleUpdate = (updated: MentoringRequest) => {
@@ -395,33 +442,23 @@ export default function AllRequests() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-semibold text-gray-900">All Requests</h1>
-            <p className="text-sm text-gray-500 mt-0.5">Complete history of all mentoring requests across all statuses</p>
+            <h1 className="text-xl font-semibold text-gray-900">Active Requests</h1>
+            <p className="text-sm text-gray-500 mt-0.5">Mentoring requests that are open and in progress</p>
           </div>
         </div>
 
         {/* Stats */}
         <div className="grid grid-cols-4 gap-4">
           {[
-            { label: "Total Requests", value: stats.total, color: "text-gray-900" },
-            { label: "Active", value: stats.active, color: "text-blue-600" },
+            { label: "Active Requests", value: stats.total, color: "text-gray-900" },
+            { label: "Approval Pending", value: stats.approvalPending, color: "text-amber-600" },
+            { label: "Mentor Response Pending", value: stats.responsePending, color: "text-yellow-600" },
             { label: "Matched", value: stats.matched, color: "text-green-600" },
-            { label: "Closed w/ Feedback", value: stats.closed, color: "text-purple-600" },
           ].map((s) => (
             <div key={s.label} className="bg-white rounded-lg border border-gray-200 p-4">
               <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">{s.label}</p>
               <p className={`text-2xl font-bold mt-1 ${s.color}`}>{s.value}</p>
             </div>
-          ))}
-        </div>
-
-        {/* Active / Inactive toggle */}
-        <div className="flex gap-2">
-          {(["all", "active", "inactive"] as const).map((v) => (
-            <button key={v} onClick={() => setFilterActive(v)}
-              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors capitalize ${filterActive === v ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}>
-              {v === "all" ? "All" : v === "active" ? "Active" : "Inactive / Closed"}
-            </button>
           ))}
         </div>
 
@@ -447,7 +484,7 @@ export default function AllRequests() {
             <label className="text-xs font-medium text-gray-500">Status</label>
             <Select value={filterStatus} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFilterStatus(e.target.value)} className="w-52">
               <option>All</option>
-              {ALL_STATUSES.map((s) => <option key={s}>{s}</option>)}
+              {ACTIVE_STATUSES.map((s) => <option key={s}>{s}</option>)}
             </Select>
           </div>
           <div className="flex flex-col gap-1">
@@ -479,7 +516,7 @@ export default function AllRequests() {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {filtered.length === 0 ? (
-                <tr><td colSpan={10} className="px-4 py-8 text-center text-gray-400">No requests match your filters</td></tr>
+                <tr><td colSpan={10} className="px-4 py-8 text-center text-gray-400">No active requests match your filters</td></tr>
               ) : filtered.map((req) => (
                 <tr key={req.id}
                   className={`hover:bg-gray-50 transition-colors cursor-pointer ${selectedReq?.id === req.id ? "bg-blue-50" : ""}`}
@@ -489,19 +526,35 @@ export default function AllRequests() {
                     <p className="text-xs text-gray-400 truncate max-w-[120px]">{req.menteeGroup}</p>
                   </td>
                   <td className="px-4 py-3 text-xs text-gray-500 whitespace-nowrap">{fmtDate(req.requestDate)}</td>
-                  <td className="px-4 py-3"><p className="text-xs text-gray-800 max-w-[160px] line-clamp-2">{req.theme}</p></td>
-                  <td className="px-4 py-3"><p className="text-xs text-gray-700 max-w-[120px] truncate">{req.targetDomain}</p></td>
+                  <td className="px-4 py-3">
+                    <p className="text-xs text-gray-800 max-w-[160px] line-clamp-2">{req.theme}</p>
+                  </td>
+                  <td className="px-4 py-3">
+                    <p className="text-xs text-gray-700 max-w-[120px] truncate">{req.targetDomain}</p>
+                  </td>
                   <td className="px-4 py-3">
                     <div className="flex flex-wrap gap-1">
-                      {req.skillsNeeded.slice(0, 2).map((s) => <span key={s} className="text-xs bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">{s}</span>)}
+                      {req.skillsNeeded.slice(0, 2).map((s) => (
+                        <span key={s} className="text-xs bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">{s}</span>
+                      ))}
                       {req.skillsNeeded.length > 2 && <span className="text-xs text-gray-400">+{req.skillsNeeded.length - 2}</span>}
                     </div>
                   </td>
-                  <td className="px-4 py-3"><span className={`text-xs font-medium px-2 py-0.5 rounded-full ${typeVariant[req.requestType]}`}>{req.requestType}</span></td>
-                  <td className="px-4 py-3"><Badge variant={statusVariant[req.status]} className="whitespace-nowrap">{req.status}</Badge></td>
-                  <td className="px-4 py-3 text-xs">{req.matchedMentor ? <span className="text-gray-900">{req.matchedMentor}</span> : <span className="text-gray-400 italic">—</span>}</td>
+                  <td className="px-4 py-3">
+                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${typeVariant[req.requestType]}`}>{req.requestType}</span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <Badge variant={statusVariant[req.status]} className="whitespace-nowrap">{req.status}</Badge>
+                  </td>
+                  <td className="px-4 py-3 text-xs">
+                    {req.matchedMentor
+                      ? <span className="text-gray-900">{req.matchedMentor}</span>
+                      : <span className="text-gray-400 italic">—</span>}
+                  </td>
                   <td className="px-4 py-3 text-xs text-gray-600 text-center">{req.activeDays}</td>
-                  <td className="px-4 py-3"><ArrowRight className="w-4 h-4 text-gray-400" /></td>
+                  <td className="px-4 py-3">
+                    <ArrowRight className="w-4 h-4 text-gray-400" />
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -509,8 +562,14 @@ export default function AllRequests() {
         </div>
       </div>
 
+      {/* Side Pane */}
       {selectedReq && (
-        <RequestPane key={selectedReq.id} request={selectedReq} onClose={() => setSelectedReq(null)} onUpdate={handleUpdate} />
+        <RequestPane
+          key={selectedReq.id}
+          request={selectedReq}
+          onClose={() => setSelectedReq(null)}
+          onUpdate={handleUpdate}
+        />
       )}
     </div>
   )

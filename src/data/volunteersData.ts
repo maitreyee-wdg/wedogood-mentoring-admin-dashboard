@@ -6,6 +6,7 @@ export type OrientationStatus =
 
 export type EngagementStatus = "Active" | "Not Engaged"
 export type MenteeInterest = "College students/Fresh graduates" | "0-4 years experience" | "4-8 years experience"
+export type VolunteeringType = "Mentoring" | "Projects" | "Both"
 
 export interface Experience {
   role: string
@@ -29,6 +30,22 @@ export interface ActiveRequest {
   startedAt: string
 }
 
+export interface Project {
+  projectName: string
+  programName: string
+  ngo: string
+}
+
+export interface PastProject extends Project {
+  endDate: string
+}
+
+export interface Location {
+  city: string
+  state: string
+  country: string
+}
+
 export interface Volunteer {
   id: string
   name: string
@@ -37,9 +54,14 @@ export interface Volunteer {
   totalYearsExp: number
   pastExperience: Experience[]
   skills: string[]
-  interestedIn: MenteeInterest[]
-  rating: number
+  volunteeringType: VolunteeringType
+  interestedIn: MenteeInterest[]          // only relevant if Mentoring or Both
+  mentoringRating: number
+  projectsRating: number
   group: string
+  preferredLanguages: string[]
+  hometown: Location
+  currentLocation: Location
   whatsapp: string
   email: string
   officialEmail: string
@@ -47,10 +69,15 @@ export interface Volunteer {
   resume?: string
   orientationStatus: OrientationStatus
   orientationDate?: string
+  signedUpDate: string
   engagementStatus: EngagementStatus
+  availability: "Available" | "On Leave" | "Inactive"
   activeRequest?: ActiveRequest
   pastRequests: PastRequest[]
-  availability: "Available" | "On Leave" | "Inactive"
+  activeProjects: Project[]
+  pastProjects: PastProject[]
+  // legacy compat
+  rating: number
 }
 
 export const mockVolunteers: Volunteer[] = [
@@ -65,31 +92,28 @@ export const mockVolunteers: Volunteer[] = [
       { role: "Recruiter", company: "Naukri.com", duration: "2016–2018" },
     ],
     skills: ["Resume Writing", "Interview Prep", "Career Guidance"],
+    volunteeringType: "Mentoring",
     interestedIn: ["College students/Fresh graduates", "0-4 years experience"],
+    mentoringRating: 4.7,
+    projectsRating: 0,
     rating: 4.7,
     group: "HR & People",
+    preferredLanguages: ["English", "Hindi"],
+    hometown: { city: "Lucknow", state: "Uttar Pradesh", country: "India" },
+    currentLocation: { city: "Bengaluru", state: "Karnataka", country: "India" },
     whatsapp: "+91 98765 11001",
     email: "rahul.mehta@gmail.com",
     officialEmail: "rahul.mehta@infosys.com",
     linkedin: "linkedin.com/in/rahulmehta",
     orientationStatus: "Orientation Done",
+    signedUpDate: "2025-09-10",
     engagementStatus: "Active",
-    activeRequest: {
-      id: "REQ-001",
-      menteeName: "Priya Sharma",
-      skill: "Resume Writing",
-      startedAt: "2026-05-01",
-    },
+    activeRequest: { id: "REQ-001", menteeName: "Priya Sharma", skill: "Resume Writing", startedAt: "2026-05-01" },
     pastRequests: [
-      {
-        id: "REQ-P01",
-        menteeName: "Ankit Verma",
-        skill: "Interview Prep",
-        closedAt: "2026-03-10",
-        feedback: "Very helpful and patient mentor.",
-        rating: 5,
-      },
+      { id: "REQ-P01", menteeName: "Ankit Verma", skill: "Interview Prep", closedAt: "2026-03-10", feedback: "Very helpful and patient mentor.", rating: 5 },
     ],
+    activeProjects: [],
+    pastProjects: [],
     availability: "Available",
   },
   {
@@ -103,38 +127,29 @@ export const mockVolunteers: Volunteer[] = [
       { role: "SDE I", company: "Zoho", duration: "2019–2021" },
     ],
     skills: ["Software Engineering", "React", "Career Guidance", "System Design"],
+    volunteeringType: "Both",
     interestedIn: ["0-4 years experience", "4-8 years experience"],
+    mentoringRating: 4.5,
+    projectsRating: 4.6,
     rating: 4.5,
     group: "Technology",
+    preferredLanguages: ["English", "Telugu", "Kannada"],
+    hometown: { city: "Hyderabad", state: "Telangana", country: "India" },
+    currentLocation: { city: "Bengaluru", state: "Karnataka", country: "India" },
     whatsapp: "+91 98765 11002",
     email: "sneha.rao@gmail.com",
     officialEmail: "sneha@google.com",
     linkedin: "linkedin.com/in/sneharo",
     orientationStatus: "Orientation Done",
+    signedUpDate: "2025-08-22",
     engagementStatus: "Active",
-    activeRequest: {
-      id: "REQ-002",
-      menteeName: "Arjun Patel",
-      skill: "Software Engineering",
-      startedAt: "2026-05-03",
-    },
+    activeRequest: { id: "REQ-002", menteeName: "Arjun Patel", skill: "Software Engineering", startedAt: "2026-05-03" },
     pastRequests: [
-      {
-        id: "REQ-P02",
-        menteeName: "Rohit Das",
-        skill: "React",
-        closedAt: "2026-02-20",
-        feedback: "Excellent mentor, very knowledgeable.",
-        rating: 4,
-      },
-      {
-        id: "REQ-P03",
-        menteeName: "Neha Singh",
-        skill: "Career Guidance",
-        closedAt: "2025-12-15",
-        rating: 5,
-      },
+      { id: "REQ-P02", menteeName: "Rohit Das", skill: "React", closedAt: "2026-02-20", feedback: "Excellent mentor, very knowledgeable.", rating: 4 },
+      { id: "REQ-P03", menteeName: "Neha Singh", skill: "Career Guidance", closedAt: "2025-12-15", rating: 5 },
     ],
+    activeProjects: [{ projectName: "Code4Good Bootcamp", programName: "Tech Skills Program", ngo: "NavGurukul" }],
+    pastProjects: [{ projectName: "Hackathon Facilitation", programName: "Youth Innovation", ngo: "Akanksha Foundation", endDate: "2025-11-30" }],
     availability: "Available",
   },
   {
@@ -148,23 +163,27 @@ export const mockVolunteers: Volunteer[] = [
       { role: "Data Intern", company: "Accenture", duration: "2020–2021" },
     ],
     skills: ["Data Analysis", "Excel", "Python", "SQL"],
+    volunteeringType: "Mentoring",
     interestedIn: ["College students/Fresh graduates", "0-4 years experience"],
+    mentoringRating: 4.2,
+    projectsRating: 0,
     rating: 4.2,
     group: "Analytics",
+    preferredLanguages: ["English", "Marathi", "Hindi"],
+    hometown: { city: "Pune", state: "Maharashtra", country: "India" },
+    currentLocation: { city: "Bengaluru", state: "Karnataka", country: "India" },
     whatsapp: "+91 98765 11003",
     email: "amit.joshi@gmail.com",
     officialEmail: "amit.joshi@swiggy.com",
     linkedin: "linkedin.com/in/amitjoshi",
     orientationStatus: "Orientation Slot Booked",
     orientationDate: "2026-06-05",
+    signedUpDate: "2025-10-05",
     engagementStatus: "Active",
-    activeRequest: {
-      id: "REQ-004",
-      menteeName: "Rohan Das",
-      skill: "Data Analysis",
-      startedAt: "2026-05-08",
-    },
+    activeRequest: { id: "REQ-004", menteeName: "Rohan Das", skill: "Data Analysis", startedAt: "2026-05-08" },
     pastRequests: [],
+    activeProjects: [],
+    pastProjects: [],
     availability: "Available",
   },
   {
@@ -178,26 +197,28 @@ export const mockVolunteers: Volunteer[] = [
       { role: "Finance Analyst", company: "Kotak", duration: "2015–2018" },
     ],
     skills: ["Finance", "Investment Basics", "Accounting", "Budgeting"],
+    volunteeringType: "Both",
     interestedIn: ["4-8 years experience"],
+    mentoringRating: 3.9,
+    projectsRating: 4.1,
     rating: 3.9,
     group: "Finance",
+    preferredLanguages: ["English", "Hindi"],
+    hometown: { city: "Delhi", state: "Delhi", country: "India" },
+    currentLocation: { city: "Mumbai", state: "Maharashtra", country: "India" },
     whatsapp: "+91 98765 11004",
     email: "pooja.verma@gmail.com",
     officialEmail: "pooja.verma@hdfc.com",
     linkedin: "linkedin.com/in/poojaverma",
     orientationStatus: "Orientation Rescheduled",
     orientationDate: "2026-06-10",
+    signedUpDate: "2025-07-18",
     engagementStatus: "Not Engaged",
     pastRequests: [
-      {
-        id: "REQ-P04",
-        menteeName: "Siddharth Kumar",
-        skill: "Finance",
-        closedAt: "2026-04-01",
-        feedback: "Good guidance but could be more proactive.",
-        rating: 4,
-      },
+      { id: "REQ-P04", menteeName: "Siddharth Kumar", skill: "Finance", closedAt: "2026-04-01", feedback: "Good guidance but could be more proactive.", rating: 4 },
     ],
+    activeProjects: [{ projectName: "Financial Literacy Drive", programName: "Finwise", ngo: "Parivarthan" }],
+    pastProjects: [],
     availability: "On Leave",
   },
   {
@@ -211,16 +232,25 @@ export const mockVolunteers: Volunteer[] = [
       { role: "Business Analyst", company: "TCS", duration: "2018–2020" },
     ],
     skills: ["Product Management", "Roadmapping", "User Research"],
+    volunteeringType: "Mentoring",
     interestedIn: ["0-4 years experience", "4-8 years experience"],
+    mentoringRating: 4.8,
+    projectsRating: 0,
     rating: 4.8,
     group: "Product",
+    preferredLanguages: ["English", "Kannada", "Hindi"],
+    hometown: { city: "Mangalore", state: "Karnataka", country: "India" },
+    currentLocation: { city: "Bengaluru", state: "Karnataka", country: "India" },
     whatsapp: "+91 98765 11005",
     email: "kiran.bhat@gmail.com",
     officialEmail: "kiran@razorpay.com",
     linkedin: "linkedin.com/in/kiranbhat",
     orientationStatus: "Orientation Pending",
+    signedUpDate: "2025-11-02",
     engagementStatus: "Not Engaged",
     pastRequests: [],
+    activeProjects: [],
+    pastProjects: [],
     availability: "Available",
   },
   {
@@ -234,27 +264,158 @@ export const mockVolunteers: Volunteer[] = [
       { role: "Marketing Executive", company: "Ogilvy", duration: "2016–2019" },
     ],
     skills: ["Marketing", "Brand Building", "Content Strategy", "Communication"],
+    volunteeringType: "Both",
     interestedIn: ["College students/Fresh graduates", "0-4 years experience"],
+    mentoringRating: 4.6,
+    projectsRating: 4.8,
     rating: 4.6,
     group: "Marketing",
+    preferredLanguages: ["English", "Tamil", "Hindi"],
+    hometown: { city: "Chennai", state: "Tamil Nadu", country: "India" },
+    currentLocation: { city: "Gurugram", state: "Haryana", country: "India" },
     whatsapp: "+91 98765 11006",
     email: "divya.k@gmail.com",
     officialEmail: "divya@zomato.com",
     linkedin: "linkedin.com/in/divyakrishnan",
     orientationStatus: "Orientation Done",
+    signedUpDate: "2025-06-30",
     engagementStatus: "Not Engaged",
     pastRequests: [
-      {
-        id: "REQ-P05",
-        menteeName: "Meena Iyer",
-        skill: "Communication",
-        closedAt: "2026-03-20",
-        feedback: "Very inspiring mentor.",
-        rating: 5,
-      },
+      { id: "REQ-P05", menteeName: "Meena Iyer", skill: "Communication", closedAt: "2026-03-20", feedback: "Very inspiring mentor.", rating: 5 },
     ],
+    activeProjects: [{ projectName: "Brand Workshop Series", programName: "Creative Skills", ngo: "Akanksha Foundation" }],
+    pastProjects: [{ projectName: "Content Creation Sprint", programName: "Digital Literacy", ngo: "NavGurukul", endDate: "2025-10-15" }],
+    availability: "Available",
+  },
+  {
+    id: "VOL-007",
+    name: "Arjun Sharma",
+    currentRole: "Operations Manager",
+    currentCompany: "Amazon India",
+    totalYearsExp: 6,
+    pastExperience: [
+      { role: "Operations Lead", company: "Flipkart", duration: "2021–2023" },
+      { role: "Supply Chain Analyst", company: "Delhivery", duration: "2019–2021" },
+    ],
+    skills: ["Operations", "Project Management", "Logistics", "Event Management"],
+    volunteeringType: "Projects",
+    interestedIn: [],
+    mentoringRating: 0,
+    projectsRating: 4.4,
+    rating: 4.4,
+    group: "Operations",
+    preferredLanguages: ["English", "Hindi", "Punjabi"],
+    hometown: { city: "Chandigarh", state: "Punjab", country: "India" },
+    currentLocation: { city: "Delhi", state: "Delhi", country: "India" },
+    whatsapp: "+91 98765 11007",
+    email: "arjun.sharma@gmail.com",
+    officialEmail: "arjun.sharma@amazon.com",
+    linkedin: "linkedin.com/in/arjunsharma",
+    orientationStatus: "Orientation Done",
+    signedUpDate: "2025-09-25",
+    engagementStatus: "Active",
+    activeRequest: undefined,
+    pastRequests: [],
+    activeProjects: [{ projectName: "Youth Employment Fair", programName: "Career Connect", ngo: "NavGurukul" }],
+    pastProjects: [{ projectName: "NGO Operations Audit", programName: "Capacity Building", ngo: "Parivarthan", endDate: "2025-12-31" }],
+    availability: "Available",
+  },
+  {
+    id: "VOL-008",
+    name: "Priyanka Nair",
+    currentRole: "UX Designer",
+    currentCompany: "Swiggy",
+    totalYearsExp: 4,
+    pastExperience: [
+      { role: "UI Designer", company: "Myntra", duration: "2022–2024" },
+    ],
+    skills: ["UX Design", "Figma", "User Research", "Prototyping"],
+    volunteeringType: "Projects",
+    interestedIn: [],
+    mentoringRating: 0,
+    projectsRating: 4.3,
+    rating: 4.3,
+    group: "Design",
+    preferredLanguages: ["English", "Malayalam"],
+    hometown: { city: "Kochi", state: "Kerala", country: "India" },
+    currentLocation: { city: "Bengaluru", state: "Karnataka", country: "India" },
+    whatsapp: "+91 98765 11008",
+    email: "priyanka.nair@gmail.com",
+    officialEmail: "priyanka@swiggy.com",
+    linkedin: "linkedin.com/in/priyankanair",
+    orientationStatus: "Orientation Done",
+    signedUpDate: "2025-12-01",
+    engagementStatus: "Active",
+    pastRequests: [],
+    activeProjects: [{ projectName: "App Redesign for NGO", programName: "Tech4Good", ngo: "Akanksha Foundation" }],
+    pastProjects: [],
+    availability: "Available",
+  },
+  {
+    id: "VOL-009",
+    name: "Vikram Singh",
+    currentRole: "Sales Director",
+    currentCompany: "Salesforce India",
+    totalYearsExp: 12,
+    pastExperience: [
+      { role: "Regional Sales Manager", company: "Oracle", duration: "2018–2022" },
+      { role: "Sales Lead", company: "SAP", duration: "2014–2018" },
+    ],
+    skills: ["Sales", "Leadership", "Communication", "Negotiation", "Career Coaching"],
+    volunteeringType: "Both",
+    interestedIn: ["4-8 years experience"],
+    mentoringRating: 4.9,
+    projectsRating: 4.7,
+    rating: 4.9,
+    group: "Sales & BD",
+    preferredLanguages: ["English", "Hindi"],
+    hometown: { city: "Jaipur", state: "Rajasthan", country: "India" },
+    currentLocation: { city: "Bengaluru", state: "Karnataka", country: "India" },
+    whatsapp: "+91 98765 11009",
+    email: "vikram.s@gmail.com",
+    officialEmail: "vikram.singh@salesforce.com",
+    linkedin: "linkedin.com/in/vikramsingh",
+    orientationStatus: "Orientation Done",
+    signedUpDate: "2025-05-15",
+    engagementStatus: "Not Engaged",
+    pastRequests: [],
+    activeProjects: [{ projectName: "Entrepreneurship Workshop", programName: "BizBoost", ngo: "NavGurukul" }],
+    pastProjects: [{ projectName: "Sales Training Camp", programName: "Skills Connect", ngo: "Parivarthan", endDate: "2026-01-20" }],
+    availability: "Available",
+  },
+  {
+    id: "VOL-010",
+    name: "Ananya Roy",
+    currentRole: "Content Strategist",
+    currentCompany: "Byju's",
+    totalYearsExp: 3,
+    pastExperience: [
+      { role: "Content Writer", company: "Unacademy", duration: "2022–2024" },
+    ],
+    skills: ["Content Writing", "Social Media", "Copywriting"],
+    volunteeringType: "Projects",
+    interestedIn: [],
+    mentoringRating: 0,
+    projectsRating: 3.8,
+    rating: 3.8,
+    group: "Marketing",
+    preferredLanguages: ["English", "Bengali", "Hindi"],
+    hometown: { city: "Kolkata", state: "West Bengal", country: "India" },
+    currentLocation: { city: "Bengaluru", state: "Karnataka", country: "India" },
+    whatsapp: "+91 98765 11010",
+    email: "ananya.roy@gmail.com",
+    officialEmail: "ananya@byjus.com",
+    linkedin: "linkedin.com/in/ananyaroy",
+    orientationStatus: "Orientation Pending",
+    signedUpDate: "2026-01-10",
+    engagementStatus: "Not Engaged",
+    pastRequests: [],
+    activeProjects: [],
+    pastProjects: [],
     availability: "Available",
   },
 ]
 
-export const mentorGroups = ["HR & People", "Technology", "Analytics", "Finance", "Product", "Marketing"]
+export const mentorGroups = ["HR & People", "Technology", "Analytics", "Finance", "Product", "Marketing", "Operations", "Design", "Sales & BD"]
+
+export const volunteerGroups = [...mentorGroups]
