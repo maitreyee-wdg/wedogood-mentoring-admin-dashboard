@@ -3,6 +3,20 @@ export interface CommTemplate {
   label: string
   category: "generic" | "engagement"
   message: string
+  isCustom?: boolean
+}
+
+export interface CommLog {
+  id: string
+  date: string
+  time: string
+  triggerOrSender: string   // "System Trigger" or admin name
+  templateLabel: string
+  recipients: string[]      // contact names
+  sentCount: number
+  deliveredCount: number
+  readCount: number
+  failedCount: number
 }
 
 export interface ChatMessage {
@@ -52,6 +66,23 @@ export const mockMenteeContacts: CommContact[] = [
   { id: "M-003", name: "Kavya Nair", phone: "+91 77001 20003", role: "Mentee · Parivarthan", lastMessage: "I haven't heard from my mentor yet.", lastTime: "Mon", unread: 0, contactType: "mentee" },
   { id: "M-004", name: "Rohan Das", phone: "+91 77001 20004", role: "Mentee · Akanksha Foundation", lastMessage: "Session was great 🙌", lastTime: "30 May", unread: 0, contactType: "mentee" },
   { id: "M-005", name: "Meena Iyer", phone: "+91 77001 20005", role: "Mentee · NavGurukul", lastMessage: "Okay, I'll try the exercise.", lastTime: "29 May", unread: 0, contactType: "mentee" },
+]
+
+export const mockVolunteerLogs: CommLog[] = [
+  { id: "VL-1", date: "2026-06-04", time: "10:00 AM", triggerOrSender: "System Trigger", templateLabel: "Complete Profile", recipients: ["Sneha Rao", "Pooja Verma"], sentCount: 2, deliveredCount: 2, readCount: 1, failedCount: 0 },
+  { id: "VL-2", date: "2026-06-03", time: "9:00 AM", triggerOrSender: "System Trigger", templateLabel: "Orientation Slot Reminder", recipients: ["Amit Joshi"], sentCount: 1, deliveredCount: 1, readCount: 1, failedCount: 0 },
+  { id: "VL-3", date: "2026-06-02", time: "11:30 AM", triggerOrSender: "Mait (Admin)", templateLabel: "Confirm Interest in Engagement", recipients: ["Kiran Bhat", "Divya Krishnan", "Rahul Mehta"], sentCount: 3, deliveredCount: 3, readCount: 2, failedCount: 0 },
+  { id: "VL-4", date: "2026-06-01", time: "3:00 PM", triggerOrSender: "System Trigger", templateLabel: "Complete Orientation", recipients: ["Sneha Rao"], sentCount: 1, deliveredCount: 1, readCount: 0, failedCount: 0 },
+  { id: "VL-5", date: "2026-05-30", time: "2:00 PM", triggerOrSender: "Mait (Admin)", templateLabel: "Relevant Pre-Read", recipients: ["Divya Krishnan"], sentCount: 1, deliveredCount: 1, readCount: 1, failedCount: 0 },
+  { id: "VL-6", date: "2026-05-28", time: "10:00 AM", triggerOrSender: "System Trigger", templateLabel: "Complete Profile", recipients: ["Pooja Verma", "Kiran Bhat", "Amit Joshi"], sentCount: 3, deliveredCount: 2, readCount: 1, failedCount: 1 },
+]
+
+export const mockMenteeLogs: CommLog[] = [
+  { id: "ML-1", date: "2026-06-04", time: "11:00 AM", triggerOrSender: "System Trigger", templateLabel: "Mentor Matched — View Details", recipients: ["Priya Sharma", "Rohan Das"], sentCount: 2, deliveredCount: 2, readCount: 2, failedCount: 0 },
+  { id: "ML-2", date: "2026-06-03", time: "12:00 PM", triggerOrSender: "System Trigger", templateLabel: "Confirm If Call Happened", recipients: ["Arjun Patel", "Priya Sharma"], sentCount: 2, deliveredCount: 2, readCount: 1, failedCount: 0 },
+  { id: "ML-3", date: "2026-06-02", time: "9:30 AM", triggerOrSender: "Mait (Admin)", templateLabel: "Re-engagement Nudge", recipients: ["Kavya Nair", "Meena Iyer"], sentCount: 2, deliveredCount: 1, readCount: 0, failedCount: 1 },
+  { id: "ML-4", date: "2026-06-01", time: "4:00 PM", triggerOrSender: "System Trigger", templateLabel: "Days Remaining Reminder", recipients: ["Arjun Patel"], sentCount: 1, deliveredCount: 1, readCount: 1, failedCount: 0 },
+  { id: "ML-5", date: "2026-05-31", time: "10:00 AM", triggerOrSender: "System Trigger", templateLabel: "Request Chat Nudge", recipients: ["Meena Iyer", "Kavya Nair", "Priya Sharma"], sentCount: 3, deliveredCount: 3, readCount: 2, failedCount: 0 },
 ]
 
 type ConversationMap = Record<string, ChatMessage[]>

@@ -1,6 +1,6 @@
 import { NavLink } from "react-router-dom"
 import { cn } from "@/lib/utils"
-import { Heart, Users, UserCircle, MessageSquare, Layers, Building2, Bot, CalendarClock, UserCheck, FolderKanban } from "lucide-react"
+import { Heart, Users, UserCircle, MessageSquare, Layers, Building2, Bot, CalendarClock, UserCheck, FolderKanban, BrainCircuit } from "lucide-react"
 
 const sections = [
   {
@@ -31,8 +31,8 @@ const sections = [
   {
     label: "Flow Management",
     items: [
-      { to: "/flow/bot-config", label: "Bot Config", icon: Bot, end: false },
-      { to: "/flow/cron-jobs", label: "Cron Jobs", icon: CalendarClock, end: false },
+      { to: "/flow/ai-agents", label: "AI Agents", icon: BrainCircuit, end: false },
+      { to: "/flow/cron-jobs", label: "System Triggers", icon: CalendarClock, end: false },
     ],
   },
 ]

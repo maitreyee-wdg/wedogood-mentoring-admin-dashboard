@@ -18,7 +18,7 @@ import AllRequests from "@/pages/mentees/AllRequests"
 import MenteesComms from "@/pages/mentees/Comms"
 
 // Flow
-import BotConfig from "@/pages/flow/BotConfig"
+import AIAgents from "@/pages/flow/AIAgents"
 import CronJobs from "@/pages/flow/CronJobs"
 
 export default function App() {
@@ -45,7 +45,7 @@ export default function App() {
           <Route path="/mentees/comms" element={<MenteesComms />} />
 
           {/* Flow */}
-          <Route path="/flow/bot-config" element={<BotConfig />} />
+          <Route path="/flow/ai-agents" element={<AIAgents />} />
           <Route path="/flow/cron-jobs" element={<CronJobs />} />
         </Routes>
       </Layout>
