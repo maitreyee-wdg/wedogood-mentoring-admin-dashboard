@@ -8,7 +8,7 @@ const sections = [
     items: [
       { to: "/volunteers", label: "Volunteers", icon: Users, end: true },
       { to: "/volunteers/mentors", label: "Mentors", icon: UserCheck, end: false },
-      { to: "/volunteers/comms", label: "Comms", icon: MessageSquare, end: false },
+      { to: "/volunteers/comms", label: "Mentor WA Comms", icon: MessageSquare, end: false },
     ],
   },
   {
@@ -25,7 +25,7 @@ const sections = [
       { to: "/mentees", label: "Mentees", icon: UserCircle, end: true },
       { to: "/mentees/active-requests", label: "Active Requests", icon: UserCheck, end: false },
       { to: "/mentees/all-requests", label: "All Requests", icon: Layers, end: false },
-      { to: "/mentees/comms", label: "Comms", icon: MessageSquare, end: false },
+      { to: "/mentees/comms", label: "Mentee WA Comms", icon: MessageSquare, end: false },
     ],
   },
   {
