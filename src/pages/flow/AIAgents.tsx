@@ -1,6 +1,5 @@
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import {
   BrainCircuit, X, Lock, Pencil, Plus, ChevronRight,
   Wrench, GitBranch, Bot, Zap, Save, RotateCcw
