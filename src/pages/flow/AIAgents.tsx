@@ -1,8 +1,9 @@
-import { useState } from "react"
+import { useState, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import {
   BrainCircuit, X, Lock, Pencil, Plus, ChevronRight,
-  Wrench, GitBranch, Bot, Zap, Save, RotateCcw
+  Wrench, GitBranch, Bot, Zap, Save, RotateCcw, Upload,
+  Pause, Play, Trash2, Pencil as PencilIcon,
 } from "lucide-react"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -22,7 +23,7 @@ interface Agent {
   roleLabel: string
   description: string
   prompt: string
-  contextFile?: string
+  contextFiles?: string[]   // uploaded file names
   tools: string[]
   accessTo: string[]    // other agent shortIds
   isPredefined: boolean
@@ -41,7 +42,27 @@ interface Workflow {
   purpose: string
   trigger: string
   agentChain: string[]   // shortIds in order
+  status: "Active" | "Paused"
 }
+
+// ─── Workflow trigger options (mirrors system triggers) ───────────────────────
+
+const WORKFLOW_TRIGGER_OPTIONS = [
+  "New mentee sends first WhatsApp message",
+  "New mentee registered on platform",
+  "Mentee profile marked complete",
+  "Mentor accepts a match request",
+  "Session marked 'completed' in system",
+  "Support keyword or chip detected in any message",
+  "Mentee status remains 'Profile unfinished' for 4 hours",
+  "Mentee status remains 'Request chat unfinished' for 4 hours",
+  "Request status changes to 'Mentor matched'",
+  "Request status changes to 'Number accessed'",
+  "Mentoring request has 4 days remaining",
+  "30 days since last mentee request created",
+  "Volunteer status remains 'Orientation pending' for 4 hours",
+  "Volunteer has orientation slot today",
+]
 
 // ─── Tool catalogue ───────────────────────────────────────────────────────────
 
@@ -94,7 +115,7 @@ Never:
 - Ask multiple questions at once
 - Use jargon or overly formal language
 - Make promises about specific mentors`,
-    contextFile: "mentee_profile_schema.json",
+    contextFiles: ["mentee_profile_schema.json"],
     tools: ["get_mentee_context", "get_session_history", "get_quick_replies", "send_message"],
     accessTo: ["A2", "A3", "A7"],
     isPredefined: true,
@@ -184,7 +205,7 @@ Convert the completed working profile into the final structured JSON schema requ
 Also extract 3–7 mentor skill/experience tags that would best serve this mentee based on their profile. Tags should be drawn from the canonical tag list only.
 
 Return only valid JSON. No prose, no markdown, no explanations.`,
-    contextFile: "mentor_tags_canonical.json",
+    contextFiles: ["mentor_tags_canonical.json"],
     tools: ["format_json_profile", "extract_mentor_tags", "write_json_to_db"],
     accessTo: [],
     isPredefined: true,
@@ -246,6 +267,7 @@ const WORKFLOWS: Workflow[] = [
     purpose: "Guide a new mentee from first message through completed profile and mentor matching.",
     trigger: "New mentee sends first WhatsApp message",
     agentChain: ["A1", "A2", "A3", "A4", "A5"],
+    status: "Active",
   },
   {
     id: "wf-2",
@@ -253,6 +275,7 @@ const WORKFLOWS: Workflow[] = [
     purpose: "Collect structured feedback after each mentoring session and schedule the next.",
     trigger: "Session marked 'completed' in system",
     agentChain: ["A1", "A6"],
+    status: "Active",
   },
   {
     id: "wf-3",
@@ -260,6 +283,7 @@ const WORKFLOWS: Workflow[] = [
     purpose: "Intercept distress signals and hand off to a human admin immediately.",
     trigger: "Support keyword or chip detected in any message",
     agentChain: ["A1", "A7"],
+    status: "Active",
   },
 ]
 
@@ -311,19 +335,29 @@ function AgentPane({ agent, agents, onClose, onSave }: {
   const [editing, setEditing] = useState(false)
   const [prompt, setPrompt] = useState(agent.prompt)
   const [description, setDescription] = useState(agent.description)
-  const [contextFile, setContextFile] = useState(agent.contextFile ?? "")
+  const [contextFiles, setContextFiles] = useState<string[]>(agent.contextFiles ?? [])
   const [selectedTools, setSelectedTools] = useState<string[]>(agent.tools)
   const [accessTo, setAccessTo] = useState<string[]>(agent.accessTo)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? [])
+    const MAX_TOTAL = 10 * 1024 * 1024
+    const totalSize = files.reduce((sum, f) => sum + f.size, 0)
+    if (totalSize > MAX_TOTAL) { alert("Total file size exceeds 10 MB. Please select smaller files."); return }
+    setContextFiles((prev) => [...prev, ...files.map((f) => f.name)])
+    e.target.value = ""
+  }
 
   const handleSave = () => {
-    onSave(agent.id, { prompt, description, contextFile, tools: selectedTools, accessTo })
+    onSave(agent.id, { prompt, description, contextFiles, tools: selectedTools, accessTo })
     setEditing(false)
   }
 
   const handleReset = () => {
     setPrompt(agent.prompt)
     setDescription(agent.description)
-    setContextFile(agent.contextFile ?? "")
+    setContextFiles(agent.contextFiles ?? [])
     setSelectedTools(agent.tools)
     setAccessTo(agent.accessTo)
     setEditing(false)
@@ -372,7 +406,7 @@ function AgentPane({ agent, agents, onClose, onSave }: {
 
         {/* Description */}
         <div>
-          <label className={labelCls}>What it does</label>
+          <label className={labelCls}>What it does <span className="text-gray-400 normal-case font-normal">(For Human understanding only)</span></label>
           {editing
             ? <textarea className={inputCls + " resize-none h-16"} value={description} onChange={(e) => setDescription(e.target.value)} />
             : <p className="text-sm text-gray-600 leading-relaxed">{description}</p>
@@ -392,17 +426,29 @@ function AgentPane({ agent, agents, onClose, onSave }: {
           }
         </div>
 
-        {/* Context file */}
+        {/* Context Files */}
         <div>
-          <label className={labelCls}>Context File</label>
-          {editing
-            ? <input className={inputCls} value={contextFile} onChange={(e) => setContextFile(e.target.value)} placeholder="e.g. mentee_profile_schema.json" />
-            : (
-              contextFile
-                ? <span className="text-xs bg-gray-100 text-gray-700 px-2.5 py-1 rounded-lg font-mono">{contextFile}</span>
-                : <span className="text-xs text-gray-400 italic">None</span>
-            )
-          }
+          <label className={labelCls}>Context Files <span className="text-gray-400 normal-case font-normal">(max 10 MB total)</span></label>
+          <div className="flex flex-wrap gap-1.5 mb-2">
+            {contextFiles.length > 0
+              ? contextFiles.map((f, i) => (
+                  <span key={i} className="flex items-center gap-1 text-xs bg-gray-100 text-gray-700 px-2.5 py-1 rounded-lg font-mono">
+                    {f}
+                    {editing && <button onClick={() => setContextFiles((p) => p.filter((_, idx) => idx !== i))}><X className="w-3 h-3 text-gray-400 hover:text-red-400" /></button>}
+                  </span>
+                ))
+              : <span className="text-xs text-gray-400 italic">No context files</span>
+            }
+          </div>
+          {editing && (
+            <>
+              <input ref={fileInputRef} type="file" multiple className="hidden" onChange={handleFileUpload} />
+              <button onClick={() => fileInputRef.current?.click()}
+                className="flex items-center gap-1.5 text-xs border border-dashed border-gray-300 text-gray-500 hover:border-blue-400 hover:text-blue-600 px-3 py-1.5 rounded-lg transition-colors">
+                <Upload className="w-3.5 h-3.5" /> Upload files
+              </button>
+            </>
+          )}
         </div>
 
         {/* Tools */}
@@ -526,14 +572,17 @@ function ToolsTab() {
 
 // ─── Workflows Tab ────────────────────────────────────────────────────────────
 
-function WorkflowsTab({ agents, workflows, onAddWorkflow, onAddAgentToWorkflow, onRemoveAgentFromWorkflow }: {
+function WorkflowsTab({ agents, workflows, onAddWorkflow, onAddAgentToWorkflow, onRemoveAgentFromWorkflow, onToggleWorkflow, onDeleteWorkflow, onEditWorkflow }: {
   agents: Agent[]
   workflows: Workflow[]
   onAddWorkflow: () => void
   onAddAgentToWorkflow: (wfId: string, sid: string) => void
   onRemoveAgentFromWorkflow: (wfId: string, sid: string) => void
+  onToggleWorkflow: (wfId: string) => void
+  onDeleteWorkflow: (wfId: string) => void
+  onEditWorkflow: (wf: Workflow) => void
 }) {
-  const [pickerOpen, setPickerOpen] = useState<string | null>(null) // wfId with open picker
+  const [pickerOpen, setPickerOpen] = useState<string | null>(null)
   const getAgent = (sid: string) => agents.find((a) => a.shortId === sid)
 
   return (
@@ -549,11 +598,29 @@ function WorkflowsTab({ agents, workflows, onAddWorkflow, onAddAgentToWorkflow, 
       </div>
       <div className="space-y-4">
         {workflows.map((wf) => (
-          <div key={wf.id} className="bg-white border border-gray-200 rounded-xl p-5">
+          <div key={wf.id} className={`bg-white border rounded-xl p-5 transition-opacity ${wf.status === "Paused" ? "opacity-60 border-gray-100" : "border-gray-200"}`}>
             <div className="flex items-start justify-between mb-3">
-              <div>
-                <p className="font-semibold text-sm text-gray-900">{wf.name}</p>
-                <p className="text-xs text-gray-500 mt-0.5">{wf.purpose}</p>
+              <div className="flex items-start gap-2">
+                <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${wf.status === "Active" ? "bg-green-400" : "bg-gray-300"}`} />
+                <div>
+                  <p className="font-semibold text-sm text-gray-900">{wf.name}</p>
+                  <p className="text-xs text-gray-500 mt-0.5">{wf.purpose}</p>
+                </div>
+              </div>
+              {/* Actions */}
+              <div className="flex items-center gap-1 shrink-0 ml-3">
+                <button onClick={() => onToggleWorkflow(wf.id)}
+                  className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-medium border transition-colors ${wf.status === "Active" ? "border-yellow-200 text-yellow-700 hover:bg-yellow-50" : "border-green-200 text-green-700 hover:bg-green-50"}`}>
+                  {wf.status === "Active" ? <><Pause className="w-3 h-3" />Pause</> : <><Play className="w-3 h-3" />Resume</>}
+                </button>
+                <button onClick={() => onEditWorkflow(wf)}
+                  className="p-1.5 rounded border border-gray-200 text-gray-400 hover:text-blue-600 hover:border-blue-200 transition-colors">
+                  <PencilIcon className="w-3 h-3" />
+                </button>
+                <button onClick={() => onDeleteWorkflow(wf.id)}
+                  className="p-1.5 rounded border border-gray-200 text-gray-400 hover:text-red-500 hover:border-red-200 transition-colors">
+                  <Trash2 className="w-3 h-3" />
+                </button>
               </div>
             </div>
 
@@ -575,10 +642,8 @@ function WorkflowsTab({ agents, workflows, onAddWorkflow, onAddAgentToWorkflow, 
                     <div className={`flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg border ${a.color.bg} ${a.color.border} ${a.color.text} font-medium group`}>
                       <span className={`text-[10px] font-bold px-1 py-0.5 rounded text-white ${a.color.badge}`}>{sid}</span>
                       {a.name}
-                      <button
-                        onClick={() => onRemoveAgentFromWorkflow(wf.id, sid)}
-                        className="ml-0.5 opacity-0 group-hover:opacity-60 hover:!opacity-100 transition-opacity"
-                      >
+                      <button onClick={() => onRemoveAgentFromWorkflow(wf.id, sid)}
+                        className="ml-0.5 opacity-0 group-hover:opacity-60 hover:!opacity-100 transition-opacity">
                         <X className="w-3 h-3" />
                       </button>
                     </div>
@@ -586,31 +651,21 @@ function WorkflowsTab({ agents, workflows, onAddWorkflow, onAddAgentToWorkflow, 
                   </div>
                 )
               })}
-
-              {/* Add agent picker */}
               <div className="relative ml-1">
-                <button
-                  onClick={() => setPickerOpen(pickerOpen === wf.id ? null : wf.id)}
-                  className="flex items-center gap-1 text-xs text-gray-400 border border-dashed border-gray-300 px-2.5 py-1.5 rounded-lg hover:border-blue-300 hover:text-blue-500 transition-colors"
-                >
+                <button onClick={() => setPickerOpen(pickerOpen === wf.id ? null : wf.id)}
+                  className="flex items-center gap-1 text-xs text-gray-400 border border-dashed border-gray-300 px-2.5 py-1.5 rounded-lg hover:border-blue-300 hover:text-blue-500 transition-colors">
                   <Plus className="w-3 h-3" /> Add agent
                 </button>
                 {pickerOpen === wf.id && (
                   <div className="absolute left-0 top-9 z-30 bg-white border border-gray-200 rounded-xl shadow-xl p-2 w-56">
                     <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-2 mb-1.5">Select agent to append</p>
-                    {agents
-                      .filter((a) => !wf.agentChain.includes(a.shortId))
-                      .map((a) => (
-                        <button
-                          key={a.shortId}
-                          onClick={() => { onAddAgentToWorkflow(wf.id, a.shortId); setPickerOpen(null) }}
-                          className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs font-medium hover:opacity-80 transition-opacity ${a.color.bg} ${a.color.text} mb-1`}
-                        >
-                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded text-white ${a.color.badge}`}>{a.shortId}</span>
-                          {a.name}
-                        </button>
-                      ))
-                    }
+                    {agents.filter((a) => !wf.agentChain.includes(a.shortId)).map((a) => (
+                      <button key={a.shortId} onClick={() => { onAddAgentToWorkflow(wf.id, a.shortId); setPickerOpen(null) }}
+                        className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs font-medium hover:opacity-80 transition-opacity ${a.color.bg} ${a.color.text} mb-1`}>
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded text-white ${a.color.badge}`}>{a.shortId}</span>
+                        {a.name}
+                      </button>
+                    ))}
                     {agents.filter((a) => !wf.agentChain.includes(a.shortId)).length === 0 && (
                       <p className="text-xs text-gray-400 px-2 py-1">All agents already in chain</p>
                     )}
@@ -643,14 +698,35 @@ function AddAgentModal({ onClose, onAdd, agents }: {
   const [role, setRole] = useState<AgentRole>("background")
   const [description, setDescription] = useState("")
   const [prompt, setPrompt] = useState("")
-  const [contextFile, setContextFile] = useState("")
+  const [contextFiles, setContextFiles] = useState<string[]>([])
+  const [selectedTools, setSelectedTools] = useState<string[]>([])
+  const [accessTo, setAccessTo] = useState<string[]>([])
   const [errors, setErrors] = useState<{ name?: string; prompt?: string }>({})
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const existingOrchestrator = agents.find((a) => a.role === "orchestrator")
+  const orchestratorBlocked = role === "orchestrator" && !!existingOrchestrator
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? [])
+    const MAX_TOTAL = 10 * 1024 * 1024
+    const totalSize = files.reduce((sum, f) => sum + f.size, 0)
+    if (totalSize > MAX_TOTAL) { alert("Total file size exceeds 10 MB."); return }
+    setContextFiles((prev) => [...prev, ...files.map((f) => f.name)])
+    e.target.value = ""
+  }
+
+  const toggleTool = (t: string) =>
+    setSelectedTools((p) => p.includes(t) ? p.filter((x) => x !== t) : [...p, t])
+  const toggleAccess = (sid: string) =>
+    setAccessTo((p) => p.includes(sid) ? p.filter((x) => x !== sid) : [...p, sid])
 
   const handleAdd = () => {
     const newErrors: { name?: string; prompt?: string } = {}
     if (!name.trim()) newErrors.name = "Agent name is required"
     if (!prompt.trim()) newErrors.prompt = "Prompt is required"
     if (Object.keys(newErrors).length > 0) { setErrors(newErrors); return }
+    if (orchestratorBlocked) return
 
     const newId = `A${agents.length + 1}`
     onAdd({
@@ -658,8 +734,8 @@ function AddAgentModal({ onClose, onAdd, agents }: {
       shortId: newId,
       name: name.trim(), role,
       roleLabel: ROLE_META[role].label,
-      description, prompt: prompt.trim(), contextFile,
-      tools: [], accessTo: [],
+      description, prompt: prompt.trim(), contextFiles,
+      tools: selectedTools, accessTo,
       isPredefined: false,
       color: { bg: "bg-gray-50", border: "border-gray-200", badge: "bg-gray-500", text: "text-gray-600", dot: "bg-gray-400" },
     })
@@ -671,69 +747,120 @@ function AddAgentModal({ onClose, onAdd, agents }: {
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-xl w-[540px] max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-xl shadow-xl w-[580px] max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 sticky top-0 bg-white rounded-t-xl">
           <h2 className="font-semibold text-gray-900">New Agent</h2>
           <button onClick={onClose}><X className="w-4 h-4 text-gray-400" /></button>
         </div>
-        <div className="px-6 py-5 space-y-4">
+        <div className="px-6 py-5 space-y-5">
+          {/* Name */}
           <div>
             <label className={labelCls}>Agent Name *</label>
-            <input
-              className={fieldCls(errors.name)}
-              value={name}
+            <input className={fieldCls(errors.name)} value={name}
               onChange={(e) => { setName(e.target.value); setErrors((p) => ({ ...p, name: undefined })) }}
-              placeholder="e.g. Engagement Scorer"
-            />
+              placeholder="e.g. Engagement Scorer" />
             {errors.name && <p className="text-xs text-red-500 mt-1">{errors.name}</p>}
           </div>
+
+          {/* Role */}
           <div>
             <label className={labelCls}>Role</label>
-            <select
-              className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 outline-none focus:border-blue-400 bg-white"
-              value={role} onChange={(e) => setRole(e.target.value as AgentRole)}
-            >
-              <option value="orchestrator">Orchestrator (user-facing)</option>
+            <select className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 outline-none focus:border-blue-400 bg-white"
+              value={role} onChange={(e) => setRole(e.target.value as AgentRole)}>
               <option value="background">Background (silent)</option>
               <option value="rule-based">Rule-based (no LLM)</option>
+              <option value="orchestrator" disabled={!!existingOrchestrator}>
+                Orchestrator (user-facing){existingOrchestrator ? " — already exists" : ""}
+              </option>
             </select>
-            <p className="text-xs text-gray-400 mt-1">{
-              role === "orchestrator" ? "Talks directly to the user. Always on." :
-              role === "background" ? "Runs silently after each message. Never responds directly." :
-              "Deterministic state machine. No LLM inference."
-            }</p>
+            {orchestratorBlocked && (
+              <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
+                ⚠ Only one orchestration agent is allowed. {existingOrchestrator?.name} ({existingOrchestrator?.shortId}) is already the orchestrator.
+              </p>
+            )}
+            {!orchestratorBlocked && (
+              <p className="text-xs text-gray-400 mt-1">{
+                role === "orchestrator" ? "Talks directly to the user. Always on." :
+                role === "background" ? "Runs silently after each message. Never responds directly." :
+                "Deterministic state machine. No LLM inference."
+              }</p>
+            )}
           </div>
+
+          {/* What it does */}
           <div>
-            <label className={labelCls}>What it does</label>
-            <textarea
-              className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 outline-none focus:border-blue-400 resize-none h-16"
+            <label className={labelCls}>What it does <span className="text-gray-400 normal-case font-normal">(For Human understanding only)</span></label>
+            <textarea className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 outline-none focus:border-blue-400 resize-none h-16"
               value={description} onChange={(e) => setDescription(e.target.value)}
-              placeholder="One-line summary of this agent's purpose"
-            />
+              placeholder="One-line summary of this agent's purpose" />
           </div>
+
+          {/* Prompt */}
           <div>
             <label className={labelCls}>System Prompt *</label>
-            <textarea
-              className={fieldCls(errors.prompt) + " resize-none h-44 font-mono text-xs"}
-              value={prompt}
+            <textarea className={fieldCls(errors.prompt) + " resize-none h-44 font-mono text-xs"} value={prompt}
               onChange={(e) => { setPrompt(e.target.value); setErrors((p) => ({ ...p, prompt: undefined })) }}
-              placeholder={"You are a [role] agent.\n\nYour job is to...\n\nAlways:\n- ...\n\nNever:\n- ..."}
-            />
+              placeholder={"You are a [role] agent.\n\nYour job is to...\n\nAlways:\n- ...\n\nNever:\n- ..."} />
             {errors.prompt && <p className="text-xs text-red-500 mt-1">{errors.prompt}</p>}
           </div>
+
+          {/* Context Files */}
           <div>
-            <label className={labelCls}>Context File (optional)</label>
-            <input
-              className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 outline-none focus:border-blue-400"
-              value={contextFile} onChange={(e) => setContextFile(e.target.value)}
-              placeholder="e.g. schema.json"
-            />
-            <p className="text-xs text-gray-400 mt-1">You can assign tools and agent access after creation via the edit pane.</p>
+            <label className={labelCls}>Context Files <span className="text-gray-400 normal-case font-normal">(optional · max 10 MB total)</span></label>
+            <div className="flex flex-wrap gap-1.5 mb-2">
+              {contextFiles.map((f, i) => (
+                <span key={i} className="flex items-center gap-1 text-xs bg-gray-100 text-gray-700 px-2 py-0.5 rounded font-mono">
+                  {f}<button onClick={() => setContextFiles((p) => p.filter((_, idx) => idx !== i))}><X className="w-3 h-3 text-gray-400 hover:text-red-400" /></button>
+                </span>
+              ))}
+            </div>
+            <input ref={fileInputRef} type="file" multiple className="hidden" onChange={handleFileUpload} />
+            <button onClick={() => fileInputRef.current?.click()}
+              className="flex items-center gap-1.5 text-xs border border-dashed border-gray-300 text-gray-500 hover:border-blue-400 hover:text-blue-600 px-3 py-1.5 rounded-lg transition-colors">
+              <Upload className="w-3.5 h-3.5" /> Upload files
+            </button>
+          </div>
+
+          {/* Tools */}
+          <div>
+            <label className={labelCls}>Tools</label>
+            <div className="flex flex-wrap gap-1.5">
+              {ALL_TOOLS.map((t) => (
+                <button key={t.name} onClick={() => toggleTool(t.name)}
+                  title={t.description}
+                  className={`text-[11px] px-2 py-0.5 rounded font-mono border transition-colors ${
+                    selectedTools.includes(t.name)
+                      ? "bg-blue-50 border-blue-200 text-blue-700"
+                      : "bg-gray-50 border-gray-200 text-gray-400 hover:border-gray-300"
+                  }`}>
+                  {t.name}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Access to agents */}
+          <div>
+            <label className={labelCls}>Can call agents</label>
+            <div className="flex flex-wrap gap-2">
+              {agents.map((a) => (
+                <button key={a.shortId} onClick={() => toggleAccess(a.shortId)}
+                  className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-lg border font-medium transition-colors ${
+                    accessTo.includes(a.shortId)
+                      ? `${a.color.bg} ${a.color.border} ${a.color.text}`
+                      : "bg-gray-50 border-gray-200 text-gray-400 hover:border-gray-300"
+                  }`}>
+                  <span className={`text-[10px] font-bold px-1 rounded text-white ${a.color.badge}`}>{a.shortId}</span>
+                  {a.name}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
+
         <div className="flex gap-2 px-6 py-4 border-t border-gray-100">
           <Button variant="outline" className="flex-1" onClick={onClose}>Cancel</Button>
-          <Button className="flex-1" onClick={handleAdd}>Create Agent</Button>
+          <Button className="flex-1" onClick={handleAdd} disabled={orchestratorBlocked}>Create Agent</Button>
         </div>
       </div>
     </div>
@@ -742,15 +869,17 @@ function AddAgentModal({ onClose, onAdd, agents }: {
 
 // ─── Add Workflow Modal ───────────────────────────────────────────────────────
 
-function AddWorkflowModal({ onClose, onAdd, agents }: {
+function AddWorkflowModal({ onClose, onAdd, agents, initial }: {
   onClose: () => void
   onAdd: (w: Workflow) => void
   agents: Agent[]
+  initial?: Workflow
 }) {
-  const [name, setName] = useState("")
-  const [purpose, setPurpose] = useState("")
-  const [trigger, setTrigger] = useState("")
-  const [chain, setChain] = useState<string[]>([])
+  const isEdit = !!initial
+  const [name, setName] = useState(initial?.name ?? "")
+  const [purpose, setPurpose] = useState(initial?.purpose ?? "")
+  const [trigger, setTrigger] = useState(initial?.trigger ?? "")
+  const [chain, setChain] = useState<string[]>(initial?.agentChain ?? [])
   const [errors, setErrors] = useState<{ name?: string; trigger?: string; chain?: string }>({})
 
   const addToChain = (sid: string) => {
@@ -764,7 +893,7 @@ function AddWorkflowModal({ onClose, onAdd, agents }: {
     if (!trigger.trim()) errs.trigger = "Trigger is required"
     if (chain.length === 0) errs.chain = "Add at least one agent to the chain"
     if (Object.keys(errs).length > 0) { setErrors(errs); return }
-    onAdd({ id: `wf-${Date.now()}`, name: name.trim(), purpose, trigger: trigger.trim(), agentChain: chain })
+    onAdd({ id: initial?.id ?? `wf-${Date.now()}`, name: name.trim(), purpose, trigger: trigger.trim(), agentChain: chain, status: initial?.status ?? "Active" })
   }
 
   const inputCls = (err?: string) =>
@@ -775,7 +904,7 @@ function AddWorkflowModal({ onClose, onAdd, agents }: {
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-xl shadow-xl w-[560px] max-h-[92vh] overflow-y-auto">
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 sticky top-0 bg-white rounded-t-xl">
-          <h2 className="font-semibold text-gray-900">New Workflow</h2>
+          <h2 className="font-semibold text-gray-900">{isEdit ? "Edit Workflow" : "New Workflow"}</h2>
           <button onClick={onClose}><X className="w-4 h-4 text-gray-400" /></button>
         </div>
 
@@ -804,11 +933,13 @@ function AddWorkflowModal({ onClose, onAdd, agents }: {
           {/* Trigger */}
           <div>
             <label className={labelCls}>Trigger *</label>
-            <input
-              className={inputCls(errors.trigger)}
-              value={trigger} onChange={(e) => { setTrigger(e.target.value); setErrors((p) => ({ ...p, trigger: undefined })) }}
-              placeholder="e.g. Mentor accepts a match request"
-            />
+            <select
+              className={`w-full text-sm border rounded-lg px-3 py-2 outline-none focus:border-blue-400 bg-white ${errors.trigger ? "border-red-300 bg-red-50" : "border-gray-200"}`}
+              value={trigger}
+              onChange={(e) => { setTrigger(e.target.value); setErrors((p) => ({ ...p, trigger: undefined })) }}>
+              <option value="">Select a trigger…</option>
+              {WORKFLOW_TRIGGER_OPTIONS.map((t) => <option key={t} value={t}>{t}</option>)}
+            </select>
             {errors.trigger && <p className="text-xs text-red-500 mt-1">{errors.trigger}</p>}
           </div>
 
@@ -863,7 +994,7 @@ function AddWorkflowModal({ onClose, onAdd, agents }: {
 
         <div className="flex gap-2 px-6 py-4 border-t border-gray-100">
           <Button variant="outline" className="flex-1" onClick={onClose}>Cancel</Button>
-          <Button className="flex-1" onClick={handleCreate}>Create Workflow</Button>
+          <Button className="flex-1" onClick={handleCreate}>{isEdit ? "Save Changes" : "Create Workflow"}</Button>
         </div>
       </div>
     </div>
@@ -881,6 +1012,7 @@ export default function AIAgents() {
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null)
   const [showAddModal, setShowAddModal] = useState(false)
   const [showAddWorkflow, setShowAddWorkflow] = useState(false)
+  const [editWorkflow, setEditWorkflow] = useState<Workflow | null>(null)
 
   const handleSaveAgent = (id: string, updates: Partial<Agent>) => {
     setAgents((prev) => prev.map((a) => a.id === id ? { ...a, ...updates } : a))
@@ -893,8 +1025,13 @@ export default function AIAgents() {
   }
 
   const handleAddWorkflow = (w: Workflow) => {
-    setWorkflows((prev) => [...prev, w])
+    setWorkflows((prev) => [...prev, { ...w, status: "Active" }])
     setShowAddWorkflow(false)
+  }
+
+  const handleSaveEditWorkflow = (w: Workflow) => {
+    setWorkflows((prev) => prev.map((wf) => wf.id === w.id ? w : wf))
+    setEditWorkflow(null)
   }
 
   const handleAddAgentToWorkflow = (wfId: string, sid: string) => {
@@ -909,15 +1046,21 @@ export default function AIAgents() {
     ))
   }
 
+  const handleToggleWorkflow = (wfId: string) => {
+    setWorkflows((prev) => prev.map((w) =>
+      w.id === wfId ? { ...w, status: w.status === "Active" ? "Paused" : "Active" } : w
+    ))
+  }
+
+  const handleDeleteWorkflow = (wfId: string) => {
+    setWorkflows((prev) => prev.filter((w) => w.id !== wfId))
+  }
+
   const tabs: { id: Tab; label: string; icon: typeof Bot }[] = [
     { id: "agents", label: "Agents", icon: Bot },
     { id: "tools", label: "Tools", icon: Wrench },
     { id: "workflows", label: "Workflows", icon: GitBranch },
   ]
-
-  // Split agents for grid: 6 in pairs + A7 centered
-  const mainAgents = agents.filter((_, i) => i < 6)
-  const bottomAgents = agents.filter((_, i) => i >= 6)
 
   return (
     <div className="h-full flex overflow-hidden">
@@ -973,9 +1116,9 @@ export default function AIAgents() {
                 </div>
               </div>
 
-              {/* Main grid 2-col */}
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                {mainAgents.map((agent) => (
+              {/* All agents in a 2-col grid, left-aligned */}
+              <div className="grid grid-cols-2 gap-4">
+                {agents.map((agent) => (
                   <AgentCard
                     key={agent.id}
                     agent={agent}
@@ -983,17 +1126,6 @@ export default function AIAgents() {
                   />
                 ))}
               </div>
-
-              {/* Bottom row — centered */}
-              {bottomAgents.length > 0 && (
-                <div className="flex justify-center gap-4">
-                  {bottomAgents.map((agent) => (
-                    <div key={agent.id} className="w-[calc(50%-8px)]">
-                      <AgentCard agent={agent} onClick={() => setSelectedAgent(agent)} />
-                    </div>
-                  ))}
-                </div>
-              )}
             </div>
           )}
 
@@ -1005,6 +1137,9 @@ export default function AIAgents() {
               onAddWorkflow={() => setShowAddWorkflow(true)}
               onAddAgentToWorkflow={handleAddAgentToWorkflow}
               onRemoveAgentFromWorkflow={handleRemoveAgentFromWorkflow}
+              onToggleWorkflow={handleToggleWorkflow}
+              onDeleteWorkflow={handleDeleteWorkflow}
+              onEditWorkflow={(wf) => setEditWorkflow(wf)}
             />
           )}
         </div>
@@ -1033,6 +1168,15 @@ export default function AIAgents() {
           onClose={() => setShowAddWorkflow(false)}
           onAdd={handleAddWorkflow}
           agents={agents}
+        />
+      )}
+
+      {editWorkflow && (
+        <AddWorkflowModal
+          onClose={() => setEditWorkflow(null)}
+          onAdd={(w) => handleSaveEditWorkflow({ ...editWorkflow, ...w })}
+          agents={agents}
+          initial={editWorkflow}
         />
       )}
     </div>
