@@ -437,7 +437,7 @@ export default function MenteesComms() {
                     </button>
                   )}
                   <button
-                    onClick={() => setActiveContactId(contacts.find(c => c.name === esc.menteeName)?.id ?? null) || setView("chat")}
+                    onClick={() => { setActiveContactId(contacts.find(c => c.name === esc.menteeName)?.id ?? null); setView("chat") }}
                     className="text-xs font-medium px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors">
                     View Chat
                   </button>
