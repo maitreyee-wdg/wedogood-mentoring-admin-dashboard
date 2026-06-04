@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button"
 import {
   BrainCircuit, X, Lock, Pencil, Plus, ChevronRight,
   Wrench, GitBranch, Bot, Zap, Save, RotateCcw, Upload,
-  Pause, Play, Trash2, Pencil as PencilIcon,
+  Pause, Play, Trash2, Pencil as PencilIcon, RefreshCw,
 } from "lucide-react"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -43,6 +43,7 @@ interface Workflow {
   trigger: string
   agentChain: string[]   // shortIds in order
   status: "Active" | "Paused"
+  isPredefined?: boolean  // predefined workflows cannot be deleted
 }
 
 // ─── Workflow trigger options (mirrors system triggers) ───────────────────────
@@ -268,6 +269,7 @@ const WORKFLOWS: Workflow[] = [
     trigger: "New mentee sends first WhatsApp message",
     agentChain: ["A1", "A2", "A3", "A4", "A5"],
     status: "Active",
+    isPredefined: true,
   },
   {
     id: "wf-2",
@@ -276,6 +278,7 @@ const WORKFLOWS: Workflow[] = [
     trigger: "Session marked 'completed' in system",
     agentChain: ["A1", "A6"],
     status: "Active",
+    isPredefined: true,
   },
   {
     id: "wf-3",
@@ -284,6 +287,7 @@ const WORKFLOWS: Workflow[] = [
     trigger: "Support keyword or chip detected in any message",
     agentChain: ["A1", "A7"],
     status: "Active",
+    isPredefined: true,
   },
 ]
 
@@ -603,7 +607,14 @@ function WorkflowsTab({ agents, workflows, onAddWorkflow, onAddAgentToWorkflow, 
               <div className="flex items-start gap-2">
                 <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${wf.status === "Active" ? "bg-green-400" : "bg-gray-300"}`} />
                 <div>
-                  <p className="font-semibold text-sm text-gray-900">{wf.name}</p>
+                  <div className="flex items-center gap-1.5">
+                    <p className="font-semibold text-sm text-gray-900">{wf.name}</p>
+                    {wf.isPredefined && (
+                      <span className="flex items-center gap-1 text-[10px] text-gray-400 border border-gray-200 bg-gray-50 rounded px-1.5 py-0.5">
+                        <Lock className="w-2.5 h-2.5" /> Standard
+                      </span>
+                    )}
+                  </div>
                   <p className="text-xs text-gray-500 mt-0.5">{wf.purpose}</p>
                 </div>
               </div>
@@ -617,10 +628,12 @@ function WorkflowsTab({ agents, workflows, onAddWorkflow, onAddAgentToWorkflow, 
                   className="p-1.5 rounded border border-gray-200 text-gray-400 hover:text-blue-600 hover:border-blue-200 transition-colors">
                   <PencilIcon className="w-3 h-3" />
                 </button>
-                <button onClick={() => onDeleteWorkflow(wf.id)}
-                  className="p-1.5 rounded border border-gray-200 text-gray-400 hover:text-red-500 hover:border-red-200 transition-colors">
-                  <Trash2 className="w-3 h-3" />
-                </button>
+                {!wf.isPredefined && (
+                  <button onClick={() => onDeleteWorkflow(wf.id)}
+                    className="p-1.5 rounded border border-gray-200 text-gray-400 hover:text-red-500 hover:border-red-200 transition-colors">
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                )}
               </div>
             </div>
 
@@ -1056,6 +1069,14 @@ export default function AIAgents() {
     setWorkflows((prev) => prev.filter((w) => w.id !== wfId))
   }
 
+  const [showRestoreConfirm, setShowRestoreConfirm] = useState(false)
+  const handleRestoreDefaults = () => {
+    setAgents(AGENTS)
+    setWorkflows(WORKFLOWS)
+    setSelectedAgent(null)
+    setShowRestoreConfirm(false)
+  }
+
   const tabs: { id: Tab; label: string; icon: typeof Bot }[] = [
     { id: "agents", label: "Agents", icon: Bot },
     { id: "tools", label: "Tools", icon: Wrench },
@@ -1078,11 +1099,18 @@ export default function AIAgents() {
                 <p className="text-sm text-gray-500">{agents.length} agents · {agents.filter((a) => a.isPredefined).length} predefined</p>
               </div>
             </div>
-            {tab === "agents" && (
-              <Button size="sm" onClick={() => setShowAddModal(true)}>
-                <Plus className="w-4 h-4 mr-1" /> New Agent
-              </Button>
-            )}
+            <div className="flex items-center gap-2">
+              {tab === "agents" && (
+                <Button size="sm" onClick={() => setShowAddModal(true)}>
+                  <Plus className="w-4 h-4 mr-1" /> New Agent
+                </Button>
+              )}
+              <button
+                onClick={() => setShowRestoreConfirm(true)}
+                className="flex items-center gap-1.5 text-xs text-gray-500 border border-gray-200 hover:border-amber-300 hover:text-amber-600 px-2.5 py-1.5 rounded-lg transition-colors">
+                <RefreshCw className="w-3.5 h-3.5" /> Restore Defaults
+              </button>
+            </div>
           </div>
 
           {/* Tabs */}
@@ -1178,6 +1206,28 @@ export default function AIAgents() {
           agents={agents}
           initial={editWorkflow}
         />
+      )}
+
+      {showRestoreConfirm && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl w-[420px] p-6">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-9 h-9 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
+                <RefreshCw className="w-4 h-4 text-amber-600" />
+              </div>
+              <h2 className="font-semibold text-gray-900">Restore to Defaults?</h2>
+            </div>
+            <p className="text-sm text-gray-600 mb-5">
+              This will reset <strong>all agents</strong> and <strong>all workflows</strong> back to their original definitions. Any custom agents or workflows you've created will be removed, and all edits to predefined agents will be reverted.
+            </p>
+            <div className="flex gap-2">
+              <Button variant="outline" className="flex-1" onClick={() => setShowRestoreConfirm(false)}>Cancel</Button>
+              <Button className="flex-1 bg-amber-500 hover:bg-amber-600 text-white" onClick={handleRestoreDefaults}>
+                Yes, Restore Defaults
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

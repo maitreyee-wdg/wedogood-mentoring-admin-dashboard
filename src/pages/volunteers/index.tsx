@@ -607,8 +607,8 @@ export default function VolunteersList() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-semibold text-gray-900">Volunteers</h1>
-            <p className="text-sm text-gray-500 mt-0.5">All registered volunteers on the platform</p>
+            <h1 className="text-xl font-semibold text-gray-900">Registrations</h1>
+            <p className="text-sm text-gray-500 mt-0.5">All registered volunteers across groups and organisations</p>
           </div>
           <div className="flex gap-2">
             <Button variant="outline" size="sm">Upload CSV</Button>
@@ -619,7 +619,7 @@ export default function VolunteersList() {
         {/* Stats */}
         <div className="grid grid-cols-4 gap-4">
           {[
-            { label: "Total Volunteers", value: stats.total, color: "text-gray-900" },
+            { label: "Total Registrations", value: stats.total, color: "text-gray-900" },
             { label: "Mentoring", value: stats.mentoring, color: "text-blue-600" },
             { label: "Projects", value: stats.projects, color: "text-purple-600" },
             { label: "Active Engagements", value: stats.active, color: "text-green-600" },

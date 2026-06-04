@@ -6,7 +6,7 @@ const sections = [
   {
     label: "Volunteers",
     items: [
-      { to: "/volunteers", label: "Volunteers", icon: Users, end: true },
+      { to: "/volunteers", label: "Registrations", icon: Users, end: true },
       { to: "/volunteers/mentors", label: "Mentors", icon: UserCheck, end: false },
       { to: "/volunteers/comms", label: "Mentor WA Comms", icon: MessageSquare, end: false },
     ],

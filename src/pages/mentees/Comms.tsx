@@ -7,8 +7,67 @@ import {
 } from "@/data/commsData"
 import {
   Search, Send, ChevronDown, Check, CheckCheck, MessageSquare,
-  ClipboardList, Plus, X, CheckCircle2, AlertCircle,
+  ClipboardList, Plus, X, CheckCircle2, AlertCircle, ShieldAlert,
 } from "lucide-react"
+
+// ─── Mock escalation data ─────────────────────────────────────────────────────
+
+type EscalationStatus = "Open" | "In Progress" | "Resolved"
+
+interface Escalation {
+  id: string
+  menteeName: string
+  ngo: string
+  raisedAt: string
+  reason: string
+  aiSummary: string
+  status: EscalationStatus
+  assignedTo?: string
+}
+
+const MOCK_ESCALATIONS: Escalation[] = [
+  {
+    id: "ESC-001",
+    menteeName: "Kavya Nair",
+    ngo: "Parivarthan",
+    raisedAt: "2026-06-03 14:22",
+    reason: "Distress signal detected",
+    aiSummary: "Mentee used the phrase 'I give up' and 'nothing is working' in two consecutive messages. Flagged for human review.",
+    status: "Open",
+  },
+  {
+    id: "ESC-002",
+    menteeName: "Ananya Singh",
+    ngo: "Parivarthan",
+    raisedAt: "2026-06-03 09:15",
+    reason: "Repeated 'help' keyword",
+    aiSummary: "Mentee asked for 'help' 3 times across 2 sessions without a specific request being created. Conversation stalled.",
+    status: "In Progress",
+    assignedTo: "Maitreyee S.",
+  },
+  {
+    id: "ESC-003",
+    menteeName: "Meena Iyer",
+    ngo: "NavGurukul",
+    raisedAt: "2026-06-02 17:45",
+    reason: "User reported issue",
+    aiSummary: "Mentee tapped 'I need help' chip and mentioned mentor had not responded in 5 days. Ticket created automatically.",
+    status: "Resolved",
+    assignedTo: "Maitreyee S.",
+  },
+]
+
+const escalationStatusColor: Record<EscalationStatus, string> = {
+  "Open": "bg-red-100 text-red-700",
+  "In Progress": "bg-amber-100 text-amber-700",
+  "Resolved": "bg-green-100 text-green-700",
+}
+
+const ngoColorMap: Record<string, string> = {
+  "Akanksha Foundation": "bg-blue-100 text-blue-700",
+  "NavGurukul": "bg-green-100 text-green-700",
+  "Parivarthan": "bg-purple-100 text-purple-700",
+}
 
 // ─── Create Template Modal ────────────────────────────────────────────────────
 
@@ -176,7 +235,8 @@ export default function MenteesComms() {
   const [templateTab, setTemplateTab] = useState<"generic" | "engagement">("generic")
   const [templates, setTemplates] = useState<CommTemplate[]>(commsTemplates)
   const [showCreateTemplate, setShowCreateTemplate] = useState(false)
-  const [view, setView] = useState<"chat" | "logs">("chat")
+  const [view, setView] = useState<"chat" | "logs" | "escalation">("chat")
+  const [escalations, setEscalations] = useState<Escalation[]>(MOCK_ESCALATIONS)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const filteredContacts = contacts.filter((c) =>
@@ -274,6 +334,17 @@ export default function MenteesComms() {
             >
               <ClipboardList className="w-3.5 h-3.5" /> Logs
             </button>
+            <button
+              onClick={() => setView("escalation")}
+              className={`flex items-center gap-1.5 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${view === "escalation" ? "border-red-500 text-red-600" : "border-transparent text-gray-500 hover:text-gray-700"}`}
+            >
+              <ShieldAlert className="w-3.5 h-3.5" /> Escalations
+              {escalations.filter((e) => e.status === "Open").length > 0 && (
+                <span className="ml-1 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                  {escalations.filter((e) => e.status === "Open").length}
+                </span>
+              )}
+            </button>
           </div>
           {view === "chat" && activeContact && (
             <div className="flex items-center gap-3 py-2.5">
@@ -326,7 +397,55 @@ export default function MenteesComms() {
         </div>
 
         {/* Content */}
-        {view === "logs" ? (
+        {view === "escalation" ? (
+          <div className="flex-1 overflow-y-auto p-5 space-y-3">
+            <div className="flex items-center justify-between mb-2">
+              <div>
+                <p className="text-sm font-semibold text-gray-900">AI-Raised Escalations</p>
+                <p className="text-xs text-gray-500">Cases flagged by Mira for human review</p>
+              </div>
+              <span className="text-xs text-gray-400">{escalations.filter(e => e.status === "Open").length} open · {escalations.length} total</span>
+            </div>
+            {escalations.map((esc) => (
+              <div key={esc.id} className={`bg-white border rounded-xl p-4 space-y-2.5 ${esc.status === "Open" ? "border-red-200" : "border-gray-200"}`}>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <ShieldAlert className={`w-4 h-4 shrink-0 ${esc.status === "Open" ? "text-red-500" : esc.status === "In Progress" ? "text-amber-500" : "text-green-500"}`} />
+                    <div>
+                      <p className="text-sm font-semibold text-gray-900">{esc.menteeName}</p>
+                      <span className={`text-xs font-medium px-1.5 py-0.5 rounded-full ${ngoColorMap[esc.ngo] ?? "bg-gray-100 text-gray-600"}`}>{esc.ngo}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${escalationStatusColor[esc.status]}`}>{esc.status}</span>
+                    <span className="text-xs text-gray-400">{esc.raisedAt}</span>
+                  </div>
+                </div>
+                <div className="bg-red-50 border border-red-100 rounded-lg px-3 py-2">
+                  <p className="text-xs font-medium text-red-700 mb-0.5">Trigger: {esc.reason}</p>
+                  <p className="text-xs text-red-600 leading-relaxed">{esc.aiSummary}</p>
+                </div>
+                {esc.assignedTo && (
+                  <p className="text-xs text-gray-500">Assigned to: <span className="font-medium text-gray-700">{esc.assignedTo}</span></p>
+                )}
+                <div className="flex gap-2 pt-1">
+                  {esc.status !== "Resolved" && (
+                    <button
+                      onClick={() => setEscalations(prev => prev.map(e => e.id === esc.id ? { ...e, status: esc.status === "Open" ? "In Progress" : "Resolved" } : e))}
+                      className="text-xs font-medium px-3 py-1.5 rounded-lg border border-blue-200 text-blue-700 hover:bg-blue-50 transition-colors">
+                      {esc.status === "Open" ? "Mark In Progress" : "Mark Resolved"}
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setActiveContactId(contacts.find(c => c.name === esc.menteeName)?.id ?? null) || setView("chat")}
+                    className="text-xs font-medium px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors">
+                    View Chat
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : view === "logs" ? (
           <LogsView logs={mockMenteeLogs} />
         ) : activeContact ? (
           <>
