@@ -1115,19 +1115,32 @@ export default function AIAgents() {
 
           {/* Tabs */}
           <div className="flex gap-1">
-            {tabs.map(({ id, label, icon: Icon }) => (
-              <button
-                key={id}
-                onClick={() => setTab(id)}
-                className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
-                  tab === id
-                    ? "border-blue-600 text-blue-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700"
-                }`}
-              >
-                <Icon className="w-3.5 h-3.5" /> {label}
-              </button>
-            ))}
+            {tabs.map(({ id, label, icon: Icon }) => {
+              if (id === "workflows") {
+                return (
+                  <div key={id} className="relative flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 border-transparent text-gray-300 cursor-not-allowed select-none">
+                    <Icon className="w-3.5 h-3.5" />
+                    {label}
+                    <span className="ml-1.5 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-400 text-[10px] font-semibold border border-gray-200">
+                      🔒 Coming soon
+                    </span>
+                  </div>
+                )
+              }
+              return (
+                <button
+                  key={id}
+                  onClick={() => setTab(id)}
+                  className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+                    tab === id
+                      ? "border-blue-600 text-blue-600"
+                      : "border-transparent text-gray-500 hover:text-gray-700"
+                  }`}
+                >
+                  <Icon className="w-3.5 h-3.5" /> {label}
+                </button>
+              )
+            })}
           </div>
         </div>
 

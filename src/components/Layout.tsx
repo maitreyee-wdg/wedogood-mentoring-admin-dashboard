@@ -1,6 +1,7 @@
 import { NavLink } from "react-router-dom"
 import { cn } from "@/lib/utils"
-import { Heart, Users, UserCircle, MessageSquare, Layers, Building2, CalendarClock, UserCheck, FolderKanban, BrainCircuit } from "lucide-react"
+import { Heart, Users, UserCircle, MessageSquare, Layers, Building2, CalendarClock, UserCheck, FolderKanban, BrainCircuit, AlertTriangle } from "lucide-react"
+import { mockEscalations } from "@/data/escalationsData"
 
 const sections = [
   {
@@ -38,6 +39,9 @@ const sections = [
 ]
 
 export default function Layout({ children }: { children: React.ReactNode }) {
+  const urgentCount = mockEscalations.filter(e => e.status !== "Resolved" && e.priority === "High").length
+  const openCount = mockEscalations.filter(e => e.status !== "Resolved").length
+
   return (
     <div className="flex h-screen bg-gray-50">
       {/* Sidebar */}
@@ -55,6 +59,36 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
         {/* Nav */}
         <nav className="flex-1 px-3 py-3 space-y-4 overflow-y-auto">
+          {/* Escalations — top-level, always visible */}
+          <div>
+            <NavLink
+              to="/escalations"
+              end={false}
+              className={({ isActive }) =>
+                cn(
+                  "flex items-center gap-2.5 px-2.5 py-2 rounded-md text-sm font-semibold transition-colors",
+                  isActive
+                    ? "bg-red-50 text-red-700"
+                    : urgentCount > 0
+                    ? "text-red-600 hover:bg-red-50"
+                    : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                )
+              }
+            >
+              <AlertTriangle className={cn("w-3.5 h-3.5 shrink-0", urgentCount > 0 && "text-red-500")} />
+              <span className="flex-1">Escalations</span>
+              {urgentCount > 0 ? (
+                <span className="ml-auto flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-red-500 text-white text-[10px] font-bold leading-none animate-pulse">
+                  {urgentCount}
+                </span>
+              ) : openCount > 0 ? (
+                <span className="ml-auto px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[10px] font-bold leading-none">
+                  {openCount}
+                </span>
+              ) : null}
+            </NavLink>
+          </div>
+
           {sections.map((section) => (
             <div key={section.label}>
               <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest px-2 mb-1">

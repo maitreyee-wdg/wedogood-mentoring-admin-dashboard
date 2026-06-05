@@ -21,6 +21,9 @@ import MenteesComms from "@/pages/mentees/Comms"
 import AIAgents from "@/pages/flow/AIAgents"
 import CronJobs from "@/pages/flow/CronJobs"
 
+// Escalations
+import EscalationsPage from "@/pages/escalations/index"
+
 export default function App() {
   return (
     <BrowserRouter>
@@ -47,6 +50,9 @@ export default function App() {
           {/* Flow */}
           <Route path="/flow/ai-agents" element={<AIAgents />} />
           <Route path="/flow/cron-jobs" element={<CronJobs />} />
+
+          {/* Escalations */}
+          <Route path="/escalations" element={<EscalationsPage />} />
         </Routes>
       </Layout>
     </BrowserRouter>
