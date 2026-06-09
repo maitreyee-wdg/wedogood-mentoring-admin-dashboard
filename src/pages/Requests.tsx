@@ -395,7 +395,7 @@ export default function AllRequests() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-semibold text-gray-900">All Requests</h1>
+            <h1 className="text-xl font-semibold text-gray-900">All Engagements</h1>
             <p className="text-sm text-gray-500 mt-0.5">Complete history of all mentoring requests across all statuses</p>
           </div>
         </div>
@@ -403,7 +403,7 @@ export default function AllRequests() {
         {/* Stats */}
         <div className="grid grid-cols-4 gap-4">
           {[
-            { label: "Total Requests", value: stats.total, color: "text-gray-900" },
+            { label: "Total Engagements", value: stats.total, color: "text-gray-900" },
             { label: "Active", value: stats.active, color: "text-blue-600" },
             { label: "Matched", value: stats.matched, color: "text-green-600" },
             { label: "Closed w/ Feedback", value: stats.closed, color: "text-purple-600" },

@@ -47,10 +47,8 @@ const STS: Record<EscalationStatus, { cls: string; Icon: React.ElementType }> = 
   "Resolved":    { cls: "bg-green-50 text-green-700 border-green-200", Icon: CheckCircle2 },
 }
 const SRC: Record<EscalationSource, { cls: string; Icon: React.ElementType }> = {
-  "AI-Raised": { cls: "bg-purple-50 text-purple-700 border-purple-200", Icon: Bot  },
-  "Mentee":    { cls: "bg-sky-50 text-sky-700 border-sky-200",           Icon: User },
-  "Mentor":    { cls: "bg-teal-50 text-teal-700 border-teal-200",        Icon: User },
-  "System":    { cls: "bg-rose-50 text-rose-700 border-rose-200",        Icon: Cpu  },
+  "Escalation Agent": { cls: "bg-purple-50 text-purple-700 border-purple-200", Icon: Bot },
+  "Matchmaking":      { cls: "bg-rose-50 text-rose-700 border-rose-200",        Icon: Cpu },
 }
 const CAT_I: Record<string, React.ElementType> = {
   "Safety Concern": ShieldAlert, "Match Dissatisfaction": Frown,
@@ -148,7 +146,7 @@ function TicketPane({ esc, onClose, onStatusChange }: {
   const [noteText, setNoteText] = useState("")
   const [notes, setNotes]       = useState(esc.internalNotes)
 
-  const lr    = esc.linkedRequestId ? mockRequests.find(r => r.id === esc.linkedRequestId) : null
+  const lr    = esc.linkedEngagementId ? mockRequests.find(r => r.id === esc.linkedEngagementId) : null
   const reqs  = mockRequests.filter(r => esc.personType === "Mentee" ? r.menteeId === esc.personId : r.matchedMentor === esc.personName)
   const mt    = esc.personType === "Mentee" ? mockMentees.find(m => m.id === esc.personId) : null
   const prior = mockEscalations.filter(e => e.personId === esc.personId && e.id !== esc.id).length
@@ -190,11 +188,17 @@ function TicketPane({ esc, onClose, onStatusChange }: {
             {esc.status !== "Resolved" && <Button size="sm" variant="outline" className="text-xs h-7 text-green-700 border-green-200 hover:bg-green-50" onClick={() => onStatusChange(esc.id, "Resolved")}><CheckCircle2 className="w-3 h-3 mr-1" />Resolve</Button>}
           </div>
         </div>
-        <div className="mt-3 p-3 rounded-lg bg-gray-50 border border-gray-200">
-          <p className="text-xs font-medium text-gray-500 mb-1 flex items-center gap-1"><MessageSquare className="w-3 h-3" />Trigger · {ago(esc.createdAt)}</p>
-          <p className="text-sm text-gray-800 italic">"{esc.triggerMessage}"</p>
-          {esc.aiSummary && <p className="text-xs text-purple-600 mt-2 flex items-start gap-1"><Bot className="w-3 h-3 mt-0.5 shrink-0" />{esc.aiSummary}</p>}
-        </div>
+        {esc.summary && (
+          <div className={`mt-3 p-3 rounded-lg border ${esc.source === "Matchmaking" ? "bg-rose-50 border-rose-200" : "bg-purple-50 border-purple-200"}`}>
+            <p className={`text-xs font-medium mb-1.5 flex items-center gap-1.5 ${esc.source === "Matchmaking" ? "text-rose-600" : "text-purple-600"}`}>
+              {esc.source === "Matchmaking"
+                ? <><Cpu className="w-3 h-3" />Match Status · {ago(esc.createdAt)}</>
+                : <><Bot className="w-3 h-3" />AI Summary · {ago(esc.createdAt)}</>
+              }
+            </p>
+            <p className={`text-sm leading-relaxed ${esc.source === "Matchmaking" ? "text-rose-800 font-medium" : "text-purple-900"}`}>{esc.summary}</p>
+          </div>
+        )}
       </div>
 
       {/* tabs */}
@@ -241,7 +245,7 @@ function TicketPane({ esc, onClose, onStatusChange }: {
             </div>
             {lr && (
               <div>
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Linked Request</p>
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Linked Engagement</p>
                 <div className="rounded-xl border border-gray-200 p-4 space-y-2">
                   <div className="flex items-start justify-between gap-2">
                     <div><p className="text-xs font-mono text-gray-400">{lr.id}</p><p className="text-sm font-medium text-gray-800 leading-tight mt-0.5">{lr.theme}</p></div>
@@ -252,7 +256,7 @@ function TicketPane({ esc, onClose, onStatusChange }: {
                     <span><span className="text-gray-400">Active: </span>{lr.activeDays}d</span>
                     {lr.matchedMentor && <span className="col-span-2"><span className="text-gray-400">Mentor: </span>{lr.matchedMentor}</span>}
                   </div>
-                  <Button size="sm" variant="outline" className="text-xs h-7 w-full" onClick={() => navigate("/mentees/all-requests")}><ExternalLink className="w-3 h-3 mr-1" />Open in All Requests</Button>
+                  <Button size="sm" variant="outline" className="text-xs h-7 w-full" onClick={() => navigate("/mentees/all-requests")}><ExternalLink className="w-3 h-3 mr-1" />View Mentoring Engagement</Button>
                 </div>
               </div>
             )}
@@ -263,11 +267,6 @@ function TicketPane({ esc, onClose, onStatusChange }: {
                   <UserX className="w-3.5 h-3.5 text-rose-400" />
                   Outreach Attempts ({esc.candidatesAttempted.length})
                 </p>
-                {esc.matchFailureReason && (
-                  <div className="mb-2 rounded-lg border border-rose-100 bg-rose-50 px-3 py-2 text-xs text-rose-700 leading-relaxed">
-                    {esc.matchFailureReason}
-                  </div>
-                )}
                 {esc.candidatesAttempted.length === 0 ? (
                   <div className="rounded-lg border border-dashed border-gray-200 p-4 text-center text-xs text-gray-400">
                     No outreach was sent — no candidates met the match threshold.
@@ -320,11 +319,11 @@ function TicketPane({ esc, onClose, onStatusChange }: {
             )}
 
             <div>
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Request History ({reqs.length})</p>
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Engagement History ({reqs.length})</p>
               {reqs.length === 0 ? <p className="text-xs text-gray-400 italic">No requests.</p> : (
                 <div className="space-y-2">
                   {reqs.map(r => (
-                    <div key={r.id} className={`rounded-lg border p-3 text-xs ${r.id === esc.linkedRequestId ? "border-blue-200 bg-blue-50/30" : "border-gray-100 bg-gray-50"}`}>
+                    <div key={r.id} className={`rounded-lg border p-3 text-xs ${r.id === esc.linkedEngagementId ? "border-blue-200 bg-blue-50/30" : "border-gray-100 bg-gray-50"}`}>
                       <div className="flex items-center justify-between mb-0.5">
                         <span className="font-mono text-gray-400">{r.id}</span>
                         <span className={`px-1.5 py-0.5 rounded-full font-medium border ${r.status === "Matched" ? "bg-green-50 text-green-700 border-green-200" : r.status.startsWith("Closed") ? "bg-gray-100 text-gray-500 border-gray-200" : "bg-blue-50 text-blue-700 border-blue-200"}`}>{r.status}</span>
@@ -384,6 +383,7 @@ function TicketPane({ esc, onClose, onStatusChange }: {
         {/* actions */}
         {tab === "actions" && (
           <div className="p-5 space-y-5">
+            {esc.personType === "Mentee" && (
             <div>
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5 flex items-center gap-1.5"><Bot className="w-3.5 h-3.5" />Platform Bot Chat</p>
               <p className="text-xs text-gray-400 mb-3">Messages appear in {esc.personName}'s web app — separate from WhatsApp.</p>
@@ -408,14 +408,15 @@ function TicketPane({ esc, onClose, onStatusChange }: {
                 </div>
               </div>
             </div>
+            )}
             <div>
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Quick Actions</p>
               <div className="grid grid-cols-2 gap-2">
                 <Button variant="outline" size="sm" className="text-xs h-9 justify-start gap-2" onClick={() => navigate(esc.personType === "Mentee" ? "/mentees/comms" : "/volunteers/comms")}><MessageSquare className="w-3.5 h-3.5 text-green-600" />Reply on WhatsApp</Button>
-                {esc.linkedRequestId && <Button variant="outline" size="sm" className="text-xs h-9 justify-start gap-2" onClick={() => navigate("/mentees/all-requests")}><ExternalLink className="w-3.5 h-3.5 text-blue-600" />View Request</Button>}
-                {esc.linkedMentor && <Button variant="outline" size="sm" className="text-xs h-9 justify-start gap-2"><Zap className="w-3.5 h-3.5 text-yellow-600" />Trigger Rematch</Button>}
+                {esc.linkedEngagementId && <Button variant="outline" size="sm" className="text-xs h-9 justify-start gap-2" onClick={() => navigate("/mentees/all-requests")}><ExternalLink className="w-3.5 h-3.5 text-blue-600" />View Engagement</Button>}
+                {esc.linkedEngagementId && <Button variant="outline" size="sm" className="text-xs h-9 justify-start gap-2"><Zap className="w-3.5 h-3.5 text-yellow-600" />Trigger Rematch</Button>}
                 <Button variant="outline" size="sm" className="text-xs h-9 justify-start gap-2 text-gray-600"><ShieldAlert className="w-3.5 h-3.5 text-gray-400" />Flag Profile</Button>
-                {esc.linkedRequestId && <Button variant="outline" size="sm" className="text-xs h-9 justify-start gap-2 col-span-2 text-gray-600"><X className="w-3.5 h-3.5" />Close Request</Button>}
+                {esc.linkedEngagementId && <Button variant="outline" size="sm" className="text-xs h-9 justify-start gap-2 col-span-2 text-gray-600"><X className="w-3.5 h-3.5" />Close Engagement</Button>}
               </div>
             </div>
             <div>
@@ -630,7 +631,7 @@ function ChatsView({ escs, onSC }: { escs: Escalation[]; onSC: (id: string, s: E
                 <button onClick={() => toggleTicket(linkedEsc.id)} className="w-full text-left rounded-lg border border-gray-200 p-3 hover:bg-gray-50 transition-colors">
                   <div className="flex items-center justify-between mb-1"><span className="font-mono text-gray-400">{linkedEsc.id}</span><SBadge s={linkedEsc.status} /></div>
                   <p className="text-gray-600">{linkedEsc.category}</p>
-                  <p className="text-gray-400 mt-0.5 italic truncate">"{linkedEsc.triggerMessage}"</p>
+                  <p className="text-gray-400 mt-0.5 italic truncate">{linkedEsc.summary ?? linkedEsc.category}</p>
                 </button>
               </div>
             )}
@@ -680,7 +681,7 @@ export default function EscalationsPage() {
     if (fTyp !== "All" && e.personType !== fTyp) return false
     if (search) {
       const q = search.toLowerCase()
-      if (!e.personName.toLowerCase().includes(q) && !e.triggerMessage.toLowerCase().includes(q) && !e.category.toLowerCase().includes(q)) return false
+      if (!e.personName.toLowerCase().includes(q) && !(e.summary ?? "").toLowerCase().includes(q) && !e.category.toLowerCase().includes(q)) return false
     }
     return true
   }), [escs, fSts, fPri, fSrc, fTyp, search])
@@ -778,8 +779,8 @@ export default function EscalationsPage() {
           </div>
           <div className="flex flex-col gap-1">
             <label className="text-xs font-medium text-gray-500">Source</label>
-            <Select value={fSrc} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFSrc(e.target.value)} className="w-36 h-9">
-              <option>All</option><option>AI-Raised</option><option>Mentee</option><option>Mentor</option><option>System</option>
+            <Select value={fSrc} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFSrc(e.target.value)} className="w-44 h-9">
+              <option>All</option><option>Escalation Agent</option><option>Matchmaking</option>
             </Select>
           </div>
           <div className="flex flex-col gap-1">
@@ -797,7 +798,7 @@ export default function EscalationsPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-200 text-left">
-                  {["Person", "Source", "Category", "Priority", "Status", "Request", "Assigned", "Created"].map(h => (
+                  {["Person", "Source", "Category", "Priority", "Status", "Engagement", "Assigned", "Created"].map(h => (
                     <th key={h} className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
@@ -827,7 +828,7 @@ export default function EscalationsPage() {
                         <td className="px-4 py-3 whitespace-nowrap"><span className="inline-flex items-center gap-1 text-xs text-gray-600"><CI className="w-3.5 h-3.5 text-gray-400" />{e.category}</span></td>
                         <td className="px-4 py-3 whitespace-nowrap"><PBadge p={e.priority} /></td>
                         <td className="px-4 py-3 whitespace-nowrap"><SBadge s={e.status} /></td>
-                        <td className="px-4 py-3">{e.linkedRequestId ? <span className="text-xs font-mono text-blue-600">{e.linkedRequestId}</span> : <span className="text-xs text-gray-300">—</span>}</td>
+                        <td className="px-4 py-3">{e.linkedEngagementId ? <span className="text-xs font-mono text-blue-600">{e.linkedEngagementId}</span> : <span className="text-xs text-gray-300">—</span>}</td>
                         <td className="px-4 py-3">{e.assignedTo ? <span className="text-xs text-gray-600">{e.assignedTo}</span> : <span className="text-xs text-gray-300">—</span>}</td>
                         <td className="px-4 py-3 whitespace-nowrap"><span className="text-xs text-gray-500 flex items-center gap-1"><Clock className="w-3 h-3" />{ago(e.createdAt)}</span></td>
                       </tr>
@@ -864,11 +865,15 @@ export default function EscalationsPage() {
                         <span className="text-xs text-gray-400 flex items-center gap-1 shrink-0"><Clock className="w-3 h-3" />{ago(e.createdAt)}</span>
                       </div>
                       <div className="flex flex-wrap gap-1.5"><RBadge s={e.source} /><SBadge s={e.status} /><PBadge p={e.priority} /></div>
-                      <p className="text-xs text-gray-600 italic line-clamp-2">"{e.triggerMessage}"</p>
-                      {e.aiSummary && <p className="text-xs text-purple-600 flex items-start gap-1 line-clamp-1"><Bot className="w-3 h-3 mt-0.5 shrink-0" />{e.aiSummary}</p>}
+                      {e.summary && (
+                        <p className={`text-xs line-clamp-2 flex items-start gap-1 ${e.source === "Matchmaking" ? "text-rose-700 font-medium" : "text-purple-700"}`}>
+                          {e.source === "Matchmaking" ? <Cpu className="w-3 h-3 mt-0.5 shrink-0" /> : <Bot className="w-3 h-3 mt-0.5 shrink-0" />}
+                          {e.summary}
+                        </p>
+                      )}
                       <div className="flex items-center justify-between text-xs text-gray-400 pt-1 border-t border-gray-100">
                         <span className="flex items-center gap-1"><CI className="w-3 h-3" />{e.category}</span>
-                        {e.linkedRequestId && <span className="font-mono text-blue-500">{e.linkedRequestId}</span>}
+                        {e.linkedEngagementId && <span className="font-mono text-blue-500">{e.linkedEngagementId}</span>}
                         {e.assignedTo && <span className="flex items-center gap-1"><User className="w-3 h-3" />{e.assignedTo}</span>}
                       </div>
                     </div>

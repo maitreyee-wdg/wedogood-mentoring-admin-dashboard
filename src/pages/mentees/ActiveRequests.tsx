@@ -442,15 +442,15 @@ export default function ActiveRequests() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-semibold text-gray-900">Active Requests</h1>
-            <p className="text-sm text-gray-500 mt-0.5">Mentoring requests that are open and in progress</p>
+            <h1 className="text-xl font-semibold text-gray-900">Active Engagements</h1>
+            <p className="text-sm text-gray-500 mt-0.5">Mentoring engagements that are open and in progress</p>
           </div>
         </div>
 
         {/* Stats */}
         <div className="grid grid-cols-4 gap-4">
           {[
-            { label: "Active Requests", value: stats.total, color: "text-gray-900" },
+            { label: "Active Engagements", value: stats.total, color: "text-gray-900" },
             { label: "Approval Pending", value: stats.approvalPending, color: "text-amber-600" },
             { label: "Mentor Response Pending", value: stats.responsePending, color: "text-yellow-600" },
             { label: "Matched", value: stats.matched, color: "text-green-600" },
