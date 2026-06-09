@@ -7,7 +7,7 @@ import {
   Search, CheckCircle2, Circle, Loader2, Phone, Star, Calendar,
   Briefcase, Send, FileText, ArrowLeft, Zap, ShieldAlert,
   HelpCircle, Frown, WifiOff, TicketCheck, X,
-  LayoutList, LayoutGrid,
+  LayoutList, LayoutGrid, Cpu, PauseCircle, PlayCircle, UserX,
 } from "lucide-react"
 import {
   mockEscalations,
@@ -50,11 +50,13 @@ const SRC: Record<EscalationSource, { cls: string; Icon: React.ElementType }> = 
   "AI-Raised": { cls: "bg-purple-50 text-purple-700 border-purple-200", Icon: Bot  },
   "Mentee":    { cls: "bg-sky-50 text-sky-700 border-sky-200",           Icon: User },
   "Mentor":    { cls: "bg-teal-50 text-teal-700 border-teal-200",        Icon: User },
+  "System":    { cls: "bg-rose-50 text-rose-700 border-rose-200",        Icon: Cpu  },
 }
 const CAT_I: Record<string, React.ElementType> = {
   "Safety Concern": ShieldAlert, "Match Dissatisfaction": Frown,
   "Unresponsive": WifiOff, "Platform Issue": AlertTriangle,
   "General Support": HelpCircle, "Request-Related": Briefcase,
+  "No Candidates Found": UserX, "All Mentors Declined": UserX,
 }
 const NGO_C: Record<string, string> = {
   "Akanksha Foundation": "bg-blue-100 text-blue-700",
@@ -254,6 +256,69 @@ function TicketPane({ esc, onClose, onStatusChange }: {
                 </div>
               </div>
             )}
+            {/* Match failure: candidates attempted */}
+            {esc.candidatesAttempted !== undefined && (
+              <div>
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                  <UserX className="w-3.5 h-3.5 text-rose-400" />
+                  Outreach Attempts ({esc.candidatesAttempted.length})
+                </p>
+                {esc.matchFailureReason && (
+                  <div className="mb-2 rounded-lg border border-rose-100 bg-rose-50 px-3 py-2 text-xs text-rose-700 leading-relaxed">
+                    {esc.matchFailureReason}
+                  </div>
+                )}
+                {esc.candidatesAttempted.length === 0 ? (
+                  <div className="rounded-lg border border-dashed border-gray-200 p-4 text-center text-xs text-gray-400">
+                    No outreach was sent — no candidates met the match threshold.
+                  </div>
+                ) : (
+                  <div className="rounded-xl border border-gray-200 overflow-hidden">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="bg-gray-50 border-b border-gray-200">
+                          <th className="text-left px-3 py-2 font-semibold text-gray-400 uppercase tracking-wide">Mentor</th>
+                          <th className="text-center px-3 py-2 font-semibold text-gray-400 uppercase tracking-wide">Match</th>
+                          <th className="text-left px-3 py-2 font-semibold text-gray-400 uppercase tracking-wide">Outcome</th>
+                          <th className="text-left px-3 py-2 font-semibold text-gray-400 uppercase tracking-wide">Sent</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {esc.candidatesAttempted.map((c, i) => {
+                          const statusCls =
+                            c.outreachStatus === "Declined"    ? "bg-rose-50 text-rose-700 border-rose-200" :
+                            c.outreachStatus === "No Response" ? "bg-amber-50 text-amber-700 border-amber-200" :
+                            c.outreachStatus === "Accepted"    ? "bg-green-50 text-green-700 border-green-200" :
+                            "bg-gray-100 text-gray-500 border-gray-200"
+                          return (
+                            <tr key={i} className={`border-b border-gray-100 ${i % 2 !== 0 ? "bg-gray-50/40" : ""}`}>
+                              <td className="px-3 py-2.5">
+                                <p className="font-medium text-gray-800">{c.name}</p>
+                                <p className="text-gray-400 truncate">{c.role} · {c.company}</p>
+                              </td>
+                              <td className="px-3 py-2.5 text-center">
+                                <span className="font-semibold text-gray-700">{c.matchPercent}%</span>
+                              </td>
+                              <td className="px-3 py-2.5">
+                                <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full font-medium border ${statusCls}`}>
+                                  {c.outreachStatus}
+                                </span>
+                              </td>
+                              <td className="px-3 py-2.5 text-gray-400">
+                                {c.outreachSentAt
+                                  ? new Date(c.outreachSentAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" })
+                                  : "—"}
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
+
             <div>
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Request History ({reqs.length})</p>
               {reqs.length === 0 ? <p className="text-xs text-gray-400 italic">No requests.</p> : (
@@ -371,13 +436,17 @@ function TicketPane({ esc, onClose, onStatusChange }: {
 // ─── Chats (full-height 3-panel, no outer scroll) ─────────────────────────────
 
 function ChatsView({ escs, onSC }: { escs: Escalation[]; onSC: (id: string, s: EscalationStatus) => void }) {
-  const [active, setActive]     = useState<Chat>(CHATS[0])
-  const [showProf, setShowProf] = useState(false)
-  const [ticketId, setTicketId] = useState<string | null>(null)
-  const [search, setSearch]     = useState("")
-  const [reply, setReply]       = useState("")
-  const [extra, setExtra]       = useState<Record<string, Array<{ text: string; t: string }>>>({})
-  const bottomRef               = useRef<HTMLDivElement>(null)
+  const [active, setActive]           = useState<Chat>(CHATS[0])
+  const [showProf, setShowProf]       = useState(false)
+  const [ticketId, setTicketId]       = useState<string | null>(null)
+  const [search, setSearch]           = useState("")
+  const [reply, setReply]             = useState("")
+  const [extra, setExtra]             = useState<Record<string, Array<{ text: string; t: string }>>>({})
+  const [humanTakeover, setHumanTakeover] = useState<Record<string, boolean>>({})
+  const bottomRef                     = useRef<HTMLDivElement>(null)
+
+  const isHT = humanTakeover[active.id] ?? false
+  function toggleHT() { setHumanTakeover(p => ({ ...p, [active.id]: !p[active.id] })) }
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }) }, [active.id, extra])
 
@@ -454,6 +523,20 @@ function ChatsView({ escs, onSC }: { escs: Escalation[]; onSC: (id: string, s: E
               {active.requestId && <span className="text-xs text-gray-400 flex items-center gap-1"><Briefcase className="w-3 h-3" />{active.requestId}</span>}
             </div>
           </div>
+          {/* human takeover toggle */}
+          <button
+            onClick={toggleHT}
+            title={isHT ? "Mira is paused. Click to resume." : "Mira is handling this. Click to take over."}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
+              isHT
+                ? "bg-amber-50 border-amber-300 text-amber-700 hover:bg-amber-100"
+                : "bg-green-50 border-green-200 text-green-700 hover:bg-green-100"
+            }`}
+          >
+            {isHT ? <PauseCircle className="w-3.5 h-3.5" /> : <PlayCircle className="w-3.5 h-3.5" />}
+            {isHT ? "Human Takeover" : "Mira Active"}
+          </button>
+
           {/* ticket chip — opens pane inline */}
           {linkedEsc && (
             <button onClick={() => toggleTicket(linkedEsc.id)}
@@ -470,6 +553,12 @@ function ChatsView({ escs, onSC }: { escs: Escalation[]; onSC: (id: string, s: E
 
         {/* messages */}
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
+          {isHT && (
+            <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 sticky top-0 z-10">
+              <PauseCircle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+              <p className="text-xs text-amber-700 font-medium">Mira is paused for this session. You are in control. Toggle off to resume AI responses.</p>
+            </div>
+          )}
           {allMsgs.map((m, i) => (
             <div key={i} className={`flex ${m.side === "mentee" ? "justify-start" : "justify-end"}`}>
               {m.side === "bot" ? (
@@ -690,7 +779,7 @@ export default function EscalationsPage() {
           <div className="flex flex-col gap-1">
             <label className="text-xs font-medium text-gray-500">Source</label>
             <Select value={fSrc} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFSrc(e.target.value)} className="w-36 h-9">
-              <option>All</option><option>AI-Raised</option><option>Mentee</option><option>Mentor</option>
+              <option>All</option><option>AI-Raised</option><option>Mentee</option><option>Mentor</option><option>System</option>
             </Select>
           </div>
           <div className="flex flex-col gap-1">

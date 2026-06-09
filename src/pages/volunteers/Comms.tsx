@@ -7,7 +7,7 @@ import {
 } from "@/data/commsData"
 import {
   Search, Send, ChevronDown, Check, CheckCheck, MessageSquare,
-  ClipboardList, Plus, X, CheckCircle2, AlertCircle,
+  ClipboardList, Plus, X, CheckCircle2, AlertCircle, PauseCircle, Bot,
 } from "lucide-react"
 
 // ─── Create Template Modal ────────────────────────────────────────────────────
@@ -167,7 +167,14 @@ export default function VolunteersComms() {
   const [templates, setTemplates] = useState<CommTemplate[]>(commsTemplates)
   const [showCreateTemplate, setShowCreateTemplate] = useState(false)
   const [view, setView] = useState<"chat" | "logs">("chat")
+  const [humanTakeover, setHumanTakeover] = useState<Record<string, boolean>>({})
   const messagesEndRef = useRef<HTMLDivElement>(null)
+
+  const isHT = humanTakeover[activeContactId ?? ""] ?? false
+  function toggleHT() {
+    if (!activeContactId) return
+    setHumanTakeover(p => ({ ...p, [activeContactId]: !p[activeContactId] }))
+  }
 
   const filteredContacts = contacts.filter((c) =>
     c.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -262,7 +269,20 @@ export default function VolunteersComms() {
                 <p className="font-semibold text-gray-900 text-sm">{activeContact.name}</p>
                 <p className="text-xs text-gray-500">{activeContact.role} · {activeContact.phone}</p>
               </div>
-              <div className="relative ml-3" onClick={(e) => e.stopPropagation()}>
+              {/* Human takeover toggle */}
+              <button
+                onClick={toggleHT}
+                title={isHT ? "Mira is paused. Click to resume." : "Mira is handling this chat. Click to take over."}
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
+                  isHT
+                    ? "bg-amber-50 border-amber-300 text-amber-700 hover:bg-amber-100"
+                    : "bg-green-50 border-green-200 text-green-700 hover:bg-green-100"
+                }`}
+              >
+                {isHT ? <PauseCircle className="w-3.5 h-3.5" /> : <Bot className="w-3.5 h-3.5" />}
+                {isHT ? "Human Takeover" : "Mira Active"}
+              </button>
+              <div className="relative ml-1" onClick={(e) => e.stopPropagation()}>
                 <Button variant="outline" size="sm" onClick={() => setShowTemplates((o) => !o)}>
                   <MessageSquare className="w-3.5 h-3.5" /> Templates <ChevronDown className="w-3 h-3 ml-1" />
                 </Button>
@@ -309,6 +329,12 @@ export default function VolunteersComms() {
         ) : activeContact ? (
           <>
             <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3 bg-gray-50" onClick={() => setShowTemplates(false)}>
+              {isHT && (
+                <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 sticky top-0 z-10">
+                  <PauseCircle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                  <p className="text-xs text-amber-700 font-medium">Mira is paused. You are replying directly. Toggle off to resume AI responses.</p>
+                </div>
+              )}
               {activeMessages.length === 0 ? (
                 <div className="flex items-center justify-center h-full text-gray-400 text-sm">No messages yet.</div>
               ) : activeMessages.map((msg) => (

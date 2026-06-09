@@ -1,5 +1,13 @@
-export type EscalationSource = "AI-Raised" | "Mentee" | "Mentor"
-export type EscalationCategory = "Request-Related" | "Platform Issue" | "Safety Concern" | "Unresponsive" | "Match Dissatisfaction" | "General Support"
+export type EscalationSource = "AI-Raised" | "Mentee" | "Mentor" | "System"
+export type EscalationCategory =
+  | "Request-Related"
+  | "Platform Issue"
+  | "Safety Concern"
+  | "Unresponsive"
+  | "Match Dissatisfaction"
+  | "General Support"
+  | "No Candidates Found"
+  | "All Mentors Declined"
 export type EscalationStatus = "Open" | "In Progress" | "Resolved"
 export type EscalationPriority = "High" | "Medium" | "Low"
 export type PersonType = "Mentee" | "Mentor"
@@ -9,6 +17,15 @@ export interface EscalationMessage {
   text: string
   timestamp: string
   channel: "whatsapp" | "bot" | "internal"
+}
+
+export interface MatchAttempt {
+  name: string
+  role: string
+  company: string
+  matchPercent: number
+  outreachStatus: "No Response" | "Declined" | "Accepted" | "Sent" | "Pending"
+  outreachSentAt?: string
 }
 
 export interface Escalation {
@@ -33,6 +50,9 @@ export interface Escalation {
 
   triggerMessage: string   // the WA message or bot message that caused this
   aiSummary?: string        // A7 agent summary if AI-raised
+
+  matchFailureReason?: string          // why match failed (for No Candidates Found / All Mentors Declined)
+  candidatesAttempted?: MatchAttempt[] // mentors outreached and their outcome
 
   createdAt: string
   updatedAt: string
@@ -204,6 +224,65 @@ export const mockEscalations: Escalation[] = [
     createdAt: "2026-06-04T08:00:00",
     updatedAt: "2026-06-04T08:00:00",
     assignedTo: "Neha (Admin)",
+    resolutionNote: undefined,
+    internalNotes: [],
+  },
+  // ── Match failure escalations (System-raised, always High priority) ──────────
+  {
+    id: "ESC-007",
+    personId: "MTE-009",
+    personName: "Riya Menon",
+    personType: "Mentee",
+    personNGO: "Parivarthan",
+    personGroup: "Parivarthan — Cohort 3",
+    personPhone: "+91 82345 67890",
+    personRating: 4.1,
+    personJoinedAt: "2026-03-10",
+    source: "System",
+    category: "All Mentors Declined",
+    status: "Open",
+    priority: "High",
+    linkedRequestId: "REQ-008",
+    linkedRequestTheme: "System Design & Architecture for Senior Engineering Roles",
+    linkedMentor: undefined,
+    triggerMessage: "Automated: All outreached mentors for REQ-008 have either declined or not responded within the 48-hour window.",
+    aiSummary: "3 mentors were contacted for this request. 1 explicitly declined, 2 did not respond within the defined outreach window. No active mentor assigned. Requires admin intervention — extend outreach pool or manually assign.",
+    matchFailureReason: "All 3 candidates in the outreach batch have exhausted their response window. Highest match score was 82% (Sneha Rao, No Response). No backup candidates remain in the eligible pool for this domain.",
+    candidatesAttempted: [
+      { name: "Sneha Rao", role: "Senior Software Engineer", company: "Google", matchPercent: 82, outreachStatus: "No Response", outreachSentAt: "2026-04-10T09:00:00" },
+      { name: "Arjun Sharma", role: "Operations Manager", company: "Amazon India", matchPercent: 68, outreachStatus: "No Response", outreachSentAt: "2026-04-10T21:30:00" },
+      { name: "Kiran Bhat", role: "Product Manager", company: "Razorpay", matchPercent: 61, outreachStatus: "Declined", outreachSentAt: "2026-04-11T10:00:00" },
+    ],
+    createdAt: "2026-06-05T08:00:00",
+    updatedAt: "2026-06-05T08:00:00",
+    assignedTo: undefined,
+    resolutionNote: undefined,
+    internalNotes: [],
+  },
+  {
+    id: "ESC-008",
+    personId: "MTE-010",
+    personName: "Divya Nair",
+    personType: "Mentee",
+    personNGO: "NavGurukul",
+    personGroup: "NavGurukul — Cohort 13",
+    personPhone: "+91 90123 45678",
+    personRating: 3.9,
+    personJoinedAt: "2026-04-01",
+    source: "System",
+    category: "No Candidates Found",
+    status: "Open",
+    priority: "High",
+    linkedRequestId: "REQ-011",
+    linkedRequestTheme: "Breaking into AI/ML Research from a Non-CS Background",
+    linkedMentor: undefined,
+    triggerMessage: "Automated: Matching engine found 0 eligible candidates for REQ-011 after applying domain, availability and language filters.",
+    aiSummary: "No mentor profiles in the current volunteer pool meet the skill threshold (≥50% match) for AI/ML Research with a non-CS mentee context. The request has been open for 9 days without a single outreach being sent. Expand the volunteer pool or adjust match criteria.",
+    matchFailureReason: "Matching engine returned 0 candidates after applying filters: domain = AI/ML Research, language = English, availability = weekends. The volunteer pool has only 2 AI/ML profiles and both are currently at capacity (3 active mentees each).",
+    candidatesAttempted: [],
+    createdAt: "2026-06-06T11:30:00",
+    updatedAt: "2026-06-06T11:30:00",
+    assignedTo: undefined,
     resolutionNote: undefined,
     internalNotes: [],
   },
