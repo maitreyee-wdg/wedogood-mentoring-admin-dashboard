@@ -15,6 +15,15 @@ interface AgentTool {
   description: string
 }
 
+const MODEL_OPTIONS = [
+  { value: "claude-opus-4-5",    label: "Claude Opus 4.5",   badge: "Most capable",     cls: "text-purple-700 bg-purple-50"  },
+  { value: "claude-sonnet-4-5",  label: "Claude Sonnet 4.5", badge: "Balanced",          cls: "text-blue-700 bg-blue-50"      },
+  { value: "claude-haiku-4-5",   label: "Claude Haiku 4.5",  badge: "Fast & lightweight",cls: "text-teal-700 bg-teal-50"      },
+  { value: "rule-based",         label: "Rule-based",        badge: "No LLM",            cls: "text-gray-600 bg-gray-100"     },
+] as const
+
+type ModelOption = typeof MODEL_OPTIONS[number]["value"]
+
 interface Agent {
   id: string
   shortId: string        // A1–A7
@@ -23,6 +32,7 @@ interface Agent {
   roleLabel: string
   description: string
   prompt: string
+  model?: ModelOption
   contextFiles?: string[]   // uploaded file names
   tools: string[]
   accessTo: string[]    // other agent shortIds
@@ -116,6 +126,7 @@ Never:
 - Ask multiple questions at once
 - Use jargon or overly formal language
 - Make promises about specific mentors`,
+    model: "claude-sonnet-4-5",
     contextFiles: ["mentee_profile_schema.json"],
     tools: ["get_mentee_context", "get_session_history", "get_quick_replies", "send_message"],
     accessTo: ["A2", "A3", "A7"],
@@ -142,6 +153,7 @@ After every message from the mentee, analyse the full conversation history and e
 
 Only update fields when you have clear evidence. Do not infer beyond what is said.
 Return structured JSON only — no prose.`,
+    model: "claude-haiku-4-5",
     tools: ["extract_profile_fields", "update_working_profile", "infer_signals"],
     accessTo: ["A3"],
     isPredefined: true,
@@ -166,6 +178,7 @@ Priority order for missing fields:
 
 If all priority-1 through priority-3 fields are filled with high confidence, fire the completion signal.
 Otherwise, return the single next gap and a suggested question phrasing for A1 to use.`,
+    model: "claude-haiku-4-5",
     tools: ["identify_missing_fields", "rank_next_gap", "check_completion_threshold"],
     accessTo: ["A1", "A4", "A5"],
     isPredefined: true,
@@ -188,6 +201,7 @@ The summary should cover:
 - What kind of mentor would suit them best
 
 Write in third person, professionally. Keep it under 80 words. This will be read by a human matcher.`,
+    model: "claude-opus-4-5",
     tools: ["generate_summary", "write_summary_to_db"],
     accessTo: [],
     isPredefined: true,
@@ -206,6 +220,7 @@ Convert the completed working profile into the final structured JSON schema requ
 Also extract 3–7 mentor skill/experience tags that would best serve this mentee based on their profile. Tags should be drawn from the canonical tag list only.
 
 Return only valid JSON. No prose, no markdown, no explanations.`,
+    model: "claude-sonnet-4-5",
     contextFiles: ["mentor_tags_canonical.json"],
     tools: ["format_json_profile", "extract_mentor_tags", "write_json_to_db"],
     accessTo: [],
@@ -229,6 +244,7 @@ Flow:
 4. Free-text answers are stored verbatim with no interpretation
 
 Questions are loaded from the feedback_questions config. Do not deviate from the script.`,
+    model: "rule-based",
     tools: ["get_feedback_questions", "write_feedback_record", "update_session_status"],
     accessTo: ["A1"],
     isPredefined: true,
@@ -254,6 +270,7 @@ On trigger:
 5. Notify admin team with ticket link
 
 Do not attempt to resolve the issue. Do not generate custom responses. Use fixed scripts only.`,
+    model: "rule-based",
     tools: ["create_support_ticket", "set_human_takeover", "notify_admin_team"],
     accessTo: ["A1"],
     isPredefined: true,
@@ -339,6 +356,7 @@ function AgentPane({ agent, agents, onClose, onSave }: {
   const [editing, setEditing] = useState(false)
   const [prompt, setPrompt] = useState(agent.prompt)
   const [description, setDescription] = useState(agent.description)
+  const [model, setModel] = useState<ModelOption>(agent.model ?? "claude-sonnet-4-5")
   const [contextFiles, setContextFiles] = useState<string[]>(agent.contextFiles ?? [])
   const [selectedTools, setSelectedTools] = useState<string[]>(agent.tools)
   const [accessTo, setAccessTo] = useState<string[]>(agent.accessTo)
@@ -354,13 +372,14 @@ function AgentPane({ agent, agents, onClose, onSave }: {
   }
 
   const handleSave = () => {
-    onSave(agent.id, { prompt, description, contextFiles, tools: selectedTools, accessTo })
+    onSave(agent.id, { prompt, description, model, contextFiles, tools: selectedTools, accessTo })
     setEditing(false)
   }
 
   const handleReset = () => {
     setPrompt(agent.prompt)
     setDescription(agent.description)
+    setModel(agent.model ?? "claude-sonnet-4-5")
     setContextFiles(agent.contextFiles ?? [])
     setSelectedTools(agent.tools)
     setAccessTo(agent.accessTo)
@@ -415,6 +434,30 @@ function AgentPane({ agent, agents, onClose, onSave }: {
             ? <textarea className={inputCls + " resize-none h-16"} value={description} onChange={(e) => setDescription(e.target.value)} />
             : <p className="text-sm text-gray-600 leading-relaxed">{description}</p>
           }
+        </div>
+
+        {/* AI Model */}
+        <div>
+          <label className={labelCls}>AI Model</label>
+          {agent.role === "rule-based" ? (
+            <p className="text-xs text-gray-400 italic">Rule-based agents do not use an LLM — no model selection needed.</p>
+          ) : editing ? (
+            <select className={inputCls} value={model} onChange={e => setModel(e.target.value as ModelOption)}>
+              {MODEL_OPTIONS.filter(m => m.value !== "rule-based").map(m => (
+                <option key={m.value} value={m.value}>{m.label} — {m.badge}</option>
+              ))}
+            </select>
+          ) : (
+            (() => {
+              const m = MODEL_OPTIONS.find(x => x.value === model) ?? MODEL_OPTIONS[1]
+              return (
+                <div className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold ${m.cls}`}>
+                  {m.label}
+                  <span className="font-normal text-[10px] opacity-70">{m.badge}</span>
+                </div>
+              )
+            })()
+          )}
         </div>
 
         {/* Prompt */}
@@ -709,6 +752,7 @@ function AddAgentModal({ onClose, onAdd, agents }: {
 }) {
   const [name, setName] = useState("")
   const [role, setRole] = useState<AgentRole>("background")
+  const [agentModel, setAgentModel] = useState<ModelOption>("claude-sonnet-4-5")
   const [description, setDescription] = useState("")
   const [prompt, setPrompt] = useState("")
   const [contextFiles, setContextFiles] = useState<string[]>([])
@@ -747,8 +791,8 @@ function AddAgentModal({ onClose, onAdd, agents }: {
       shortId: newId,
       name: name.trim(), role,
       roleLabel: ROLE_META[role].label,
-      description, prompt: prompt.trim(), contextFiles,
-      tools: selectedTools, accessTo,
+      description, prompt: prompt.trim(), model: role === "rule-based" ? "rule-based" : agentModel,
+      contextFiles, tools: selectedTools, accessTo,
       isPredefined: false,
       color: { bg: "bg-gray-50", border: "border-gray-200", badge: "bg-gray-500", text: "text-gray-600", dot: "bg-gray-400" },
     })
@@ -799,6 +843,19 @@ function AddAgentModal({ onClose, onAdd, agents }: {
               }</p>
             )}
           </div>
+
+          {/* AI Model */}
+          {role !== "rule-based" && (
+            <div>
+              <label className={labelCls}>AI Model</label>
+              <select className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 outline-none focus:border-blue-400 bg-white"
+                value={agentModel} onChange={e => setAgentModel(e.target.value as ModelOption)}>
+                {MODEL_OPTIONS.filter(m => m.value !== "rule-based").map(m => (
+                  <option key={m.value} value={m.value}>{m.label} — {m.badge}</option>
+                ))}
+              </select>
+            </div>
+          )}
 
           {/* What it does */}
           <div>

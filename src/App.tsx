@@ -10,6 +10,7 @@ import VolunteersComms from "@/pages/volunteers/Comms"
 import VolunteerGroups from "@/pages/groups/VolunteerGroups"
 import MenteeGroupsPage from "@/pages/groups/MenteeGroups"
 import Organizations from "@/pages/groups/Organizations"
+import ProgramsPage from "@/pages/groups/Programs"
 
 // Mentees
 import MenteesList from "@/pages/mentees/index"
@@ -40,6 +41,7 @@ export default function App() {
           <Route path="/groups/volunteer-groups" element={<VolunteerGroups />} />
           <Route path="/groups/mentee-groups" element={<MenteeGroupsPage />} />
           <Route path="/groups/organizations" element={<Organizations />} />
+          <Route path="/groups/programs" element={<ProgramsPage />} />
 
           {/* Mentees */}
           <Route path="/mentees" element={<MenteesList />} />

@@ -9,7 +9,7 @@ import {
 } from "@/data/requestsData"
 import {
   Search, X, ChevronUp, ChevronDown, Plus, Check,
-  MessageSquare, Users, Clock, ArrowRight, AlertCircle,
+  MessageSquare, Users, Clock, ArrowRight, AlertCircle, RefreshCw,
 } from "lucide-react"
 
 // ── Status config ─────────────────────────────────────────────────────────────
@@ -135,6 +135,14 @@ function RequestPane({ request: initial, onClose, onUpdate }: {
             <PaneSection label="Matched Mentor">
               {req.matchedMentor ? <p className="text-gray-800 font-medium">{req.matchedMentor}</p> : <p className="text-gray-400 italic text-xs">No mentor matched yet</p>}
             </PaneSection>
+            {(req.status === "No Match Found" || req.status === "Mentor Response Pending" || req.status === "Matched" || req.status === "Match Approval Pending") && (
+              <button
+                onClick={() => alert("Rematch triggered for " + req.id)}
+                className="flex items-center gap-2 w-full px-4 py-2.5 rounded-lg bg-orange-50 border border-orange-200 text-orange-700 hover:bg-orange-100 transition-colors text-sm font-medium">
+                <RefreshCw className="w-4 h-4" />
+                Trigger Rematch
+              </button>
+            )}
           </div>
         )}
 
@@ -298,7 +306,10 @@ function RequestPane({ request: initial, onClose, onUpdate }: {
                     <span className="text-red-400 font-medium">{c.outreachStatus}</span>
                   </div>
                 ))}
-                <Button variant="outline" className="w-full">Retry Matching</Button>
+                <Button variant="outline" className="w-full flex items-center gap-2 justify-center text-orange-700 border-orange-200 hover:bg-orange-50"
+                  onClick={() => alert("Rematch triggered for " + req.id)}>
+                  <RefreshCw className="w-3.5 h-3.5" /> Trigger Rematch
+                </Button>
               </div>
             )}
 
@@ -364,6 +375,20 @@ export default function AllRequests() {
   const [filterType, setFilterType] = useState("All")
   const [filterActive, setFilterActive] = useState<"all" | "active" | "inactive">("all")
   const [selectedReq, setSelectedReq] = useState<MentoringRequest | null>(null)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+
+  const toggleSelect = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }
+  const toggleSelectAll = () => {
+    setSelectedIds((prev) => prev.size === filtered.length ? new Set() : new Set(filtered.map((r) => r.id)))
+  }
+  const clearSelection = () => setSelectedIds(new Set())
 
   const filtered = useMemo(() => requests.filter((r) => {
     const q = search.toLowerCase()
@@ -460,11 +485,38 @@ export default function AllRequests() {
           </div>
         </div>
 
+        {/* Bulk action bar */}
+        {selectedIds.size > 0 && (
+          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-gray-900 text-white px-5 py-3 rounded-xl shadow-2xl border border-gray-700">
+            <span className="text-sm font-medium">{selectedIds.size} engagement{selectedIds.size !== 1 ? "s" : ""} selected</span>
+            <div className="w-px h-5 bg-gray-600" />
+            <button
+              onClick={() => { alert("Rematch triggered for: " + Array.from(selectedIds).join(", ")); clearSelection() }}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-500 hover:bg-orange-400 text-white text-xs font-semibold rounded-lg transition-colors">
+              <RefreshCw className="w-3.5 h-3.5" /> Trigger Rematch
+            </button>
+            <button
+              onClick={() => { alert("Close Engagements: " + Array.from(selectedIds).join(", ")); clearSelection() }}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-white text-xs font-semibold rounded-lg transition-colors">
+              <X className="w-3.5 h-3.5" /> Close Engagements
+            </button>
+            <button onClick={clearSelection} className="text-gray-400 hover:text-white ml-1">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+
         {/* Table */}
         <div className="bg-white rounded-lg border border-gray-200 overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-200 bg-gray-50">
+                <th className="px-4 py-3 w-8">
+                  <input type="checkbox"
+                    checked={filtered.length > 0 && selectedIds.size === filtered.length}
+                    onChange={toggleSelectAll}
+                    className="rounded border-gray-300 text-blue-600 cursor-pointer" />
+                </th>
                 <th className="text-left px-4 py-3 font-medium text-gray-600">Mentee / Group</th>
                 <th className="text-left px-4 py-3 font-medium text-gray-600">Date</th>
                 <th className="text-left px-4 py-3 font-medium text-gray-600">Theme</th>
@@ -479,11 +531,15 @@ export default function AllRequests() {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {filtered.length === 0 ? (
-                <tr><td colSpan={10} className="px-4 py-8 text-center text-gray-400">No requests match your filters</td></tr>
+                <tr><td colSpan={11} className="px-4 py-8 text-center text-gray-400">No requests match your filters</td></tr>
               ) : filtered.map((req) => (
                 <tr key={req.id}
-                  className={`hover:bg-gray-50 transition-colors cursor-pointer ${selectedReq?.id === req.id ? "bg-blue-50" : ""}`}
+                  className={`hover:bg-gray-50 transition-colors cursor-pointer ${selectedReq?.id === req.id ? "bg-blue-50" : ""} ${selectedIds.has(req.id) ? "bg-orange-50/40" : ""}`}
                   onClick={() => setSelectedReq(selectedReq?.id === req.id ? null : req)}>
+                  <td className="px-4 py-3 w-8" onClick={(e) => toggleSelect(req.id, e)}>
+                    <input type="checkbox" checked={selectedIds.has(req.id)} onChange={() => {}}
+                      className="rounded border-gray-300 text-orange-500 cursor-pointer" />
+                  </td>
                   <td className="px-4 py-3">
                     <p className="font-medium text-gray-900 text-xs">{req.menteeName}</p>
                     <p className="text-xs text-gray-400 truncate max-w-[120px]">{req.menteeGroup}</p>

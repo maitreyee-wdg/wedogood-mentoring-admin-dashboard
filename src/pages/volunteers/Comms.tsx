@@ -1,13 +1,15 @@
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef, useEffect, useMemo } from "react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import {
   mockVolunteerContacts, mockConversations, commsTemplates, mockVolunteerLogs,
   type CommContact, type ChatMessage, type CommTemplate, type CommLog,
 } from "@/data/commsData"
+import { mockEscalations } from "@/data/escalationsData"
 import {
   Search, Send, ChevronDown, Check, CheckCheck, MessageSquare,
   ClipboardList, Plus, X, CheckCircle2, AlertCircle, PauseCircle, Bot,
+  ShieldAlert, Circle, Loader2, Filter,
 } from "lucide-react"
 
 // ─── Create Template Modal ────────────────────────────────────────────────────
@@ -166,9 +168,23 @@ export default function VolunteersComms() {
   const [templateTab, setTemplateTab] = useState<"generic" | "engagement">("generic")
   const [templates, setTemplates] = useState<CommTemplate[]>(commsTemplates)
   const [showCreateTemplate, setShowCreateTemplate] = useState(false)
-  const [view, setView] = useState<"chat" | "logs">("chat")
+  const [view, setView] = useState<"chat" | "logs" | "escalation">("chat")
   const [humanTakeover, setHumanTakeover] = useState<Record<string, boolean>>({})
+  const [escStatusFilter, setEscStatusFilter] = useState<"All" | "Open" | "In Progress">("All")
   const messagesEndRef = useRef<HTMLDivElement>(null)
+
+  // Mentor escalations — only Open + In Progress from real data
+  const mentorEscs = useMemo(() => {
+    const active = mockEscalations.filter(
+      e => e.personType === "Mentor" && e.status !== "Resolved"
+    )
+    if (escStatusFilter === "All") return active
+    return active.filter(e => e.status === escStatusFilter)
+  }, [escStatusFilter])
+
+  const openCount  = mockEscalations.filter(e => e.personType === "Mentor" && e.status === "Open").length
+  const inProgCount = mockEscalations.filter(e => e.personType === "Mentor" && e.status === "In Progress").length
+  const activeEscCount = openCount + inProgCount
 
   const isHT = humanTakeover[activeContactId ?? ""] ?? false
   function toggleHT() {
@@ -259,6 +275,17 @@ export default function VolunteersComms() {
             >
               <ClipboardList className="w-3.5 h-3.5" /> Logs
             </button>
+            <button
+              onClick={() => setView("escalation")}
+              className={`flex items-center gap-1.5 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${view === "escalation" ? "border-orange-500 text-orange-600" : "border-transparent text-gray-500 hover:text-gray-700"}`}
+            >
+              <ShieldAlert className="w-3.5 h-3.5" /> Escalations
+              {activeEscCount > 0 && (
+                <span className="ml-0.5 px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-700 text-[10px] font-bold leading-none">
+                  {activeEscCount}
+                </span>
+              )}
+            </button>
           </div>
           {view === "chat" && activeContact && (
             <div className="flex items-center gap-3 py-2.5">
@@ -324,7 +351,97 @@ export default function VolunteersComms() {
         </div>
 
         {/* Content */}
-        {view === "logs" ? (
+        {view === "escalation" ? (
+          <div className="flex-1 overflow-y-auto p-5 space-y-3">
+            {/* header + filter */}
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-semibold text-gray-900">Mentor Escalations</p>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  {openCount} open · {inProgCount} in progress
+                </p>
+              </div>
+              {/* compact status filter */}
+              <div className="flex items-center gap-1.5">
+                <Filter className="w-3.5 h-3.5 text-gray-400" />
+                {(["All", "Open", "In Progress"] as const).map(s => (
+                  <button
+                    key={s}
+                    onClick={() => setEscStatusFilter(s)}
+                    className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
+                      escStatusFilter === s
+                        ? "bg-orange-50 border-orange-300 text-orange-700"
+                        : "border-gray-200 text-gray-500 hover:bg-gray-50"
+                    }`}
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {mentorEscs.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-16 text-gray-400">
+                <CheckCircle2 className="w-7 h-7 mb-2 text-gray-300" />
+                <p className="text-sm">No active escalations for mentors</p>
+              </div>
+            ) : mentorEscs.map(esc => {
+              const statusCls: Record<string, string> = {
+                "Open": "bg-gray-100 text-gray-700",
+                "In Progress": "bg-blue-50 text-blue-700",
+              }
+              const priBar = esc.priority === "High" ? "bg-orange-400" : esc.priority === "Medium" ? "bg-yellow-400" : "bg-gray-300"
+              const SIcon = esc.status === "In Progress" ? Loader2 : Circle
+              return (
+                <div key={esc.id} className="bg-white border border-gray-200 rounded-xl p-4 space-y-2.5">
+                  <div className="flex items-start gap-2.5">
+                    <div className={`w-1 self-stretch rounded-full shrink-0 ${priBar}`} />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <p className="text-sm font-semibold text-gray-900">{esc.personName}</p>
+                          <p className="text-xs text-gray-400 mt-0.5 font-mono">{esc.id}</p>
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${statusCls[esc.status] ?? "bg-gray-100 text-gray-600"}`}>
+                            <SIcon className="w-3 h-3" />{esc.status}
+                          </span>
+                          <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${esc.priority === "High" ? "bg-orange-50 text-orange-700" : esc.priority === "Medium" ? "bg-yellow-50 text-yellow-700" : "bg-gray-100 text-gray-500"}`}>
+                            {esc.priority}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="mt-1.5 flex flex-wrap gap-1.5 text-xs">
+                        <span className="bg-teal-50 text-teal-700 px-2 py-0.5 rounded-full font-medium">{esc.category}</span>
+                        {esc.linkedEngagementId && <span className="font-mono text-blue-500">{esc.linkedEngagementId}</span>}
+                        {esc.assignedTo && <span className="text-gray-400">→ {esc.assignedTo}</span>}
+                      </div>
+                    </div>
+                  </div>
+                  {esc.summary && (
+                    <p className="text-xs text-gray-600 leading-relaxed pl-3.5 border-l-2 border-gray-200">
+                      {esc.summary}
+                    </p>
+                  )}
+                  <div className="flex gap-2 pt-0.5">
+                    <button
+                      onClick={() => { setActiveContactId(contacts.find(c => c.name === esc.personName)?.id ?? null); setView("chat") }}
+                      className="text-xs font-medium px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors"
+                    >
+                      View Chat
+                    </button>
+                    <a
+                      href="/escalations"
+                      className="text-xs font-medium px-3 py-1.5 rounded-lg border border-orange-200 text-orange-700 hover:bg-orange-50 transition-colors"
+                    >
+                      Open Ticket
+                    </a>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        ) : view === "logs" ? (
           <LogsView logs={mockVolunteerLogs} />
         ) : activeContact ? (
           <>

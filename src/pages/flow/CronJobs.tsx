@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Zap, Plus, Play, Pause, Pencil, Trash2, X, ChevronDown, ChevronRight, Lock, ClipboardList } from "lucide-react"
+import { Zap, Plus, Play, Pause, Pencil, Trash2, X, ChevronDown, ChevronRight, Lock, ClipboardList, Clock, Info } from "lucide-react"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -21,6 +21,7 @@ interface SystemTrigger {
   triggerDurationUnit?: DurationUnit
   triggerDaysValue?: number
   triggerTime?: string
+  scheduledSendTime?: string
   whatsappTemplate: string
   status: "Active" | "Paused"
   runCount: number
@@ -156,6 +157,8 @@ function TriggerModal({
   const [triggerDurationUnit, setTriggerDurationUnit] = useState<DurationUnit>(trigger?.triggerDurationUnit ?? "hours")
   const [triggerDaysValue, setTriggerDaysValue] = useState(trigger?.triggerDaysValue ?? 4)
   const [triggerTime, setTriggerTime] = useState(trigger?.triggerTime ?? "09:00")
+  const [scheduledSendEnabled, setScheduledSendEnabled] = useState(!!trigger?.scheduledSendTime)
+  const [scheduledSendTime, setScheduledSendTime] = useState(trigger?.scheduledSendTime ?? "09:00")
   const [whatsappTemplate, setWhatsappTemplate] = useState(trigger?.whatsappTemplate ?? TEMPLATES_BY_CATEGORY["Mentee"][0].name)
 
   const availableTemplates = TEMPLATES_BY_CATEGORY[category]
@@ -333,6 +336,49 @@ function TriggerModal({
             <SentenceBuilder />
           </div>
 
+          {/* Scheduled delivery */}
+          <div>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-2">
+              Message Delivery
+            </label>
+            <div className={`rounded-xl border p-4 space-y-3 ${scheduledSendEnabled ? "border-blue-200 bg-blue-50/30" : "border-gray-200 bg-white"}`}>
+              <label className="flex items-center gap-3 cursor-pointer">
+                <div
+                  onClick={() => setScheduledSendEnabled((v) => !v)}
+                  className={`relative w-9 h-5 rounded-full transition-colors shrink-0 ${scheduledSendEnabled ? "bg-blue-600" : "bg-gray-200"}`}>
+                  <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${scheduledSendEnabled ? "translate-x-4" : "translate-x-0.5"}`} />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-800">Schedule message at a specific time</p>
+                  <p className="text-xs text-gray-400">Otherwise, message is sent immediately when the condition fires</p>
+                </div>
+              </label>
+
+              {scheduledSendEnabled && (
+                <div className="space-y-3 pt-1 border-t border-blue-100">
+                  <div className="flex items-center gap-3">
+                    <Clock className="w-4 h-4 text-blue-500 shrink-0" />
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-gray-700">Send at</span>
+                      <input
+                        type="time"
+                        value={scheduledSendTime}
+                        onChange={(e) => setScheduledSendTime(e.target.value)}
+                        className="border border-blue-300 rounded-lg px-2 py-1 text-sm text-blue-700 font-semibold bg-white outline-none focus:border-blue-500"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5">
+                    <Info className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
+                    <p className="text-xs text-amber-700 leading-relaxed">
+                      <span className="font-semibold">Condition re-validated at send time.</span> The trigger condition is checked again just before the message is sent — if it no longer holds (e.g. the mentee has completed their profile), the message is not sent.
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
           {/* Action — template */}
           <div>
             <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1.5">
@@ -351,7 +397,7 @@ function TriggerModal({
 
         <div className="flex gap-2 px-6 py-4 border-t border-gray-100">
           <Button variant="outline" className="flex-1" onClick={onClose}>Cancel</Button>
-          <Button className="flex-1" onClick={() => onSave({ name, category, triggerType, triggerEntity, triggerStatus, triggerDuration, triggerDurationUnit, triggerDaysValue, triggerTime, whatsappTemplate })}>
+          <Button className="flex-1" onClick={() => onSave({ name, category, triggerType, triggerEntity, triggerStatus, triggerDuration, triggerDurationUnit, triggerDaysValue, triggerTime, scheduledSendTime: scheduledSendEnabled ? scheduledSendTime : undefined, whatsappTemplate })}>
             {isNew ? "Create Trigger" : "Save Changes"}
           </Button>
         </div>
@@ -394,6 +440,11 @@ function TriggerRow({ trigger, onToggle, onEdit, onDelete }: {
         <span className="text-[11px] bg-blue-50 text-blue-700 border border-blue-100 px-2 py-0.5 rounded font-medium whitespace-nowrap">
           WA: {trigger.whatsappTemplate}
         </span>
+        {trigger.scheduledSendTime && (
+          <span className="flex items-center gap-1 text-[10px] bg-amber-50 text-amber-600 border border-amber-200 px-1.5 py-0.5 rounded font-medium whitespace-nowrap">
+            <Clock className="w-2.5 h-2.5" />{trigger.scheduledSendTime}
+          </span>
+        )}
       </div>
 
       {/* Controls */}
