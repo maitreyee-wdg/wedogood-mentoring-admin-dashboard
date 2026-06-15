@@ -4,6 +4,7 @@ export type OrientationStatus =
   | "Orientation Done"
   | "Orientation Rescheduled"
 
+export type VolunteerStatus = "Orientation Pending" | "Active" | "Inactive" | "Archived"
 export type EngagementStatus = "Active" | "Not Engaged"
 export type MenteeInterest = "College students/Fresh graduates" | "0-4 years experience" | "4-8 years experience"
 export type VolunteeringType = "Mentoring" | "Projects" | "Both"
@@ -67,6 +68,7 @@ export interface Volunteer {
   officialEmail: string
   linkedin: string
   resume?: string
+  status: VolunteerStatus
   orientationStatus: OrientationStatus
   orientationDate?: string
   signedUpDate: string
@@ -105,6 +107,7 @@ export const mockVolunteers: Volunteer[] = [
     email: "rahul.mehta@gmail.com",
     officialEmail: "rahul.mehta@infosys.com",
     linkedin: "linkedin.com/in/rahulmehta",
+    status: "Active",
     orientationStatus: "Orientation Done",
     signedUpDate: "2025-09-10",
     engagementStatus: "Active",
@@ -140,6 +143,7 @@ export const mockVolunteers: Volunteer[] = [
     email: "sneha.rao@gmail.com",
     officialEmail: "sneha@google.com",
     linkedin: "linkedin.com/in/sneharo",
+    status: "Active",
     orientationStatus: "Orientation Done",
     signedUpDate: "2025-08-22",
     engagementStatus: "Active",
@@ -176,6 +180,7 @@ export const mockVolunteers: Volunteer[] = [
     email: "amit.joshi@gmail.com",
     officialEmail: "amit.joshi@swiggy.com",
     linkedin: "linkedin.com/in/amitjoshi",
+    status: "Orientation Pending",
     orientationStatus: "Orientation Slot Booked",
     orientationDate: "2026-06-05",
     signedUpDate: "2025-10-05",
@@ -210,6 +215,7 @@ export const mockVolunteers: Volunteer[] = [
     email: "pooja.verma@gmail.com",
     officialEmail: "pooja.verma@hdfc.com",
     linkedin: "linkedin.com/in/poojaverma",
+    status: "Orientation Pending",
     orientationStatus: "Orientation Rescheduled",
     orientationDate: "2026-06-10",
     signedUpDate: "2025-07-18",
@@ -245,6 +251,7 @@ export const mockVolunteers: Volunteer[] = [
     email: "kiran.bhat@gmail.com",
     officialEmail: "kiran@razorpay.com",
     linkedin: "linkedin.com/in/kiranbhat",
+    status: "Orientation Pending",
     orientationStatus: "Orientation Pending",
     signedUpDate: "2025-11-02",
     engagementStatus: "Not Engaged",
@@ -277,6 +284,7 @@ export const mockVolunteers: Volunteer[] = [
     email: "divya.k@gmail.com",
     officialEmail: "divya@zomato.com",
     linkedin: "linkedin.com/in/divyakrishnan",
+    status: "Inactive",
     orientationStatus: "Orientation Done",
     signedUpDate: "2025-06-30",
     engagementStatus: "Not Engaged",
@@ -311,6 +319,7 @@ export const mockVolunteers: Volunteer[] = [
     email: "arjun.sharma@gmail.com",
     officialEmail: "arjun.sharma@amazon.com",
     linkedin: "linkedin.com/in/arjunsharma",
+    status: "Active",
     orientationStatus: "Orientation Done",
     signedUpDate: "2025-09-25",
     engagementStatus: "Active",
@@ -343,6 +352,7 @@ export const mockVolunteers: Volunteer[] = [
     email: "priyanka.nair@gmail.com",
     officialEmail: "priyanka@swiggy.com",
     linkedin: "linkedin.com/in/priyankanair",
+    status: "Active",
     orientationStatus: "Orientation Done",
     signedUpDate: "2025-12-01",
     engagementStatus: "Active",
@@ -375,6 +385,7 @@ export const mockVolunteers: Volunteer[] = [
     email: "vikram.s@gmail.com",
     officialEmail: "vikram.singh@salesforce.com",
     linkedin: "linkedin.com/in/vikramsingh",
+    status: "Inactive",
     orientationStatus: "Orientation Done",
     signedUpDate: "2025-05-15",
     engagementStatus: "Not Engaged",
@@ -406,6 +417,7 @@ export const mockVolunteers: Volunteer[] = [
     email: "ananya.roy@gmail.com",
     officialEmail: "ananya@byjus.com",
     linkedin: "linkedin.com/in/ananyaroy",
+    status: "Orientation Pending",
     orientationStatus: "Orientation Pending",
     signedUpDate: "2026-01-10",
     engagementStatus: "Not Engaged",

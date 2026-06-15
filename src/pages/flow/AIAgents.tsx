@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button"
 import {
   BrainCircuit, X, Lock, Pencil, Plus, ChevronRight,
   Wrench, GitBranch, Bot, Zap, Save, RotateCcw, Upload,
-  Pause, Play, Trash2, Pencil as PencilIcon, RefreshCw,
+  Pause, Play, Trash2, Pencil as PencilIcon,
 } from "lucide-react"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -78,27 +78,40 @@ const WORKFLOW_TRIGGER_OPTIONS = [
 // ─── Tool catalogue ───────────────────────────────────────────────────────────
 
 const ALL_TOOLS: AgentTool[] = [
-  { name: "get_mentee_context", description: "Loads full mentee profile, current phase, and metadata from DB for context injection." },
-  { name: "get_session_history", description: "Retrieves the last N messages of the current WhatsApp session for the user." },
-  { name: "get_quick_replies", description: "Returns platform-appropriate chip/button options for the current conversation state." },
-  { name: "send_message", description: "Sends a WhatsApp message (text, chips, or template) to the mentee via the messaging gateway." },
-  { name: "extract_profile_fields", description: "Parses the latest message and infers structured profile fields (goals, skills, background, etc.)." },
-  { name: "update_working_profile", description: "Writes extracted fields into the in-progress working profile document in DB." },
-  { name: "infer_signals", description: "Infers soft signals: confidence level, clarity of need, and mentor expectation type from message tone." },
-  { name: "identify_missing_fields", description: "Diffs the current working profile against the required schema and returns a list of missing fields." },
-  { name: "rank_next_gap", description: "Prioritises the list of missing fields by importance and conversation context to pick the next question." },
-  { name: "check_completion_threshold", description: "Evaluates whether the working profile has reached the minimum completeness threshold to proceed." },
-  { name: "generate_summary", description: "Writes a 2–4 sentence human-readable summary of the mentee profile for the matching team." },
-  { name: "write_summary_to_db", description: "Persists the generated narrative summary to the mentee record in the database." },
-  { name: "format_json_profile", description: "Converts the completed working profile into the final structured JSON schema used for matching." },
-  { name: "extract_mentor_tags", description: "Derives recommended mentor skill/experience tags from the completed profile for search indexing." },
-  { name: "write_json_to_db", description: "Stores the final JSON profile and mentor tags to DB alongside the narrative summary." },
-  { name: "get_feedback_questions", description: "Returns the fixed ordered set of 5 post-session feedback questions with chip answer options." },
-  { name: "write_feedback_record", description: "Writes each structured feedback answer directly to the DB as the user responds." },
-  { name: "update_session_status", description: "Marks the session as feedback-complete and schedules the next check-in prompt." },
-  { name: "create_support_ticket", description: "Creates a support ticket record in the admin system with conversation context attached." },
-  { name: "set_human_takeover", description: "Sets human_takeover = true on the conversation, pausing all bot responses until resolved." },
-  { name: "notify_admin_team", description: "Sends a real-time alert to the admin team via internal channel with the ticket details." },
+  // A1 — Conversation Agent
+  { name: "get_mentee_context",        description: "Loads full mentee profile, current phase, and metadata from DB for context injection." },
+  { name: "get_session_history",       description: "Retrieves the last N messages of the current WhatsApp or web session for the user." },
+  { name: "get_quick_replies",         description: "Returns platform-appropriate chip/button options for the current conversation state." },
+  { name: "send_message",              description: "Sends a WhatsApp message (text, chips, or template) to the mentee via the messaging gateway." },
+  // A2 — Extraction + Gap Agent
+  { name: "extract_profile_fields",    description: "Parses the latest message and infers structured profile fields (goals, skills, background, etc.)." },
+  { name: "extract_engagement_fields", description: "Parses the latest message for engagement-specific fields: challenge, theme, target domain, skills needed." },
+  { name: "update_working_profile",    description: "Writes extracted fields into the in-progress working profile document in DB." },
+  { name: "update_working_engagement", description: "Writes extracted fields into the in-progress working engagement document in DB." },
+  { name: "infer_signals",             description: "Infers soft signals: confidence level, clarity of need, and mentor expectation type from message tone." },
+  { name: "score_profile_completion",  description: "Scores profile completeness (0.0–1.0) against required schema; flags A3 when threshold is reached." },
+  { name: "score_engagement_completion", description: "Scores engagement completeness (0.0–1.0); flags A3 when both profile and engagement hit their thresholds." },
+  { name: "rank_next_gap",             description: "Prioritises missing fields by importance and conversation context to decide the next question for A1." },
+  // A3 — Profile Synthesis Agent
+  { name: "generate_summary",          description: "Writes a 2–4 sentence human-readable summary of the mentee profile for the matching team." },
+  { name: "format_json_profile",       description: "Converts the completed working profile into the final structured JSON schema used by the matching engine." },
+  { name: "extract_mentor_tags",       description: "Derives 3–7 recommended mentor skill/experience tags from the completed profile for search indexing." },
+  { name: "write_to_db",               description: "Persists the final summary, structured JSON, and mentor tags to the mentee record in DB." },
+  { name: "notify_matching_team",      description: "Sends a real-time alert to the matching team with the profile summary and structured data." },
+  { name: "send_confirmation",         description: "Sends the summary card to the mentee for confirmation before writing to DB." },
+  // A4 — Feedback Agent
+  { name: "get_feedback_questions",    description: "Returns the fixed ordered set of 5 post-session feedback questions with chip answer options." },
+  { name: "send_feedback_question",    description: "Delivers the next feedback question to the mentee via WhatsApp with chip options." },
+  { name: "write_feedback_record",     description: "Writes each structured feedback answer directly to the DB as the user responds, without inference." },
+  { name: "update_session_status",     description: "Marks the session as feedback-complete and updates the engagement status in DB." },
+  { name: "trigger_next_prompt",       description: "Schedules the next session check-in or re-engagement prompt via A1 after feedback completion." },
+  // A5 — Support Escalation Agent
+  { name: "create_support_ticket",     description: "Creates a support ticket in the admin system with conversation context snapshot attached." },
+  { name: "set_human_takeover",        description: "Sets human_takeover = true on the conversation, silencing A1 until an admin resolves it." },
+  { name: "notify_admin_team",         description: "Sends a real-time alert to the admin team via internal channel with the ticket details and urgency." },
+  { name: "send_holding_message",      description: "Sends a fixed holding message to the user: 'Our team has been notified and will be in touch shortly.'" },
+  { name: "admin_send_message",        description: "Allows an admin to send a message into the mentee's chat thread directly from within the ticket view." },
+  { name: "resolve_and_resume",        description: "Marks the ticket resolved, sets human_takeover = false, and resumes normal A1 conversation flow." },
 ]
 
 // ─── Agent data ───────────────────────────────────────────────────────────────
@@ -109,7 +122,7 @@ const AGENTS: Agent[] = [
     name: "Conversation Agent",
     role: "orchestrator",
     roleLabel: "User-facing · always on · orchestrator",
-    description: "Only agent the mentee talks to. Opens with context, asks questions, offers chips, maintains tone. Checks human_takeover flag before every reply.",
+    description: "The only agent the mentee talks to. Reads full conversation history and loaded mentee context before every turn. Never re-asks a question the mentee already answered. Adapts tone from A2 signals. Opens return sessions with prior mentor reference and known context — not from scratch.",
     prompt: `You are Mira, a warm and supportive career mentoring assistant from WeDoGood.
 
 Your job is to have a natural, friendly conversation with the mentee to understand their background, goals, and what kind of mentor would help them most.
@@ -120,161 +133,144 @@ Always:
 - Mirror the user's language (English or Romanized Hindi)
 - Offer 2–3 chip options where possible to reduce typing friction
 - Keep messages short (under 3 sentences)
-- Check human_takeover flag before every reply — if true, send holding message only
+- Check human_takeover flag before every reply — if true, send holding message only and do not continue
 
 Never:
 - Ask multiple questions at once
+- Re-ask something the mentee has already answered (check full history)
 - Use jargon or overly formal language
 - Make promises about specific mentors`,
     model: "claude-sonnet-4-5",
     contextFiles: ["mentee_profile_schema.json"],
     tools: ["get_mentee_context", "get_session_history", "get_quick_replies", "send_message"],
-    accessTo: ["A2", "A3", "A7"],
+    accessTo: ["A2", "A5"],
     isPredefined: true,
-    color: { bg: "bg-blue-50", border: "border-blue-200", badge: "bg-blue-600", text: "text-blue-700", dot: "bg-blue-500" },
+    color: { bg: "bg-emerald-50", border: "border-emerald-200", badge: "bg-emerald-600", text: "text-emerald-700", dot: "bg-emerald-500" },
   },
   {
     id: "agent-a2", shortId: "A2",
-    name: "Profile Extraction",
+    name: "Extraction + Gap Agent",
     role: "background",
     roleLabel: "Background · silent · runs after every message",
-    description: "Reads latest message + full history. Extracts structured fields. Infers confidence, clarity, mentor expectation. Updates working profile. Calculates completion score.",
+    description: "Runs background after every message. Maintains two separate working state objects — working_profile and working_engagement. Extracts fields into the correct object. Scores each independently: profile_completion_score (threshold 0.80) and engagement_completion_score (threshold 0.85). Flags completion to A3 when both hit their thresholds. For return users with a complete profile, flags when engagement alone hits 0.85.",
     prompt: `You are a silent data extraction agent. You never speak to the user.
 
-After every message from the mentee, analyse the full conversation history and extract or update the following structured fields where evidence exists:
+After every message from the mentee, analyse the full conversation history and extract or update the following fields into the correct working object.
+
+Working Profile fields:
 - Current role, company, years of experience
 - Education level and field
 - Career goals (short-term and long-term)
-- Specific challenge or problem they need help with
 - Communication style preference
 - Confidence level (1–5 inferred)
 - Clarity of need (high / medium / low)
 - Expected mentor type (hands-on / advisory / network)
 
-Only update fields when you have clear evidence. Do not infer beyond what is said.
+Working Engagement fields:
+- Specific challenge or problem to solve
+- Theme / domain of the ask
+- Target role or domain for mentor
+- Specific skills needed in mentor
+
+Scoring rules:
+- profile_completion_score: 0.0–1.0, threshold 0.80
+- engagement_completion_score: 0.0–1.0, threshold 0.85
+- For return users with complete profile: score engagement only
+
+When both thresholds are met, flag A3 to synthesise.
+Return rank_next_gap output alongside scores so A1 knows what to ask next.
 Return structured JSON only — no prose.`,
     model: "claude-haiku-4-5",
-    tools: ["extract_profile_fields", "update_working_profile", "infer_signals"],
+    tools: ["extract_profile_fields", "extract_engagement_fields", "update_working_profile", "update_working_engagement", "infer_signals", "score_profile_completion", "score_engagement_completion", "rank_next_gap"],
     accessTo: ["A3"],
     isPredefined: true,
     color: { bg: "bg-violet-50", border: "border-violet-200", badge: "bg-violet-600", text: "text-violet-700", dot: "bg-violet-500" },
   },
   {
     id: "agent-a3", shortId: "A3",
-    name: "Gap Analysis",
+    name: "Profile Synthesis Agent",
     role: "background",
-    roleLabel: "Background · decides what to ask next",
-    description: "Receives updated working profile from A2. Diffs against required schema. Ranks gaps by priority. Passes next question to A1 OR fires completion signal to A4 and A5.",
-    prompt: `You are a silent gap analysis agent. You never speak to the user.
+    roleLabel: "Fires once · at completion threshold ≥ 0.85",
+    description: "Takes the completed working profile at threshold (≥ 0.85). Writes the human-readable summary, formats the structured JSON, extracts mentor tags. Presents a summary card to the mentee for confirmation, then writes to DB and notifies the admin team.",
+    prompt: `You are a profile synthesis agent. You fire once when both working_profile and working_engagement have reached their completion thresholds.
 
-Given the current working profile state, identify what critical information is still missing for mentee–mentor matching.
+Using the completed working profile and working engagement JSON objects, produce:
 
-Priority order for missing fields:
-1. Specific challenge / scoped need (highest priority)
-2. Career goal clarity
-3. Preferred engagement style
-4. Availability and time zone
-5. Additional context (lowest priority)
+1. A 2–4 sentence human-readable summary for the WeDoGood matching team covering:
+   - Who the mentee is (role, background, career stage)
+   - What they are trying to achieve
+   - What specific challenge they need help with
+   - What kind of mentor would suit them best
+   Write in third person, professionally. Under 80 words.
 
-If all priority-1 through priority-3 fields are filled with high confidence, fire the completion signal.
-Otherwise, return the single next gap and a suggested question phrasing for A1 to use.`,
-    model: "claude-haiku-4-5",
-    tools: ["identify_missing_fields", "rank_next_gap", "check_completion_threshold"],
-    accessTo: ["A1", "A4", "A5"],
+2. Final structured JSON profile conforming exactly to the schema spec.
+
+3. 3–7 recommended mentor tags drawn from the canonical tag list only.
+
+4. A summary card in the mentee's language for them to confirm before DB write.
+
+Only write to DB after mentee confirms the summary card.`,
+    model: "claude-opus-4-5",
+    contextFiles: ["mentor_tags_canonical.json", "mentee_profile_schema.json"],
+    tools: ["generate_summary", "format_json_profile", "extract_mentor_tags", "write_to_db", "notify_matching_team", "send_confirmation"],
+    accessTo: [],
     isPredefined: true,
-    color: { bg: "bg-amber-50", border: "border-amber-200", badge: "bg-amber-600", text: "text-amber-700", dot: "bg-amber-500" },
+    color: { bg: "bg-blue-50", border: "border-blue-200", badge: "bg-blue-600", text: "text-blue-700", dot: "bg-blue-500" },
   },
   {
     id: "agent-a4", shortId: "A4",
-    name: "Profile Synthesis",
+    name: "Feedback Agent",
     role: "background",
-    roleLabel: "Fires once · at completion threshold",
-    description: "Takes completed working profile + full conversation. Writes 2–4 sentence human-readable summary for the matching team. Stores to DB.",
-    prompt: `You are a profile synthesis agent. You fire once when the mentee profile reaches completion threshold.
+    roleLabel: "Lightweight LLM · mandatory 5-question sequence",
+    description: "Uses a lightweight LLM with a tightly constrained system prompt. The prompt mandates all 5 questions, their sequence, and the required response options — but allows the phrasing and tone to vary naturally. The LLM cannot skip or reorder questions. Structured answers written directly to DB per question. Free text stored raw. Fires after session completion or cron 48hr after completion.",
+    prompt: `You are the feedback collection agent for WeDoGood mentoring sessions.
 
-Using the completed working profile JSON and the full conversation history, write a concise 2–4 sentence summary for the WeDoGood matching team.
+You must ask exactly 5 questions in order. You cannot skip or reorder them. The questions are loaded from the feedback_questions config.
 
-The summary should cover:
-- Who the mentee is (role, background)
-- What they are trying to achieve
-- What specific challenge they need help with
-- What kind of mentor would suit them best
+Rules:
+- Deliver one question at a time with chip response options
+- You MAY vary the phrasing and tone to feel natural (not robotic)
+- You CANNOT change the meaning, intent, or answer options of any question
+- Chip answers are written to DB exactly as received — no interpretation
+- Free text answers are stored verbatim — no summarising
+- After question 5 is answered, trigger the next session scheduling prompt
 
-Write in third person, professionally. Keep it under 80 words. This will be read by a human matcher.`,
-    model: "claude-opus-4-5",
-    tools: ["generate_summary", "write_summary_to_db"],
+Tone: Warm, brief, appreciative. The session just happened — keep it light.`,
+    model: "claude-haiku-4-5",
+    tools: ["get_feedback_questions", "send_feedback_question", "write_feedback_record", "update_session_status", "trigger_next_prompt"],
     accessTo: [],
     isPredefined: true,
-    color: { bg: "bg-orange-50", border: "border-orange-200", badge: "bg-orange-500", text: "text-orange-700", dot: "bg-orange-400" },
+    color: { bg: "bg-rose-50", border: "border-rose-200", badge: "bg-rose-700", text: "text-rose-700", dot: "bg-rose-500" },
   },
   {
     id: "agent-a5", shortId: "A5",
-    name: "JSON Formatter",
-    role: "background",
-    roleLabel: "Fires once · at completion threshold",
-    description: "Formats completed working profile into final structured JSON schema. Extracts recommended mentor tags. Stores to DB alongside summary.",
-    prompt: `You are a JSON formatting agent. You fire once when the mentee profile reaches completion threshold.
-
-Convert the completed working profile into the final structured JSON schema required for the matching engine. Ensure all fields conform to the schema spec exactly.
-
-Also extract 3–7 mentor skill/experience tags that would best serve this mentee based on their profile. Tags should be drawn from the canonical tag list only.
-
-Return only valid JSON. No prose, no markdown, no explanations.`,
-    model: "claude-sonnet-4-5",
-    contextFiles: ["mentor_tags_canonical.json"],
-    tools: ["format_json_profile", "extract_mentor_tags", "write_json_to_db"],
-    accessTo: [],
-    isPredefined: true,
-    color: { bg: "bg-green-50", border: "border-green-200", badge: "bg-green-600", text: "text-green-700", dot: "bg-green-500" },
-  },
-  {
-    id: "agent-a6", shortId: "A6",
-    name: "Feedback Agent",
+    name: "Support Escalation Agent",
     role: "rule-based",
-    roleLabel: "Rule-based · no LLM · state machine",
-    description: "Fixed sequence of 5 questions with chip options. Writes structured answer per question directly to DB. No inference. Free text stored raw. Triggers next session prompt on completion.",
+    roleLabel: "Rule-based · intercepts at any point in any workflow",
+    description: "Detects a support chip tap or support keyword in any conversation at any point. Creates a support ticket, sets human_takeover = true (silencing A1), notifies the admin team, and sends a holding message to the mentee. Admin joins the chat, types as 'Support team'. resolve_and_resume flips the flag back and A1 resumes.",
     prompt: `[Rule-based agent — no LLM inference used]
 
-This agent runs as a deterministic state machine. It does not use language model inference.
-
-Flow:
-1. Send question 1 with chip options → wait for response → write to DB → advance state
-2. Send question 2... (repeat for all 5 questions)
-3. On question 5 completion → trigger next session scheduling prompt via A1
-4. Free-text answers are stored verbatim with no interpretation
-
-Questions are loaded from the feedback_questions config. Do not deviate from the script.`,
-    model: "rule-based",
-    tools: ["get_feedback_questions", "write_feedback_record", "update_session_status"],
-    accessTo: ["A1"],
-    isPredefined: true,
-    color: { bg: "bg-teal-50", border: "border-teal-200", badge: "bg-teal-600", text: "text-teal-700", dot: "bg-teal-500" },
-  },
-  {
-    id: "agent-a7", shortId: "A7",
-    name: "Support Escalation",
-    role: "rule-based",
-    roleLabel: "Rule-based · creates ticket · always A1",
-    description: "Intercepts support chip or keyword. Creates ticket. Sets human_takeover = true on conversation. Notifies admins. Sends fixed holding message. Admin resolves and flips flag back.",
-    prompt: `[Rule-based agent — minimal LLM use]
-
-Trigger conditions (intercept from A1):
-- User taps "I need help" chip
-- Message contains keywords: help, problem, issue, complaint, stuck, wrong, error
+Trigger conditions (evaluated on every message before A1 responds):
+- User taps "I need help" / "Support" chip
+- Message contains any of: help, problem, issue, complaint, stuck, wrong, error, uncomfortable, unsafe, worried, scared
 
 On trigger:
-1. Extract conversation context snapshot
-2. Create support ticket with context
+1. Snapshot current conversation context
+2. Create support ticket with context snapshot
 3. Set human_takeover = true on conversation record
-4. Send fixed holding message: "I've flagged this for our team and someone will be in touch shortly. In the meantime, feel free to share any more details here."
-5. Notify admin team with ticket link
+4. Send fixed holding message: "I've flagged this for our support team and someone will be in touch shortly. Feel free to share any more details here in the meantime."
+5. Notify admin team with ticket link and urgency level
 
-Do not attempt to resolve the issue. Do not generate custom responses. Use fixed scripts only.`,
+Do not attempt to resolve the issue.
+Do not generate custom or dynamic responses.
+Use fixed scripts only.
+Admin uses admin_send_message to communicate with the mentee.
+resolve_and_resume flips human_takeover = false and signals A1 to resume.`,
     model: "rule-based",
-    tools: ["create_support_ticket", "set_human_takeover", "notify_admin_team"],
+    tools: ["create_support_ticket", "set_human_takeover", "notify_admin_team", "send_holding_message", "admin_send_message", "resolve_and_resume"],
     accessTo: ["A1"],
     isPredefined: true,
-    color: { bg: "bg-rose-50", border: "border-rose-200", badge: "bg-rose-600", text: "text-rose-700", dot: "bg-rose-500" },
+    color: { bg: "bg-orange-50", border: "border-orange-200", badge: "bg-orange-600", text: "text-orange-700", dot: "bg-orange-500" },
   },
 ]
 
@@ -284,7 +280,7 @@ const WORKFLOWS: Workflow[] = [
     name: "Mentee Onboarding",
     purpose: "Guide a new mentee from first message through completed profile and mentor matching.",
     trigger: "New mentee sends first WhatsApp message",
-    agentChain: ["A1", "A2", "A3", "A4", "A5"],
+    agentChain: ["A1", "A2", "A3"],
     status: "Active",
     isPredefined: true,
   },
@@ -293,7 +289,7 @@ const WORKFLOWS: Workflow[] = [
     name: "Post-Session Feedback",
     purpose: "Collect structured feedback after each mentoring session and schedule the next.",
     trigger: "Session marked 'completed' in system",
-    agentChain: ["A1", "A6"],
+    agentChain: ["A1", "A4"],
     status: "Active",
     isPredefined: true,
   },
@@ -302,7 +298,7 @@ const WORKFLOWS: Workflow[] = [
     name: "Support Escalation",
     purpose: "Intercept distress signals and hand off to a human admin immediately.",
     trigger: "Support keyword or chip detected in any message",
-    agentChain: ["A1", "A7"],
+    agentChain: ["A1", "A5"],
     status: "Active",
     isPredefined: true,
   },
@@ -316,7 +312,11 @@ const ROLE_META: Record<AgentRole, { label: string; color: string }> = {
 
 // ─── Agent Card ───────────────────────────────────────────────────────────────
 
-function AgentCard({ agent, onClick }: { agent: Agent; onClick: () => void }) {
+function AgentCard({ agent, onClick, onDelete }: {
+  agent: Agent
+  onClick: () => void
+  onDelete?: (id: string) => void
+}) {
   return (
     <div
       onClick={onClick}
@@ -332,6 +332,14 @@ function AgentCard({ agent, onClick }: { agent: Agent; onClick: () => void }) {
         </div>
         <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
           {agent.isPredefined && <Lock className="w-3 h-3 text-gray-400" />}
+          {!agent.isPredefined && onDelete && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onDelete(agent.id) }}
+              className="p-0.5 rounded hover:text-red-500 text-gray-400 transition-colors"
+              title="Delete agent">
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          )}
           <ChevronRight className="w-3.5 h-3.5 text-gray-400" />
         </div>
       </div>
@@ -347,11 +355,13 @@ function AgentCard({ agent, onClick }: { agent: Agent; onClick: () => void }) {
 
 // ─── Agent Detail Pane ────────────────────────────────────────────────────────
 
-function AgentPane({ agent, agents, onClose, onSave }: {
+function AgentPane({ agent, agents, onClose, onSave, onDelete, onRestoreDefault }: {
   agent: Agent
   agents: Agent[]
   onClose: () => void
   onSave: (id: string, updates: Partial<Agent>) => void
+  onDelete?: (id: string) => void
+  onRestoreDefault?: (id: string) => void
 }) {
   const [editing, setEditing] = useState(false)
   const [prompt, setPrompt] = useState(agent.prompt)
@@ -576,20 +586,35 @@ function AgentPane({ agent, agents, onClose, onSave }: {
       </div>
 
       {/* Footer */}
-      <div className="px-5 py-4 border-t border-gray-100 flex gap-2">
+      <div className="px-5 py-4 border-t border-gray-100 space-y-2">
         {editing ? (
-          <>
+          <div className="flex gap-2">
             <Button variant="outline" size="sm" className="flex-1" onClick={handleReset}>
               <RotateCcw className="w-3.5 h-3.5 mr-1" /> Discard
             </Button>
             <Button size="sm" className="flex-1" onClick={handleSave}>
               <Save className="w-3.5 h-3.5 mr-1" /> Save Changes
             </Button>
-          </>
+          </div>
         ) : (
-          <Button variant="outline" size="sm" className="flex-1" onClick={() => setEditing(true)}>
+          <Button variant="outline" size="sm" className="w-full" onClick={() => setEditing(true)}>
             <Pencil className="w-3.5 h-3.5 mr-1" /> Edit Agent
           </Button>
+        )}
+        {/* Per-agent restore (predefined) or delete (custom) */}
+        {agent.isPredefined && onRestoreDefault && !editing && (
+          <button
+            onClick={() => onRestoreDefault(agent.id)}
+            className="flex items-center gap-1.5 text-xs text-amber-600 hover:text-amber-700 border border-amber-200 hover:border-amber-300 px-3 py-1.5 rounded-lg transition-colors w-full justify-center">
+            <RotateCcw className="w-3.5 h-3.5" /> Restore to Default
+          </button>
+        )}
+        {!agent.isPredefined && onDelete && (
+          <button
+            onClick={() => onDelete(agent.id)}
+            className="flex items-center gap-1.5 text-xs text-red-500 hover:text-red-600 border border-red-200 hover:border-red-300 px-3 py-1.5 rounded-lg transition-colors w-full justify-center">
+            <Trash2 className="w-3.5 h-3.5" /> Delete Agent
+          </button>
         )}
       </div>
     </div>
@@ -1126,12 +1151,26 @@ export default function AIAgents() {
     setWorkflows((prev) => prev.filter((w) => w.id !== wfId))
   }
 
-  const [showRestoreConfirm, setShowRestoreConfirm] = useState(false)
-  const handleRestoreDefaults = () => {
-    setAgents(AGENTS)
-    setWorkflows(WORKFLOWS)
-    setSelectedAgent(null)
-    setShowRestoreConfirm(false)
+  const [restoreTargetId, setRestoreTargetId] = useState<string | null>(null)
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null)
+
+  const handleRestoreDefault = (id: string) => setRestoreTargetId(id)
+  const confirmRestoreDefault = () => {
+    if (!restoreTargetId) return
+    const original = AGENTS.find(a => a.id === restoreTargetId)
+    if (original) {
+      setAgents(prev => prev.map(a => a.id === restoreTargetId ? { ...original } : a))
+      setSelectedAgent({ ...original })
+    }
+    setRestoreTargetId(null)
+  }
+
+  const handleDeleteAgent = (id: string) => setDeleteTargetId(id)
+  const confirmDeleteAgent = () => {
+    if (!deleteTargetId) return
+    setAgents(prev => prev.filter(a => a.id !== deleteTargetId))
+    if (selectedAgent?.id === deleteTargetId) setSelectedAgent(null)
+    setDeleteTargetId(null)
   }
 
   const tabs: { id: Tab; label: string; icon: typeof Bot }[] = [
@@ -1162,11 +1201,6 @@ export default function AIAgents() {
                   <Plus className="w-4 h-4 mr-1" /> New Agent
                 </Button>
               )}
-              <button
-                onClick={() => setShowRestoreConfirm(true)}
-                className="flex items-center gap-1.5 text-xs text-gray-500 border border-gray-200 hover:border-amber-300 hover:text-amber-600 px-2.5 py-1.5 rounded-lg transition-colors">
-                <RefreshCw className="w-3.5 h-3.5" /> Restore Defaults
-              </button>
             </div>
           </div>
 
@@ -1221,6 +1255,7 @@ export default function AIAgents() {
                     key={agent.id}
                     agent={agent}
                     onClick={() => setSelectedAgent(agent)}
+                    onDelete={handleDeleteAgent}
                   />
                 ))}
               </div>
@@ -1250,6 +1285,8 @@ export default function AIAgents() {
           agents={agents}
           onClose={() => setSelectedAgent(null)}
           onSave={handleSaveAgent}
+          onDelete={handleDeleteAgent}
+          onRestoreDefault={handleRestoreDefault}
         />
       )}
 
@@ -1278,27 +1315,57 @@ export default function AIAgents() {
         />
       )}
 
-      {showRestoreConfirm && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl w-[420px] p-6">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-9 h-9 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
-                <RefreshCw className="w-4 h-4 text-amber-600" />
+      {/* Restore single agent to default */}
+      {restoreTargetId && (() => {
+        const a = agents.find(x => x.id === restoreTargetId)
+        return (
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-xl shadow-xl w-[420px] p-6">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-9 h-9 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
+                  <RotateCcw className="w-4 h-4 text-amber-600" />
+                </div>
+                <h2 className="font-semibold text-gray-900">Restore {a?.name} to Default?</h2>
               </div>
-              <h2 className="font-semibold text-gray-900">Restore to Defaults?</h2>
-            </div>
-            <p className="text-sm text-gray-600 mb-5">
-              This will reset <strong>all agents</strong> and <strong>all workflows</strong> back to their original definitions. Any custom agents or workflows you've created will be removed, and all edits to predefined agents will be reverted.
-            </p>
-            <div className="flex gap-2">
-              <Button variant="outline" className="flex-1" onClick={() => setShowRestoreConfirm(false)}>Cancel</Button>
-              <Button className="flex-1 bg-amber-500 hover:bg-amber-600 text-white" onClick={handleRestoreDefaults}>
-                Yes, Restore Defaults
-              </Button>
+              <p className="text-sm text-gray-600 mb-5">
+                This will reset <strong>{a?.shortId} — {a?.name}</strong> back to its original prompt, tools, model, and configuration. Any edits you've made to this agent will be lost.
+              </p>
+              <div className="flex gap-2">
+                <Button variant="outline" className="flex-1" onClick={() => setRestoreTargetId(null)}>Cancel</Button>
+                <Button className="flex-1 bg-amber-500 hover:bg-amber-600 text-white" onClick={confirmRestoreDefault}>
+                  Yes, Restore Default
+                </Button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      })()}
+
+      {/* Delete custom agent confirm */}
+      {deleteTargetId && (() => {
+        const a = agents.find(x => x.id === deleteTargetId)
+        return (
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-xl shadow-xl w-[420px] p-6">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-9 h-9 rounded-full bg-red-100 flex items-center justify-center shrink-0">
+                  <Trash2 className="w-4 h-4 text-red-500" />
+                </div>
+                <h2 className="font-semibold text-gray-900">Delete {a?.name}?</h2>
+              </div>
+              <p className="text-sm text-gray-600 mb-5">
+                <strong>{a?.shortId} — {a?.name}</strong> will be permanently deleted. Any workflows that reference this agent will need to be updated manually.
+              </p>
+              <div className="flex gap-2">
+                <Button variant="outline" className="flex-1" onClick={() => setDeleteTargetId(null)}>Cancel</Button>
+                <Button className="flex-1 bg-red-500 hover:bg-red-600 text-white" onClick={confirmDeleteAgent}>
+                  Yes, Delete Agent
+                </Button>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
     </div>
   )
 }

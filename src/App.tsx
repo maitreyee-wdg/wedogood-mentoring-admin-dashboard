@@ -3,7 +3,6 @@ import Layout from "@/components/Layout"
 
 // Volunteers
 import VolunteersList from "@/pages/volunteers/index"
-import MentorsList from "@/pages/volunteers/Mentors"
 import VolunteersComms from "@/pages/volunteers/Comms"
 
 // Groups
@@ -34,7 +33,6 @@ export default function App() {
 
           {/* Volunteers */}
           <Route path="/volunteers" element={<VolunteersList />} />
-          <Route path="/volunteers/mentors" element={<MentorsList />} />
           <Route path="/volunteers/comms" element={<VolunteersComms />} />
 
           {/* Groups */}

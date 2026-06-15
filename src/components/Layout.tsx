@@ -7,24 +7,23 @@ const sections = [
   {
     label: "Volunteers",
     items: [
-      { to: "/volunteers", label: "Registrations", icon: Users, end: true },
-      { to: "/volunteers/mentors", label: "Mentors", icon: UserCheck, end: false },
-      { to: "/volunteers/comms", label: "Mentor WA Comms", icon: MessageSquare, end: false },
+      { to: "/volunteers", label: "Volunteers", icon: Users, end: true },
+      { to: "/groups/volunteer-groups", label: "Volunteer Groups", icon: Layers, end: false },
+      { to: "/volunteers/comms", label: "Volunteer WA Comms", icon: MessageSquare, end: false },
     ],
   },
   {
-    label: "Groups",
+    label: "Programs & Orgs",
     items: [
-      { to: "/groups/volunteer-groups", label: "Volunteer Groups", icon: Layers, end: false },
-      { to: "/groups/mentee-groups", label: "Mentee Groups", icon: FolderKanban, end: false },
+      { to: "/groups/programs", label: "All Programs", icon: BookOpen, end: false },
       { to: "/groups/organizations", label: "Organizations", icon: Building2, end: false },
-      { to: "/groups/programs", label: "Programs", icon: BookOpen, end: false },
     ],
   },
   {
     label: "Mentees",
     items: [
       { to: "/mentees", label: "Mentees", icon: UserCircle, end: true },
+      { to: "/groups/mentee-groups", label: "Mentee Groups", icon: FolderKanban, end: false },
       { to: "/mentees/active-requests", label: "Active Engagements", icon: UserCheck, end: false },
       { to: "/mentees/all-requests", label: "All Engagements", icon: Layers, end: false },
       { to: "/mentees/comms", label: "Mentee WA Comms", icon: MessageSquare, end: false },
