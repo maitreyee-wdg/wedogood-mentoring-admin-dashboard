@@ -16,6 +16,7 @@ import MenteesList from "@/pages/mentees/index"
 import ActiveRequests from "@/pages/mentees/ActiveRequests"
 import AllRequests from "@/pages/mentees/AllRequests"
 import MenteesComms from "@/pages/mentees/Comms"
+import AIChatPage from "@/pages/mentees/AIChat"
 
 // Flow
 import AIAgents from "@/pages/flow/AIAgents"
@@ -46,6 +47,7 @@ export default function App() {
           <Route path="/mentees/active-requests" element={<ActiveRequests />} />
           <Route path="/mentees/all-requests" element={<AllRequests />} />
           <Route path="/mentees/comms" element={<MenteesComms />} />
+          <Route path="/mentees/ai-chat" element={<AIChatPage />} />
 
           {/* Flow */}
           <Route path="/flow/ai-agents" element={<AIAgents />} />

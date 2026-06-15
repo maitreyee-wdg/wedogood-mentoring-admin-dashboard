@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react"
+import { useState, useMemo, useRef } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -7,8 +7,334 @@ import { mockVolunteers, mentorGroups, type Volunteer, type OrientationStatus } 
 import {
   Search, Plus, X, ChevronUp, ChevronDown, MoreVertical,
   Star, MessageSquare, RefreshCw, Archive, Users, Pencil,
-  Briefcase, Mail, Phone, Link, FileText, CheckSquare,
+  Upload, Download, FileSpreadsheet,
 } from "lucide-react"
+import { VolunteerPane } from "@/components/VolunteerSidePane"
+
+// ── CSV template ──────────────────────────────────────────────────────────────
+
+const VOL_CSV_HEADERS = [
+  "name", "currentRole", "currentCompany", "totalYearsExp",
+  "skills", "volunteeringType", "interestedIn", "preferredLanguages",
+  "mentorGroup",
+  "currentCity", "currentState",
+  "whatsapp", "email", "officialEmail", "linkedin",
+]
+
+const VOL_CSV_EXAMPLE = [
+  "Rahul Mehta", "HR Business Partner", "Infosys", "8",
+  "Resume Writing;Interview Prep;Career Guidance", "Mentoring",
+  "College students/Fresh graduates;0-4 years experience", "English;Hindi",
+  "HR & People",
+  "Bengaluru", "Karnataka",
+  "+91 98765 11001", "rahul@gmail.com", "rahul@infosys.com", "linkedin.com/in/rahulmehta",
+]
+
+function downloadVolCSVTemplate() {
+  const rows = [VOL_CSV_HEADERS.join(","), VOL_CSV_EXAMPLE.map(v => `"${v}"`).join(",")]
+  const blob = new Blob([rows.join("\n")], { type: "text/csv" })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement("a")
+  a.href = url
+  a.download = "volunteers_template.csv"
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
+// ── Upload CSV Modal ──────────────────────────────────────────────────────────
+
+function UploadCSVModal({ onClose }: { onClose: () => void }) {
+  const inputRef = useRef<HTMLInputElement>(null)
+  const [file, setFile] = useState<File | null>(null)
+  const [dragging, setDragging] = useState(false)
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    setDragging(false)
+    const f = e.dataTransfer.files[0]
+    if (f && f.name.endsWith(".csv")) setFile(f)
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl shadow-xl w-[500px]">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+          <div>
+            <h2 className="font-semibold text-gray-900">Upload Volunteers via CSV</h2>
+            <p className="text-xs text-gray-500 mt-0.5">Import multiple mentor profiles at once</p>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X className="w-4 h-4" /></button>
+        </div>
+
+        <div className="px-5 py-5 space-y-4">
+          <div className="bg-blue-50 border border-blue-100 rounded-lg p-4">
+            <div className="flex items-start gap-3">
+              <FileSpreadsheet className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="text-sm font-medium text-blue-900">Step 1 — Download the template</p>
+                <p className="text-xs text-blue-700 mt-0.5">
+                  Fill in the CSV with one volunteer per row. Use semicolons to separate multiple values in Skills, Interested In, and Languages columns.
+                </p>
+                <button
+                  onClick={downloadVolCSVTemplate}
+                  className="mt-2 flex items-center gap-1.5 text-xs font-medium text-blue-700 border border-blue-300 bg-white hover:bg-blue-50 px-3 py-1.5 rounded-lg transition-colors"
+                >
+                  <Download className="w-3.5 h-3.5" /> Download Template CSV
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <p className="text-sm font-medium text-gray-700 mb-2">Step 2 — Upload your filled CSV</p>
+            <div
+              onDragOver={(e) => { e.preventDefault(); setDragging(true) }}
+              onDragLeave={() => setDragging(false)}
+              onDrop={handleDrop}
+              onClick={() => inputRef.current?.click()}
+              className={`border-2 border-dashed rounded-xl p-8 flex flex-col items-center justify-center gap-2 cursor-pointer transition-colors ${
+                dragging ? "border-blue-400 bg-blue-50" : file ? "border-green-400 bg-green-50" : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
+              }`}
+            >
+              <Upload className={`w-7 h-7 ${file ? "text-green-500" : "text-gray-300"}`} />
+              {file ? (
+                <div className="text-center">
+                  <p className="text-sm font-medium text-green-700">{file.name}</p>
+                  <p className="text-xs text-green-600">{(file.size / 1024).toFixed(1)} KB · ready to import</p>
+                </div>
+              ) : (
+                <div className="text-center">
+                  <p className="text-sm text-gray-600">Drop your CSV here, or <span className="text-blue-600 font-medium">browse</span></p>
+                  <p className="text-xs text-gray-400 mt-1">Only .csv files are accepted</p>
+                </div>
+              )}
+              <input ref={inputRef} type="file" accept=".csv" className="hidden"
+                onChange={e => { const f = e.target.files?.[0]; if (f) setFile(f) }} />
+            </div>
+            {file && (
+              <button onClick={() => setFile(null)} className="mt-1.5 text-xs text-gray-400 hover:text-red-500 flex items-center gap-1 transition-colors">
+                <X className="w-3 h-3" /> Remove file
+              </button>
+            )}
+          </div>
+
+          <details className="text-xs text-gray-500">
+            <summary className="cursor-pointer font-medium text-gray-600 hover:text-gray-800">View expected columns</summary>
+            <div className="mt-2 flex flex-wrap gap-1">
+              {VOL_CSV_HEADERS.map(h => (
+                <span key={h} className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded font-mono">{h}</span>
+              ))}
+            </div>
+          </details>
+        </div>
+
+        <div className="flex gap-2 px-5 py-4 border-t border-gray-100">
+          <Button variant="outline" className="flex-1" onClick={onClose}>Cancel</Button>
+          <Button className="flex-1" disabled={!file}>
+            <Upload className="w-3.5 h-3.5" /> Import {file ? "Volunteers" : ""}
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Add Volunteer Modal ───────────────────────────────────────────────────────
+
+const FIELD_CLS = "w-full text-sm border border-gray-200 rounded-lg px-3 py-2 outline-none focus:border-blue-400 bg-white"
+const LABEL_CLS = "text-xs font-medium text-gray-500 uppercase tracking-wide block mb-1"
+const SECTION_CLS = "space-y-3"
+const SECTION_TITLE_CLS = "text-xs font-semibold text-gray-400 uppercase tracking-wide border-b border-gray-100 pb-1"
+
+interface VolFormData {
+  name: string
+  currentRole: string; currentCompany: string; totalYearsExp: string
+  skills: string
+  volunteeringType: "Mentoring" | "Projects" | "Both"
+  interestedIn: string
+  preferredLanguages: string
+  group: string
+  currentCity: string; currentState: string
+  whatsapp: string; email: string; officialEmail: string; linkedin: string
+}
+
+const EMPTY_VOL: VolFormData = {
+  name: "",
+  currentRole: "", currentCompany: "", totalYearsExp: "0",
+  skills: "",
+  volunteeringType: "Mentoring",
+  interestedIn: "",
+  preferredLanguages: "",
+  group: "",
+  currentCity: "", currentState: "",
+  whatsapp: "", email: "", officialEmail: "", linkedin: "",
+}
+
+function AddVolunteerModal({ onSave, onClose }: { onSave: (v: Volunteer) => void; onClose: () => void }) {
+  const [form, setForm] = useState<VolFormData>(EMPTY_VOL)
+  const set = (k: keyof VolFormData, v: string) => setForm(p => ({ ...p, [k]: v }))
+
+  const canSave = form.name.trim() && form.whatsapp.trim()
+
+  const handleSave = () => {
+    if (!canSave) return
+    const splitSemi = (s: string) => s.split(";").map(x => x.trim()).filter(Boolean)
+    const newVol: Volunteer = {
+      id: `VOL-${String(Date.now()).slice(-4)}`,
+      name: form.name.trim(),
+      currentRole: form.currentRole.trim() || "—",
+      currentCompany: form.currentCompany.trim() || "—",
+      totalYearsExp: parseFloat(form.totalYearsExp) || 0,
+      pastExperience: [],
+      skills: splitSemi(form.skills),
+      volunteeringType: form.volunteeringType,
+      interestedIn: splitSemi(form.interestedIn) as Volunteer["interestedIn"],
+      mentoringRating: 0,
+      projectsRating: 0,
+      rating: 0,
+      group: form.group || "—",
+      preferredLanguages: splitSemi(form.preferredLanguages),
+      hometown: { city: "", state: "", country: "India" },
+      currentLocation: { city: form.currentCity.trim(), state: form.currentState.trim(), country: "India" },
+      whatsapp: form.whatsapp.trim(),
+      email: form.email.trim(),
+      officialEmail: form.officialEmail.trim(),
+      linkedin: form.linkedin.trim() || "—",
+      status: "Orientation Pending",
+      orientationStatus: "Orientation Pending",
+      signedUpDate: new Date().toISOString().split("T")[0],
+      engagementStatus: "Not Engaged",
+      availability: "Available",
+      pastRequests: [],
+      activeProjects: [],
+      pastProjects: [],
+    }
+    onSave(newVol)
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl shadow-xl w-[600px] max-h-[90vh] flex flex-col">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
+          <div>
+            <h2 className="font-semibold text-gray-900">Add New Volunteer</h2>
+            <p className="text-xs text-gray-500 mt-0.5">Fill in the mentor's profile details</p>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X className="w-4 h-4" /></button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-5 py-5 space-y-6">
+
+          {/* Basic Info */}
+          <div className={SECTION_CLS}>
+            <p className={SECTION_TITLE_CLS}>Basic Info</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="col-span-2">
+                <label className={LABEL_CLS}>Full Name *</label>
+                <input className={FIELD_CLS} placeholder="e.g. Rahul Mehta" value={form.name} onChange={e => set("name", e.target.value)} />
+              </div>
+              <div>
+                <label className={LABEL_CLS}>Current Role</label>
+                <input className={FIELD_CLS} placeholder="e.g. HR Business Partner" value={form.currentRole} onChange={e => set("currentRole", e.target.value)} />
+              </div>
+              <div>
+                <label className={LABEL_CLS}>Company</label>
+                <input className={FIELD_CLS} placeholder="e.g. Infosys" value={form.currentCompany} onChange={e => set("currentCompany", e.target.value)} />
+              </div>
+              <div>
+                <label className={LABEL_CLS}>Total Years of Experience</label>
+                <input className={FIELD_CLS} type="number" min="0" step="1" placeholder="0" value={form.totalYearsExp} onChange={e => set("totalYearsExp", e.target.value)} />
+              </div>
+              <div>
+                <label className={LABEL_CLS}>Preferred Languages <span className="font-normal normal-case text-gray-400">(semicolons)</span></label>
+                <input className={FIELD_CLS} placeholder="e.g. English; Hindi" value={form.preferredLanguages} onChange={e => set("preferredLanguages", e.target.value)} />
+              </div>
+              <div>
+                <label className={LABEL_CLS}>City</label>
+                <input className={FIELD_CLS} placeholder="e.g. Bengaluru" value={form.currentCity} onChange={e => set("currentCity", e.target.value)} />
+              </div>
+              <div>
+                <label className={LABEL_CLS}>State</label>
+                <input className={FIELD_CLS} placeholder="e.g. Karnataka" value={form.currentState} onChange={e => set("currentState", e.target.value)} />
+              </div>
+            </div>
+          </div>
+
+          {/* Contact */}
+          <div className={SECTION_CLS}>
+            <p className={SECTION_TITLE_CLS}>Contact</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className={LABEL_CLS}>WhatsApp *</label>
+                <input className={FIELD_CLS} placeholder="+91 98765 11001" value={form.whatsapp} onChange={e => set("whatsapp", e.target.value)} />
+              </div>
+              <div>
+                <label className={LABEL_CLS}>Personal Email</label>
+                <input className={FIELD_CLS} type="email" placeholder="volunteer@gmail.com" value={form.email} onChange={e => set("email", e.target.value)} />
+              </div>
+              <div>
+                <label className={LABEL_CLS}>Official Email</label>
+                <input className={FIELD_CLS} type="email" placeholder="volunteer@company.com" value={form.officialEmail} onChange={e => set("officialEmail", e.target.value)} />
+              </div>
+              <div>
+                <label className={LABEL_CLS}>LinkedIn</label>
+                <input className={FIELD_CLS} placeholder="linkedin.com/in/username" value={form.linkedin} onChange={e => set("linkedin", e.target.value)} />
+              </div>
+            </div>
+          </div>
+
+          {/* Mentor Group */}
+          <div className={SECTION_CLS}>
+            <p className={SECTION_TITLE_CLS}>Mentor Group</p>
+            <div>
+              <label className={LABEL_CLS}>Group</label>
+              <select className={FIELD_CLS} value={form.group} onChange={e => set("group", e.target.value)}>
+                <option value="">— Select a group —</option>
+                {mentorGroups.map(g => <option key={g}>{g}</option>)}
+              </select>
+            </div>
+          </div>
+
+          {/* Volunteering Preferences */}
+          <div className={SECTION_CLS}>
+            <p className={SECTION_TITLE_CLS}>Volunteering Preferences</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className={LABEL_CLS}>Volunteering Type</label>
+                <select className={FIELD_CLS} value={form.volunteeringType} onChange={e => set("volunteeringType", e.target.value)}>
+                  <option>Mentoring</option>
+                  <option>Projects</option>
+                  <option>Both</option>
+                </select>
+              </div>
+              <div>
+                <label className={LABEL_CLS}>Interested in Mentoring <span className="font-normal normal-case text-gray-400">(semicolons)</span></label>
+                <input className={FIELD_CLS} placeholder="e.g. College students/Fresh graduates" value={form.interestedIn} onChange={e => set("interestedIn", e.target.value)} />
+              </div>
+            </div>
+          </div>
+
+          {/* Skills */}
+          <div className={SECTION_CLS}>
+            <p className={SECTION_TITLE_CLS}>Skills</p>
+            <div>
+              <label className={LABEL_CLS}>Skills <span className="font-normal normal-case text-gray-400">(separate with semicolons)</span></label>
+              <input className={FIELD_CLS} placeholder="e.g. Resume Writing; Interview Prep; Career Guidance" value={form.skills} onChange={e => set("skills", e.target.value)} />
+            </div>
+          </div>
+
+        </div>
+
+        <div className="flex gap-2 px-5 py-4 border-t border-gray-100 shrink-0">
+          <Button variant="outline" className="flex-1" onClick={onClose}>Cancel</Button>
+          <Button className="flex-1" disabled={!canSave} onClick={handleSave}>
+            <Plus className="w-3.5 h-3.5" /> Add Volunteer
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -54,6 +380,8 @@ export default function Volunteers() {
   const [drawerMentor, setDrawerMentor] = useState<Volunteer | null>(null)
   const [drawerTab, setDrawerTab] = useState<"profile" | "orientation" | "requests" | "ratings">("profile")
   const [bulkActionOpen, setBulkActionOpen] = useState(false)
+  const [showUploadCSV, setShowUploadCSV] = useState(false)
+  const [showAddVolunteer, setShowAddVolunteer] = useState(false)
 
   // ── filter + sort ──
   const filtered = useMemo(() => {
@@ -136,8 +464,12 @@ export default function Volunteers() {
             <p className="text-sm text-gray-500 mt-0.5">Manage mentor profiles, orientation and engagements</p>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm">Upload CSV</Button>
-            <Button size="sm"><Plus className="w-4 h-4" />Add Mentor</Button>
+            <Button variant="outline" size="sm" onClick={() => setShowUploadCSV(true)}>
+              <Upload className="w-4 h-4" />Upload CSV
+            </Button>
+            <Button size="sm" onClick={() => setShowAddVolunteer(true)}>
+              <Plus className="w-4 h-4" />Add Mentor
+            </Button>
           </div>
         </div>
 
@@ -319,260 +651,19 @@ export default function Volunteers() {
 
       {/* ── DRAWER ── */}
       {drawerMentor && (
-        <div className="w-96 border-l border-gray-200 bg-white flex flex-col overflow-hidden">
-          {/* Drawer header */}
-          <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 shrink-0">
-            <p className="font-semibold text-gray-900 text-sm">Mentor Profile</p>
-            <button onClick={() => setDrawerMentor(null)} className="text-gray-400 hover:text-gray-600">
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-
-          {/* Avatar + name */}
-          <div className="px-5 py-4 border-b border-gray-100 shrink-0">
-            <div className="flex items-start gap-3">
-              <div className="w-12 h-12 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-lg font-bold shrink-0">
-                {drawerMentor.name.split(" ").map((n) => n[0]).join("")}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-semibold text-gray-900">{drawerMentor.name}</p>
-                <p className="text-xs text-gray-500">{drawerMentor.currentRole} · {drawerMentor.currentCompany}</p>
-                <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                  <StarRating value={drawerMentor.rating} />
-                  <span className="text-xs text-gray-400">·</span>
-                  <Badge variant={drawerMentor.engagementStatus === "Active" ? "success" : "secondary"}>
-                    {drawerMentor.engagementStatus}
-                  </Badge>
-                  <Badge variant={drawerMentor.availability === "Available" ? "success" : "warning"}>
-                    {drawerMentor.availability}
-                  </Badge>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Tabs */}
-          <div className="flex border-b border-gray-200 shrink-0">
-            {(["profile", "orientation", "requests", "ratings"] as const).map((tab) => (
-              <button key={tab} onClick={() => setDrawerTab(tab)}
-                className={`flex-1 py-2.5 text-xs font-medium capitalize transition-colors ${drawerTab === tab ? "border-b-2 border-blue-600 text-blue-600" : "text-gray-500 hover:text-gray-700"}`}>
-                {tab}
-              </button>
-            ))}
-          </div>
-
-          {/* Tab content */}
-          <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5 text-sm">
-
-            {/* ── PROFILE TAB ── */}
-            {drawerTab === "profile" && (
-              <>
-                <DrawerSection label="Current Position">
-                  <div className="flex items-start gap-2">
-                    <Briefcase className="w-4 h-4 text-gray-400 mt-0.5 shrink-0" />
-                    <div>
-                      <p className="text-gray-900 font-medium">{drawerMentor.currentRole}</p>
-                      <p className="text-gray-500 text-xs">{drawerMentor.currentCompany} · {drawerMentor.totalYearsExp} yrs total exp</p>
-                    </div>
-                  </div>
-                </DrawerSection>
-
-                <DrawerSection label="Past Experience">
-                  <div className="space-y-2">
-                    {drawerMentor.pastExperience.map((e, i) => (
-                      <div key={i} className="flex items-start gap-2">
-                        <div className="w-1.5 h-1.5 rounded-full bg-gray-300 mt-1.5 shrink-0" />
-                        <div>
-                          <p className="text-gray-800 font-medium text-xs">{e.role}</p>
-                          <p className="text-gray-500 text-xs">{e.company} · {e.duration}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </DrawerSection>
-
-                <DrawerSection label="Skills">
-                  <div className="flex flex-wrap gap-1.5">
-                    {drawerMentor.skills.map((s) => (
-                      <span key={s} className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">{s}</span>
-                    ))}
-                  </div>
-                </DrawerSection>
-
-                <DrawerSection label="Interested in Mentoring">
-                  <div className="flex flex-wrap gap-1.5">
-                    {drawerMentor.interestedIn.map((i) => (
-                      <span key={i} className="text-xs bg-green-50 text-green-700 px-2 py-0.5 rounded-full">{i}</span>
-                    ))}
-                  </div>
-                </DrawerSection>
-
-                <DrawerSection label="Mentor Group">
-                  <span className="text-xs bg-purple-50 text-purple-700 px-2 py-0.5 rounded-full font-medium">{drawerMentor.group}</span>
-                </DrawerSection>
-
-                <DrawerSection label="Contact">
-                  <div className="space-y-1.5">
-                    <div className="flex items-center gap-2 text-gray-700 text-xs">
-                      <Phone className="w-3.5 h-3.5 text-gray-400" />{drawerMentor.whatsapp}
-                    </div>
-                    <div className="flex items-center gap-2 text-gray-700 text-xs">
-                      <Mail className="w-3.5 h-3.5 text-gray-400" />{drawerMentor.email}
-                    </div>
-                    <div className="flex items-center gap-2 text-gray-700 text-xs">
-                      <Mail className="w-3.5 h-3.5 text-gray-400" />{drawerMentor.officialEmail}
-                      <span className="text-gray-400">(official)</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-blue-600 text-xs">
-                      <Link className="w-3.5 h-3.5" />
-                      <a href={`https://${drawerMentor.linkedin}`} target="_blank" rel="noreferrer" className="hover:underline truncate">
-                        {drawerMentor.linkedin}
-                      </a>
-                    </div>
-                    {drawerMentor.resume ? (
-                      <div className="flex items-center gap-2 text-blue-600 text-xs">
-                        <FileText className="w-3.5 h-3.5" />
-                        <a href={drawerMentor.resume} target="_blank" rel="noreferrer" className="hover:underline">View Resume</a>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-2 text-gray-400 text-xs">
-                        <FileText className="w-3.5 h-3.5" />Resume not uploaded
-                      </div>
-                    )}
-                  </div>
-                </DrawerSection>
-              </>
-            )}
-
-            {/* ── ORIENTATION TAB ── */}
-            {drawerTab === "orientation" && (
-              <>
-                <DrawerSection label="Current Status">
-                  <Badge variant={orientationVariant[drawerMentor.orientationStatus]}>
-                    {drawerMentor.orientationStatus}
-                    {drawerMentor.orientationDate && ` · ${drawerMentor.orientationDate}`}
-                  </Badge>
-                </DrawerSection>
-                <DrawerSection label="Update Status">
-                  <Select defaultValue={drawerMentor.orientationStatus} className="w-full text-xs">
-                    <option>Orientation Pending</option>
-                    <option>Orientation Slot Booked</option>
-                    <option>Orientation Done</option>
-                    <option>Orientation Rescheduled</option>
-                  </Select>
-                  <Button size="sm" className="mt-2 w-full">Save Status</Button>
-                </DrawerSection>
-              </>
-            )}
-
-            {/* ── REQUESTS TAB ── */}
-            {drawerTab === "requests" && (
-              <>
-                <DrawerSection label="Active Request">
-                  {drawerMentor.activeRequest ? (
-                    <div className="bg-green-50 border border-green-200 rounded-lg p-3 space-y-1">
-                      <p className="text-xs font-semibold text-green-800">{drawerMentor.activeRequest.id}</p>
-                      <p className="text-xs text-green-700">Mentee: <strong>{drawerMentor.activeRequest.menteeName}</strong></p>
-                      <p className="text-xs text-green-700">Skill: {drawerMentor.activeRequest.skill}</p>
-                      <p className="text-xs text-gray-500">Since {drawerMentor.activeRequest.startedAt}</p>
-                    </div>
-                  ) : (
-                    <p className="text-xs text-gray-400 italic">No active request</p>
-                  )}
-                </DrawerSection>
-
-                <DrawerSection label={`Past Requests (${drawerMentor.pastRequests.length})`}>
-                  {drawerMentor.pastRequests.length === 0 ? (
-                    <p className="text-xs text-gray-400 italic">No past requests</p>
-                  ) : (
-                    <div className="space-y-3">
-                      {drawerMentor.pastRequests.map((r) => (
-                        <div key={r.id} className="bg-gray-50 border border-gray-200 rounded-lg p-3 space-y-1">
-                          <p className="text-xs font-semibold text-gray-700">{r.id}</p>
-                          <p className="text-xs text-gray-700">Mentee: <strong>{r.menteeName}</strong></p>
-                          <p className="text-xs text-gray-600">Skill: {r.skill}</p>
-                          <p className="text-xs text-gray-400">Closed: {r.closedAt}</p>
-                          {r.feedback && (
-                            <p className="text-xs text-gray-600 italic mt-1">"{r.feedback}"</p>
-                          )}
-                          {r.rating && (
-                            <div className="flex items-center gap-1 mt-1">
-                              <Star className="w-3 h-3 text-yellow-400 fill-yellow-400" />
-                              <span className="text-xs text-gray-600">{r.rating}/5</span>
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </DrawerSection>
-              </>
-            )}
-
-            {/* ── RATINGS TAB ── */}
-            {drawerTab === "ratings" && (
-              <>
-                <DrawerSection label="Overall Rating">
-                  <div className="flex items-center gap-3">
-                    <div className="text-4xl font-bold text-gray-900">{drawerMentor.rating.toFixed(1)}</div>
-                    <div>
-                      <div className="flex gap-0.5">
-                        {[1, 2, 3, 4, 5].map((i) => (
-                          <Star key={i} className={`w-4 h-4 ${i <= Math.round(drawerMentor.rating) ? "text-yellow-400 fill-yellow-400" : "text-gray-200 fill-gray-200"}`} />
-                        ))}
-                      </div>
-                      <p className="text-xs text-gray-400 mt-0.5">Avg of {drawerMentor.pastRequests.filter((r) => r.rating).length + (drawerMentor.activeRequest ? 0 : 0)} ratings</p>
-                    </div>
-                  </div>
-                </DrawerSection>
-
-                <DrawerSection label="Ratings by Mentee">
-                  {drawerMentor.pastRequests.filter((r) => r.rating).length === 0 ? (
-                    <p className="text-xs text-gray-400 italic">No ratings yet</p>
-                  ) : (
-                    <div className="space-y-2">
-                      {drawerMentor.pastRequests.filter((r) => r.rating).map((r) => (
-                        <div key={r.id} className="flex items-start justify-between gap-2">
-                          <div>
-                            <p className="text-xs font-medium text-gray-800">{r.menteeName}</p>
-                            {r.feedback && <p className="text-xs text-gray-500 italic">"{r.feedback}"</p>}
-                          </div>
-                          <div className="flex items-center gap-1 shrink-0">
-                            <Star className="w-3.5 h-3.5 text-yellow-400 fill-yellow-400" />
-                            <span className="text-xs font-medium">{r.rating}</span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </DrawerSection>
-              </>
-            )}
-          </div>
-
-          {/* Drawer footer */}
-          <div className="px-5 py-4 border-t border-gray-100 flex gap-2 shrink-0">
-            <Button size="sm" className="flex-1">
-              <Pencil className="w-3.5 h-3.5" />Edit Profile
-            </Button>
-            <Button size="sm" variant="outline">
-              <MessageSquare className="w-3.5 h-3.5" />Message
-            </Button>
-            <Button size="sm" variant="outline">
-              <CheckSquare className="w-3.5 h-3.5" />Orientation
-            </Button>
-          </div>
-        </div>
+        <VolunteerPane volunteer={drawerMentor} onClose={() => setDrawerMentor(null)} />
       )}
-    </div>
-  )
-}
 
-function DrawerSection({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1.5">{label}</p>
-      {children}
+      {showUploadCSV && (
+        <UploadCSVModal onClose={() => setShowUploadCSV(false)} />
+      )}
+
+      {showAddVolunteer && (
+        <AddVolunteerModal
+          onSave={(v) => { setVolunteers(prev => [v, ...prev]); setShowAddVolunteer(false) }}
+          onClose={() => setShowAddVolunteer(false)}
+        />
+      )}
     </div>
   )
 }

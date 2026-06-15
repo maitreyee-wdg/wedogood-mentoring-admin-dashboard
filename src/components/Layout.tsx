@@ -1,6 +1,6 @@
 import { NavLink } from "react-router-dom"
 import { cn } from "@/lib/utils"
-import { Heart, Users, UserCircle, MessageSquare, Layers, Building2, CalendarClock, UserCheck, FolderKanban, BrainCircuit, AlertTriangle, BookOpen } from "lucide-react"
+import { Heart, Users, UserCircle, MessageSquare, Layers, Building2, CalendarClock, UserCheck, FolderKanban, BrainCircuit, AlertTriangle, BookOpen, Bot } from "lucide-react"
 import { mockEscalations } from "@/data/escalationsData"
 
 const sections = [
@@ -27,6 +27,7 @@ const sections = [
       { to: "/mentees/active-requests", label: "Active Engagements", icon: UserCheck, end: false },
       { to: "/mentees/all-requests", label: "All Engagements", icon: Layers, end: false },
       { to: "/mentees/comms", label: "Mentee WA Comms", icon: MessageSquare, end: false },
+      { to: "/mentees/ai-chat", label: "AI Chat", icon: Bot, end: false },
     ],
   },
   {

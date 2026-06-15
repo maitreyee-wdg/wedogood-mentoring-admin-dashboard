@@ -1,16 +1,19 @@
-import { useState, useRef, useEffect, useMemo } from "react"
+import { useState, useRef, useEffect } from "react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import {
   mockMenteeContacts, mockConversations, commsTemplates, mockMenteeLogs,
   type CommContact, type ChatMessage, type CommTemplate, type CommLog,
 } from "@/data/commsData"
-import { mockEscalations } from "@/data/escalationsData"
+import { mockMentees } from "@/data/menteesData"
+import { MenteePane } from "@/components/MenteeSidePane"
 import {
-  Search, Send, ChevronDown, Check, CheckCheck, MessageSquare,
-  ClipboardList, Plus, X, CheckCircle2, AlertCircle, ShieldAlert,
-  PauseCircle, Bot, Circle, Loader2, Filter,
+  Search, Send, Check, CheckCheck, MessageSquare,
+  ClipboardList, Plus, X, CheckCircle2, AlertCircle,
+  PauseCircle, Bot,
+  LayoutTemplate, ImagePlus, Bold,
 } from "lucide-react"
+import { TemplatePickerModal, TemplatesView } from "@/components/WaTemplateComponents"
 
 // ─── Create Template Modal ────────────────────────────────────────────────────
 
@@ -71,7 +74,6 @@ function CreateTemplateModal({
               ))}
             </div>
           </div>
-          {/* Preview */}
           {message && (
             <div>
               <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-2">Preview</label>
@@ -174,26 +176,13 @@ export default function MenteesComms() {
   const [activeContactId, setActiveContactId] = useState<string | null>(contacts[0]?.id ?? null)
   const [search, setSearch] = useState("")
   const [message, setMessage] = useState("")
-  const [showTemplates, setShowTemplates] = useState(false)
-  const [templateTab, setTemplateTab] = useState<"generic" | "engagement">("generic")
+  const [showTemplatePicker, setShowTemplatePicker] = useState(false)
+  const [showProfile, setShowProfile] = useState(false)
   const [templates, setTemplates] = useState<CommTemplate[]>(commsTemplates)
   const [showCreateTemplate, setShowCreateTemplate] = useState(false)
-  const [view, setView] = useState<"chat" | "logs" | "escalation">("chat")
-  const [escStatusFilter, setEscStatusFilter] = useState<"All" | "Open" | "In Progress">("All")
+  const [view, setView] = useState<"chat" | "logs" | "templates">("chat")
   const [humanTakeover, setHumanTakeover] = useState<Record<string, boolean>>({})
 
-  // Mentee escalations — only Open + In Progress, from real data
-  const menteeEscs = useMemo(() => {
-    const active = mockEscalations.filter(
-      e => e.personType === "Mentee" && e.status !== "Resolved"
-    )
-    if (escStatusFilter === "All") return active
-    return active.filter(e => e.status === escStatusFilter)
-  }, [escStatusFilter])
-
-  const openCount   = mockEscalations.filter(e => e.personType === "Mentee" && e.status === "Open").length
-  const inProgCount = mockEscalations.filter(e => e.personType === "Mentee" && e.status === "In Progress").length
-  const activeEscCount = openCount + inProgCount
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const isHT = humanTakeover[activeContactId ?? ""] ?? false
@@ -214,12 +203,13 @@ export default function MenteesComms() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [activeMessages.length])
 
-  const sendMessage = () => {
-    if (!message.trim() || !activeContactId) return
+  const sendMessage = (text?: string) => {
+    const body = text ?? message
+    if (!body.trim() || !activeContactId) return
     const newMsg: ChatMessage = {
       id: `msg-${Date.now()}`,
       type: "sent",
-      text: message.trim(),
+      text: body.trim(),
       timestamp: new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }),
       status: "sent",
     }
@@ -227,12 +217,7 @@ export default function MenteesComms() {
       ...prev,
       [activeContactId]: [...(prev[activeContactId] ?? []), newMsg],
     }))
-    setMessage("")
-  }
-
-  const insertTemplate = (msg: string) => {
-    setMessage(msg)
-    setShowTemplates(false)
+    if (!text) setMessage("")
   }
 
   const ngoColor: Record<string, string> = {
@@ -298,15 +283,10 @@ export default function MenteesComms() {
               <ClipboardList className="w-3.5 h-3.5" /> Logs
             </button>
             <button
-              onClick={() => setView("escalation")}
-              className={`flex items-center gap-1.5 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${view === "escalation" ? "border-orange-500 text-orange-600" : "border-transparent text-gray-500 hover:text-gray-700"}`}
+              onClick={() => setView("templates")}
+              className={`flex items-center gap-1.5 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${view === "templates" ? "border-blue-600 text-blue-600" : "border-transparent text-gray-500 hover:text-gray-700"}`}
             >
-              <ShieldAlert className="w-3.5 h-3.5" /> Escalations
-              {activeEscCount > 0 && (
-                <span className="ml-0.5 px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-700 text-[10px] font-bold leading-none">
-                  {activeEscCount}
-                </span>
-              )}
+              <LayoutTemplate className="w-3.5 h-3.5" /> Templates
             </button>
           </div>
           {view === "chat" && activeContact && (
@@ -318,7 +298,6 @@ export default function MenteesComms() {
                 <p className="font-semibold text-gray-900 text-sm">{activeContact.name}</p>
                 <p className="text-xs text-gray-500">{activeContact.role} · {activeContact.phone}</p>
               </div>
-              {/* Human takeover toggle */}
               <button
                 onClick={toggleHT}
                 title={isHT ? "Mira is paused. Click to resume." : "Mira is handling this chat. Click to take over."}
@@ -331,140 +310,35 @@ export default function MenteesComms() {
                 {isHT ? <PauseCircle className="w-3.5 h-3.5" /> : <Bot className="w-3.5 h-3.5" />}
                 {isHT ? "Human Takeover" : "Mira Active"}
               </button>
-              <div className="relative ml-1" onClick={(e) => e.stopPropagation()}>
-                <Button variant="outline" size="sm" onClick={() => setShowTemplates((o) => !o)}>
-                  <MessageSquare className="w-3.5 h-3.5" /> Templates <ChevronDown className="w-3 h-3 ml-1" />
-                </Button>
-                {showTemplates && (
-                  <div className="absolute right-0 top-10 z-30 bg-white border border-gray-200 rounded-xl shadow-xl w-80">
-                    <div className="flex border-b border-gray-200 px-1 pt-1">
-                      {(["generic", "engagement"] as const).map((tab) => (
-                        <button key={tab} onClick={() => setTemplateTab(tab)}
-                          className={`flex-1 py-2 text-xs font-medium capitalize rounded-t-lg ${templateTab === tab ? "bg-blue-50 text-blue-700" : "text-gray-500 hover:text-gray-700"}`}>
-                          {tab === "generic" ? "Generic" : "Engagement"}
-                        </button>
-                      ))}
-                    </div>
-                    <div className="p-2 space-y-1 max-h-64 overflow-y-auto">
-                      {templates.filter((t) => t.category === templateTab).map((t) => (
-                        <button key={t.id} onClick={() => insertTemplate(t.message)}
-                          className="w-full text-left px-3 py-2 rounded-lg hover:bg-gray-50">
-                          <div className="flex items-center gap-1.5">
-                            <p className="text-xs font-medium text-gray-800">{t.label}</p>
-                            {t.isCustom && <span className="text-[10px] bg-purple-50 text-purple-600 px-1 rounded">custom</span>}
-                          </div>
-                          <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">{t.message}</p>
-                        </button>
-                      ))}
-                    </div>
-                    <div className="px-2 pb-2 border-t border-gray-100 pt-2">
-                      <button
-                        onClick={() => { setShowTemplates(false); setShowCreateTemplate(true) }}
-                        className="w-full flex items-center justify-center gap-1.5 text-xs text-blue-600 hover:bg-blue-50 py-1.5 rounded-lg transition-colors font-medium"
-                      >
-                        <Plus className="w-3.5 h-3.5" /> Create new template
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
             </div>
           )}
         </div>
 
-        {/* Content */}
-        {view === "escalation" ? (
-          <div className="flex-1 overflow-y-auto p-5 space-y-3">
-            {/* header + filter */}
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-semibold text-gray-900">Mentee Escalations</p>
-                <p className="text-xs text-gray-500 mt-0.5">
-                  {openCount} open · {inProgCount} in progress
-                </p>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <Filter className="w-3.5 h-3.5 text-gray-400" />
-                {(["All", "Open", "In Progress"] as const).map(s => (
-                  <button
-                    key={s}
-                    onClick={() => setEscStatusFilter(s)}
-                    className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
-                      escStatusFilter === s
-                        ? "bg-orange-50 border-orange-300 text-orange-700"
-                        : "border-gray-200 text-gray-500 hover:bg-gray-50"
-                    }`}
-                  >
-                    {s}
-                  </button>
-                ))}
-              </div>
+        {/* Clickable contact name strip */}
+        {activeContact && (
+          <button
+            onClick={() => setShowProfile(true)}
+            className="flex items-center gap-2 px-5 py-2 border-b border-gray-100 bg-white hover:bg-gray-50 transition-colors text-left shrink-0"
+          >
+            <div className="w-5 h-5 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-[10px] font-bold shrink-0">
+              {activeContact.name.split(" ").map(n => n[0]).join("")}
             </div>
+            <span className="text-xs font-medium text-blue-600 hover:underline">{activeContact.name}</span>
+            <span className="text-xs text-gray-400">— click to view profile</span>
+          </button>
+        )}
 
-            {menteeEscs.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-16 text-gray-400">
-                <CheckCircle2 className="w-7 h-7 mb-2 text-gray-300" />
-                <p className="text-sm">No active escalations for mentees</p>
-              </div>
-            ) : menteeEscs.map(esc => {
-              const priBar = esc.priority === "High" ? "bg-orange-400" : esc.priority === "Medium" ? "bg-yellow-400" : "bg-gray-300"
-              const SIcon = esc.status === "In Progress" ? Loader2 : Circle
-              const statusCls = esc.status === "In Progress" ? "bg-blue-50 text-blue-700" : "bg-gray-100 text-gray-700"
-              return (
-                <div key={esc.id} className="bg-white border border-gray-200 rounded-xl p-4 space-y-2.5">
-                  <div className="flex items-start gap-2.5">
-                    <div className={`w-1 self-stretch rounded-full shrink-0 ${priBar}`} />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-2">
-                        <div>
-                          <p className="text-sm font-semibold text-gray-900">{esc.personName}</p>
-                          <p className="text-xs text-gray-400 mt-0.5 font-mono">{esc.id}</p>
-                        </div>
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${statusCls}`}>
-                            <SIcon className="w-3 h-3" />{esc.status}
-                          </span>
-                          <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${esc.priority === "High" ? "bg-orange-50 text-orange-700" : esc.priority === "Medium" ? "bg-yellow-50 text-yellow-700" : "bg-gray-100 text-gray-500"}`}>
-                            {esc.priority}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="mt-1.5 flex flex-wrap gap-1.5 text-xs">
-                        <span className="bg-sky-50 text-sky-700 px-2 py-0.5 rounded-full font-medium">{esc.category}</span>
-                        {esc.personNGO && <span className="text-gray-400">{esc.personNGO}</span>}
-                        {esc.linkedEngagementId && <span className="font-mono text-blue-500">{esc.linkedEngagementId}</span>}
-                        {esc.assignedTo && <span className="text-gray-400">→ {esc.assignedTo}</span>}
-                      </div>
-                    </div>
-                  </div>
-                  {esc.summary && (
-                    <p className="text-xs text-gray-600 leading-relaxed pl-3.5 border-l-2 border-gray-200">
-                      {esc.summary}
-                    </p>
-                  )}
-                  <div className="flex gap-2 pt-0.5">
-                    <button
-                      onClick={() => { setActiveContactId(contacts.find(c => c.name === esc.personName)?.id ?? null); setView("chat") }}
-                      className="text-xs font-medium px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors"
-                    >
-                      View Chat
-                    </button>
-                    <a
-                      href="/escalations"
-                      className="text-xs font-medium px-3 py-1.5 rounded-lg border border-orange-200 text-orange-700 hover:bg-orange-50 transition-colors"
-                    >
-                      Open Ticket
-                    </a>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
+        {/* Content */}
+        {view === "templates" ? (
+          <TemplatesView
+            templates={templates}
+            onCreateTemplate={() => setShowCreateTemplate(true)}
+          />
         ) : view === "logs" ? (
           <LogsView logs={mockMenteeLogs} />
         ) : activeContact ? (
           <>
-            <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3 bg-gray-50" onClick={() => setShowTemplates(false)}>
+            <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3 bg-gray-50">
               {isHT && (
                 <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 sticky top-0 z-10">
                   <PauseCircle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
@@ -486,16 +360,38 @@ export default function MenteesComms() {
               ))}
               <div ref={messagesEndRef} />
             </div>
+            {/* Chat input bar */}
             <div className="px-5 py-4 border-t border-gray-200 bg-white shrink-0">
-              <div className="flex gap-3">
+              <div className="flex items-center gap-2">
+                {/* 3 action icons */}
+                <button
+                  onClick={() => setShowTemplatePicker(true)}
+                  title="Select Template"
+                  className="w-9 h-9 rounded-xl border border-gray-200 text-gray-500 hover:text-blue-600 hover:border-blue-300 hover:bg-blue-50 flex items-center justify-center transition-colors shrink-0"
+                >
+                  <LayoutTemplate className="w-4 h-4" />
+                </button>
+                <button
+                  title="Attach Image"
+                  className="w-9 h-9 rounded-xl border border-gray-200 text-gray-500 hover:text-gray-700 hover:bg-gray-50 flex items-center justify-center transition-colors shrink-0"
+                >
+                  <ImagePlus className="w-4 h-4" />
+                </button>
+                <button
+                  title="Format"
+                  className="w-9 h-9 rounded-xl border border-gray-200 text-gray-500 hover:text-gray-700 hover:bg-gray-50 flex items-center justify-center transition-colors shrink-0"
+                >
+                  <Bold className="w-4 h-4" />
+                </button>
+                {/* Text input */}
                 <input
                   className="flex-1 text-sm border border-gray-200 rounded-xl px-4 py-2.5 outline-none focus:border-blue-400"
                   placeholder="Type a message…" value={message}
                   onChange={(e) => setMessage(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && sendMessage()}
                 />
-                <button onClick={sendMessage} disabled={!message.trim()}
-                  className="w-10 h-10 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-200 disabled:text-gray-400 text-white rounded-xl flex items-center justify-center transition-colors">
+                <button onClick={() => sendMessage()} disabled={!message.trim()}
+                  className="w-10 h-10 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-200 disabled:text-gray-400 text-white rounded-xl flex items-center justify-center transition-colors shrink-0">
                   <Send className="w-4 h-4" />
                 </button>
               </div>
@@ -511,12 +407,27 @@ export default function MenteesComms() {
         )}
       </div>
 
+      {showTemplatePicker && (
+        <TemplatePickerModal
+          templates={templates}
+          onClose={() => setShowTemplatePicker(false)}
+          onSend={(msg) => sendMessage(msg)}
+        />
+      )}
+
       {showCreateTemplate && (
         <CreateTemplateModal
           onSave={(t) => { setTemplates((prev) => [...prev, t]); setShowCreateTemplate(false) }}
           onClose={() => setShowCreateTemplate(false)}
         />
       )}
+
+      {showProfile && activeContact && (() => {
+        const mentee = mockMentees.find(m => m.name === activeContact.name)
+        return mentee ? (
+          <MenteePane mentee={mentee} onClose={() => setShowProfile(false)} />
+        ) : null
+      })()}
     </div>
   )
 }

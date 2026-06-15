@@ -1,291 +1,359 @@
-import { useState, useMemo } from "react"
+import { useState, useMemo, useRef } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select } from "@/components/ui/select"
-import { mockMentees, ngoGroups, type Mentee, type EngagementStatus } from "@/data/menteesData"
-import { mockRequests, ACTIVE_STATUSES, type MentoringRequest } from "@/data/requestsData"
-import {
-  Search, Plus, X, Users, MapPin, BookOpen, Globe, Target,
-  Phone, Mail, Link, Star, Briefcase, GraduationCap, FileText,
-} from "lucide-react"
+import { mockMentees, ngoGroups, type Mentee } from "@/data/menteesData"
+import { mockRequests, ACTIVE_STATUSES } from "@/data/requestsData"
+import { Search, Plus, Users, BookOpen, Download, Upload, X, FileSpreadsheet } from "lucide-react"
+import { MenteePane, StarDisplay, statusVariant, ngoColor } from "@/components/MenteeSidePane"
 
-// ── badge helpers ─────────────────────────────────────────────────────────────
+// ── CSV template columns (must match Mentee fields the importer will read) ────
+const CSV_HEADERS = [
+  "name", "gender", "age", "isStudent",
+  "beneficiaryGroup",
+  "currentRole", "currentCompany", "totalYearsExp",
+  "educationLevel", "educationDegree", "educationInstitute", "educationYear",
+  "skills", "goals", "language", "location",
+  "whatsapp", "email", "linkedin",
+]
 
-const statusVariant: Record<EngagementStatus, "success" | "warning" | "secondary" | "outline"> = {
-  "Active": "success",
-  "Pending Match": "warning",
-  "Closed": "secondary",
-  "On Hold": "outline",
+const CSV_EXAMPLE_ROW = [
+  "Priya Sharma", "Female", "18", "true",
+  "Akanksha — Batch 2026",
+  "Student", "—", "0",
+  "12th Grade", "Science", "St. Xavier's School, Mumbai", "2026",
+  "Excel;Communication;English", "Career Clarity;Job Readiness", "English", "Mumbai",
+  "+91 98765 00001", "priya@gmail.com", "linkedin.com/in/priya",
+]
+
+function downloadCSVTemplate() {
+  const rows = [CSV_HEADERS.join(","), CSV_EXAMPLE_ROW.map(v => `"${v}"`).join(",")]
+  const blob = new Blob([rows.join("\n")], { type: "text/csv" })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement("a")
+  a.href = url
+  a.download = "mentees_template.csv"
+  a.click()
+  URL.revokeObjectURL(url)
 }
 
-const ngoColor: Record<string, string> = {
-  "Akanksha Foundation": "bg-blue-100 text-blue-700",
-  "NavGurukul": "bg-green-100 text-green-700",
-  "Parivarthan": "bg-purple-100 text-purple-700",
-}
+// ── Upload CSV Modal ──────────────────────────────────────────────────────────
 
-function StarDisplay({ value }: { value: number }) {
-  if (!value) return <span className="text-xs text-gray-400 italic">Unrated</span>
+function UploadCSVModal({ onClose }: { onClose: () => void }) {
+  const inputRef = useRef<HTMLInputElement>(null)
+  const [file, setFile] = useState<File | null>(null)
+  const [dragging, setDragging] = useState(false)
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    setDragging(false)
+    const f = e.dataTransfer.files[0]
+    if (f && f.name.endsWith(".csv")) setFile(f)
+  }
+
   return (
-    <span className="flex items-center gap-1">
-      <Star className="w-3 h-3 text-yellow-400 fill-yellow-400" />
-      <span className="text-xs font-medium text-gray-700">{value.toFixed(1)}</span>
-    </span>
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl shadow-xl w-[500px]">
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+          <div>
+            <h2 className="font-semibold text-gray-900">Upload Mentees via CSV</h2>
+            <p className="text-xs text-gray-500 mt-0.5">Import multiple mentee profiles at once</p>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X className="w-4 h-4" /></button>
+        </div>
+
+        <div className="px-5 py-5 space-y-4">
+          {/* Step 1 — download template */}
+          <div className="bg-blue-50 border border-blue-100 rounded-lg p-4">
+            <div className="flex items-start gap-3">
+              <FileSpreadsheet className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="text-sm font-medium text-blue-900">Step 1 — Download the template</p>
+                <p className="text-xs text-blue-700 mt-0.5">
+                  Fill in the CSV with one mentee per row. Use semicolons to separate multiple values in Skills and Goals columns.
+                </p>
+                <button
+                  onClick={downloadCSVTemplate}
+                  className="mt-2 flex items-center gap-1.5 text-xs font-medium text-blue-700 border border-blue-300 bg-white hover:bg-blue-50 px-3 py-1.5 rounded-lg transition-colors"
+                >
+                  <Download className="w-3.5 h-3.5" /> Download Template CSV
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Step 2 — upload */}
+          <div>
+            <p className="text-sm font-medium text-gray-700 mb-2">Step 2 — Upload your filled CSV</p>
+            <div
+              onDragOver={(e) => { e.preventDefault(); setDragging(true) }}
+              onDragLeave={() => setDragging(false)}
+              onDrop={handleDrop}
+              onClick={() => inputRef.current?.click()}
+              className={`border-2 border-dashed rounded-xl p-8 flex flex-col items-center justify-center gap-2 cursor-pointer transition-colors ${
+                dragging ? "border-blue-400 bg-blue-50" : file ? "border-green-400 bg-green-50" : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
+              }`}
+            >
+              <Upload className={`w-7 h-7 ${file ? "text-green-500" : "text-gray-300"}`} />
+              {file ? (
+                <div className="text-center">
+                  <p className="text-sm font-medium text-green-700">{file.name}</p>
+                  <p className="text-xs text-green-600">{(file.size / 1024).toFixed(1)} KB · ready to import</p>
+                </div>
+              ) : (
+                <div className="text-center">
+                  <p className="text-sm text-gray-600">Drop your CSV here, or <span className="text-blue-600 font-medium">browse</span></p>
+                  <p className="text-xs text-gray-400 mt-1">Only .csv files are accepted</p>
+                </div>
+              )}
+              <input ref={inputRef} type="file" accept=".csv" className="hidden"
+                onChange={e => { const f = e.target.files?.[0]; if (f) setFile(f) }} />
+            </div>
+            {file && (
+              <button onClick={() => setFile(null)} className="mt-1.5 text-xs text-gray-400 hover:text-red-500 flex items-center gap-1 transition-colors">
+                <X className="w-3 h-3" /> Remove file
+              </button>
+            )}
+          </div>
+
+          {/* Column reference */}
+          <details className="text-xs text-gray-500">
+            <summary className="cursor-pointer font-medium text-gray-600 hover:text-gray-800">View expected columns</summary>
+            <div className="mt-2 flex flex-wrap gap-1">
+              {CSV_HEADERS.map(h => (
+                <span key={h} className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded font-mono">{h}</span>
+              ))}
+            </div>
+          </details>
+        </div>
+
+        {/* Footer */}
+        <div className="flex gap-2 px-5 py-4 border-t border-gray-100">
+          <Button variant="outline" className="flex-1" onClick={onClose}>Cancel</Button>
+          <Button className="flex-1" disabled={!file}>
+            <Upload className="w-3.5 h-3.5" /> Import {file ? "Mentees" : ""}
+          </Button>
+        </div>
+      </div>
+    </div>
   )
 }
 
-// ── Profile Pane ─────────────────────────────────────────────────────────────
+// ── Add Mentee Modal ──────────────────────────────────────────────────────────
 
-function MenteePane({ mentee, onClose }: { mentee: Mentee; onClose: () => void }) {
-  const [tab, setTab] = useState<"profile" | "requests">("profile")
+const FIELD_CLS = "w-full text-sm border border-gray-200 rounded-lg px-3 py-2 outline-none focus:border-blue-400 bg-white"
+const LABEL_CLS = "text-xs font-medium text-gray-500 uppercase tracking-wide block mb-1"
+const SECTION_CLS = "space-y-3"
+const SECTION_TITLE_CLS = "text-xs font-semibold text-gray-400 uppercase tracking-wide border-b border-gray-100 pb-1"
 
-  const menteeRequests = mockRequests.filter((r) => r.menteeId === mentee.id)
-  const activeReqs = menteeRequests.filter((r) => ACTIVE_STATUSES.includes(r.status))
-  const pastReqs = menteeRequests.filter((r) => !ACTIVE_STATUSES.includes(r.status))
+interface MenteeFormData {
+  name: string; gender: "Male" | "Female" | "Other"; age: string; isStudent: boolean
+  group: string
+  currentRole: string; currentCompany: string; totalYearsExp: string
+  educationLevel: string; educationDegree: string; educationInstitute: string; educationYear: string
+  skills: string; goals: string; language: string; location: string
+  whatsapp: string; email: string; linkedin: string
+}
+
+const EMPTY_FORM: MenteeFormData = {
+  name: "", gender: "Female", age: "", isStudent: false,
+  group: "",
+  currentRole: "", currentCompany: "", totalYearsExp: "0",
+  educationLevel: "", educationDegree: "", educationInstitute: "", educationYear: "",
+  skills: "", goals: "", language: "", location: "",
+  whatsapp: "", email: "", linkedin: "",
+}
+
+function AddMenteeModal({ onSave, onClose }: { onSave: (m: Mentee) => void; onClose: () => void }) {
+  const [form, setForm] = useState<MenteeFormData>(EMPTY_FORM)
+  const set = (k: keyof MenteeFormData, v: string | boolean) => setForm(p => ({ ...p, [k]: v }))
+
+  const canSave = form.name.trim() && form.whatsapp
+
+  const handleSave = () => {
+    if (!canSave) return
+    const newMentee: Mentee = {
+      id: `MTE-${String(Date.now()).slice(-4)}`,
+      name: form.name.trim(),
+      gender: form.gender,
+      age: parseInt(form.age) || 0,
+      isStudent: form.isStudent,
+      ngo: "",
+      group: form.group.trim(),
+      currentRole: form.currentRole.trim() || (form.isStudent ? "Student" : "—"),
+      currentCompany: form.currentCompany.trim() || "—",
+      totalYearsExp: parseFloat(form.totalYearsExp) || 0,
+      pastExperience: [],
+      education: {
+        level: form.educationLevel.trim(),
+        degree: form.educationDegree.trim(),
+        institute: form.educationInstitute.trim(),
+        yearOfGraduation: form.educationYear.trim(),
+      },
+      skills: form.skills.split(";").map(s => s.trim()).filter(Boolean),
+      goals: form.goals.split(";").map(g => g.trim()).filter(Boolean),
+      rating: 0,
+      language: form.language.trim() || "English",
+      location: form.location.trim(),
+      scopedNeed: "Unsure — needs scoping",
+      knowsTheirNeed: false,
+      engagementStatus: "Pending Match",
+      joinedAt: new Date().toISOString().split("T")[0],
+      whatsapp: form.whatsapp.trim(),
+      email: form.email.trim(),
+      linkedin: form.linkedin.trim() || "—",
+    }
+    onSave(newMentee)
+  }
 
   return (
-    <div className="w-[420px] border-l border-gray-200 bg-white flex flex-col overflow-hidden shrink-0">
-      {/* Header */}
-      <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 shrink-0">
-        <p className="font-semibold text-gray-900 text-sm">Mentee Profile</p>
-        <div className="flex items-center gap-2">
-          <button className="text-xs text-blue-600 hover:text-blue-700 font-medium">Edit</button>
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl shadow-xl w-[600px] max-h-[90vh] flex flex-col">
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
+          <div>
+            <h2 className="font-semibold text-gray-900">Add New Mentee</h2>
+            <p className="text-xs text-gray-500 mt-0.5">Fill in the mentee's profile details</p>
+          </div>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X className="w-4 h-4" /></button>
         </div>
-      </div>
 
-      {/* Avatar + Name */}
-      <div className="px-5 py-4 border-b border-gray-100 shrink-0">
-        <div className="flex items-start gap-3">
-          <div className="w-12 h-12 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-lg font-bold shrink-0">
-            {mentee.name.split(" ").map((n) => n[0]).join("")}
+        {/* Scrollable body */}
+        <div className="flex-1 overflow-y-auto px-5 py-5 space-y-6">
+
+          {/* Basic Info */}
+          <div className={SECTION_CLS}>
+            <p className={SECTION_TITLE_CLS}>Basic Info</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="col-span-2">
+                <label className={LABEL_CLS}>Full Name *</label>
+                <input className={FIELD_CLS} placeholder="e.g. Priya Sharma" value={form.name} onChange={e => set("name", e.target.value)} />
+              </div>
+              <div>
+                <label className={LABEL_CLS}>Gender</label>
+                <select className={FIELD_CLS} value={form.gender} onChange={e => set("gender", e.target.value)}>
+                  <option>Female</option><option>Male</option><option>Other</option>
+                </select>
+              </div>
+              <div>
+                <label className={LABEL_CLS}>Age</label>
+                <input className={FIELD_CLS} type="number" min="10" max="60" placeholder="e.g. 22" value={form.age} onChange={e => set("age", e.target.value)} />
+              </div>
+              <div>
+                <label className={LABEL_CLS}>Location</label>
+                <input className={FIELD_CLS} placeholder="e.g. Mumbai" value={form.location} onChange={e => set("location", e.target.value)} />
+              </div>
+              <div>
+                <label className={LABEL_CLS}>Language</label>
+                <input className={FIELD_CLS} placeholder="e.g. English / Hindi" value={form.language} onChange={e => set("language", e.target.value)} />
+              </div>
+              <div className="col-span-2 flex items-center gap-2">
+                <input type="checkbox" id="isStudent" checked={form.isStudent} onChange={e => set("isStudent", e.target.checked)} className="w-4 h-4 accent-blue-600" />
+                <label htmlFor="isStudent" className="text-sm text-gray-700 cursor-pointer">Currently a student</label>
+              </div>
+            </div>
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="font-semibold text-gray-900">{mentee.name}</p>
-            <p className="text-xs text-gray-500">{mentee.id} · {mentee.gender} · Age {mentee.age}</p>
-            <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-              <Badge variant={statusVariant[mentee.engagementStatus]}>{mentee.engagementStatus}</Badge>
-              {mentee.isStudent && <span className="text-xs bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full font-medium">Student</span>}
-              <StarDisplay value={mentee.rating} />
+
+          {/* Contact */}
+          <div className={SECTION_CLS}>
+            <p className={SECTION_TITLE_CLS}>Contact</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className={LABEL_CLS}>WhatsApp *</label>
+                <input className={FIELD_CLS} placeholder="+91 98765 00001" value={form.whatsapp} onChange={e => set("whatsapp", e.target.value)} />
+              </div>
+              <div>
+                <label className={LABEL_CLS}>Email</label>
+                <input className={FIELD_CLS} type="email" placeholder="mentee@gmail.com" value={form.email} onChange={e => set("email", e.target.value)} />
+              </div>
+              <div className="col-span-2">
+                <label className={LABEL_CLS}>LinkedIn</label>
+                <input className={FIELD_CLS} placeholder="linkedin.com/in/username" value={form.linkedin} onChange={e => set("linkedin", e.target.value)} />
+              </div>
+            </div>
+          </div>
+
+          {/* Mentee Group */}
+          <div className={SECTION_CLS}>
+            <p className={SECTION_TITLE_CLS}>Mentee Group</p>
+            <div>
+              <label className={LABEL_CLS}>Group / Batch</label>
+              <select className={FIELD_CLS} value={form.group} onChange={e => set("group", e.target.value)}>
+                <option value="">— Select a group —</option>
+                <option>Akanksha — Batch 2026</option>
+                <option>NavGurukul — Cohort 11</option>
+                <option>NavGurukul — Cohort 12</option>
+                <option>Parivarthan — Batch 1</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Education */}
+          <div className={SECTION_CLS}>
+            <p className={SECTION_TITLE_CLS}>Education</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className={LABEL_CLS}>Level</label>
+                <input className={FIELD_CLS} placeholder="e.g. B.Tech, 12th Grade, MBA" value={form.educationLevel} onChange={e => set("educationLevel", e.target.value)} />
+              </div>
+              <div>
+                <label className={LABEL_CLS}>Degree / Stream</label>
+                <input className={FIELD_CLS} placeholder="e.g. Computer Science" value={form.educationDegree} onChange={e => set("educationDegree", e.target.value)} />
+              </div>
+              <div>
+                <label className={LABEL_CLS}>Institute</label>
+                <input className={FIELD_CLS} placeholder="e.g. VIT Pune" value={form.educationInstitute} onChange={e => set("educationInstitute", e.target.value)} />
+              </div>
+              <div>
+                <label className={LABEL_CLS}>Year of Graduation</label>
+                <input className={FIELD_CLS} placeholder="e.g. 2025" value={form.educationYear} onChange={e => set("educationYear", e.target.value)} />
+              </div>
+            </div>
+          </div>
+
+          {/* Current Position */}
+          <div className={SECTION_CLS}>
+            <p className={SECTION_TITLE_CLS}>Current Position</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className={LABEL_CLS}>Current Role</label>
+                <input className={FIELD_CLS} placeholder="e.g. Junior Developer" value={form.currentRole} onChange={e => set("currentRole", e.target.value)} />
+              </div>
+              <div>
+                <label className={LABEL_CLS}>Company / Organisation</label>
+                <input className={FIELD_CLS} placeholder="e.g. Infosys" value={form.currentCompany} onChange={e => set("currentCompany", e.target.value)} />
+              </div>
+              <div>
+                <label className={LABEL_CLS}>Total Years of Experience</label>
+                <input className={FIELD_CLS} type="number" min="0" step="0.5" placeholder="0" value={form.totalYearsExp} onChange={e => set("totalYearsExp", e.target.value)} />
+              </div>
+            </div>
+          </div>
+
+          {/* Skills & Goals */}
+          <div className={SECTION_CLS}>
+            <p className={SECTION_TITLE_CLS}>Skills & Goals</p>
+            <div>
+              <label className={LABEL_CLS}>Skills <span className="font-normal normal-case text-gray-400">(separate with semicolons)</span></label>
+              <input className={FIELD_CLS} placeholder="e.g. Excel; Communication; English" value={form.skills} onChange={e => set("skills", e.target.value)} />
+            </div>
+            <div>
+              <label className={LABEL_CLS}>Goals <span className="font-normal normal-case text-gray-400">(separate with semicolons)</span></label>
+              <input className={FIELD_CLS} placeholder="e.g. Career Clarity; Job Readiness" value={form.goals} onChange={e => set("goals", e.target.value)} />
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Tabs */}
-      <div className="flex border-b border-gray-200 shrink-0">
-        {(["profile", "requests"] as const).map((t) => (
-          <button key={t} onClick={() => setTab(t)}
-            className={`flex-1 py-2.5 text-xs font-medium capitalize ${tab === t ? "border-b-2 border-blue-600 text-blue-600" : "text-gray-500 hover:text-gray-700"}`}>
-            {t}{t === "requests" ? ` (${menteeRequests.length})` : ""}
-          </button>
-        ))}
-      </div>
-
-      {/* Tab Content */}
-      <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5 text-sm">
-
-        {/* ── PROFILE TAB ── */}
-        {tab === "profile" && (
-          <>
-            <PaneSection label="NGO & Group">
-              <div className="flex flex-col gap-1">
-                <span className={`text-xs font-medium px-2 py-0.5 rounded-full w-fit ${ngoColor[mentee.ngo] ?? "bg-gray-100 text-gray-700"}`}>{mentee.ngo}</span>
-                <span className="text-xs text-gray-600">{mentee.group}</span>
-              </div>
-            </PaneSection>
-
-            <PaneSection label="Current Role">
-              <div className="flex items-start gap-2">
-                <Briefcase className="w-4 h-4 text-gray-400 mt-0.5 shrink-0" />
-                <div>
-                  <p className="text-gray-900 font-medium">{mentee.currentRole}</p>
-                  {mentee.currentCompany !== "—" && <p className="text-gray-500 text-xs">{mentee.currentCompany} · {mentee.totalYearsExp} yr{mentee.totalYearsExp !== 1 ? "s" : ""} exp</p>}
-                </div>
-              </div>
-            </PaneSection>
-
-            {mentee.pastExperience.length > 0 && (
-              <PaneSection label="Past Experience">
-                <div className="space-y-2">
-                  {mentee.pastExperience.map((e, i) => (
-                    <div key={i} className="flex items-start gap-2">
-                      <div className="w-1.5 h-1.5 rounded-full bg-gray-300 mt-1.5 shrink-0" />
-                      <div>
-                        <p className="text-gray-800 font-medium text-xs">{e.role}</p>
-                        <p className="text-gray-500 text-xs">{e.company} · {e.duration}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </PaneSection>
-            )}
-
-            <PaneSection label="Education">
-              <div className="flex items-start gap-2">
-                <GraduationCap className="w-4 h-4 text-gray-400 mt-0.5 shrink-0" />
-                <div>
-                  <p className="text-gray-900 font-medium">{mentee.education.degree}</p>
-                  <p className="text-gray-500 text-xs">{mentee.education.institute}</p>
-                  <p className="text-gray-400 text-xs">{mentee.education.level} · {mentee.education.yearOfGraduation}</p>
-                </div>
-              </div>
-            </PaneSection>
-
-            {mentee.skills.length > 0 && (
-              <PaneSection label="Skills">
-                <div className="flex flex-wrap gap-1.5">
-                  {mentee.skills.map((s) => (
-                    <span key={s} className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">{s}</span>
-                  ))}
-                </div>
-              </PaneSection>
-            )}
-
-            <PaneSection label="Goals">
-              <div className="flex flex-wrap gap-1.5">
-                {mentee.goals.map((g) => (
-                  <span key={g} className="text-xs bg-green-50 text-green-700 px-2 py-0.5 rounded-full">{g}</span>
-                ))}
-              </div>
-            </PaneSection>
-
-            <PaneSection label="Scoped Need">
-              <div className="flex items-start gap-2">
-                <Target className="w-3.5 h-3.5 text-gray-400 mt-0.5 shrink-0" />
-                <div>
-                  <p className="text-gray-700">{mentee.scopedNeed}</p>
-                  {!mentee.knowsTheirNeed && (
-                    <p className="text-xs text-amber-600 mt-0.5">⚠ Needs scoping — share options based on goals</p>
-                  )}
-                </div>
-              </div>
-            </PaneSection>
-
-            <PaneSection label="Location & Language">
-              <div className="space-y-1">
-                <div className="flex items-center gap-1.5 text-xs text-gray-700">
-                  <MapPin className="w-3.5 h-3.5 text-gray-400" />{mentee.location}
-                </div>
-                <div className="flex items-center gap-1.5 text-xs text-gray-700">
-                  <Globe className="w-3.5 h-3.5 text-gray-400" />{mentee.language}
-                </div>
-              </div>
-            </PaneSection>
-
-            <PaneSection label="Contact">
-              <div className="space-y-1.5">
-                <div className="flex items-center gap-2 text-xs text-gray-700"><Phone className="w-3.5 h-3.5 text-gray-400" />{mentee.whatsapp}</div>
-                <div className="flex items-center gap-2 text-xs text-gray-700"><Mail className="w-3.5 h-3.5 text-gray-400" />{mentee.email}</div>
-                {mentee.linkedin !== "—" && (
-                  <div className="flex items-center gap-2 text-xs text-blue-600">
-                    <Link className="w-3.5 h-3.5" />
-                    <a href={`https://${mentee.linkedin}`} target="_blank" rel="noreferrer" className="hover:underline truncate">{mentee.linkedin}</a>
-                  </div>
-                )}
-                {mentee.resume ? (
-                  <div className="flex items-center gap-2 text-xs text-blue-600"><FileText className="w-3.5 h-3.5" /><a href={mentee.resume} target="_blank" rel="noreferrer" className="hover:underline">View Resume</a></div>
-                ) : (
-                  <div className="flex items-center gap-2 text-xs text-gray-400"><FileText className="w-3.5 h-3.5" />Resume not uploaded</div>
-                )}
-              </div>
-            </PaneSection>
-
-            <PaneSection label="Requests Summary">
-              <div className="flex gap-4 text-xs">
-                <div>
-                  <p className="text-gray-400">Total</p>
-                  <p className="font-semibold text-gray-800 mt-0.5">{menteeRequests.length}</p>
-                </div>
-                <div>
-                  <p className="text-gray-400">Active</p>
-                  <p className="font-semibold text-blue-600 mt-0.5">{activeReqs.length}</p>
-                </div>
-                <div>
-                  <p className="text-gray-400">Past</p>
-                  <p className="font-semibold text-gray-500 mt-0.5">{pastReqs.length}</p>
-                </div>
-              </div>
-            </PaneSection>
-
-            <PaneSection label="Joined">
-              <p className="text-xs text-gray-700">{new Date(mentee.joinedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</p>
-            </PaneSection>
-          </>
-        )}
-
-        {/* ── REQUESTS TAB ── */}
-        {tab === "requests" && (
-          <>
-            {activeReqs.length > 0 && (
-              <div>
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Active Requests</p>
-                <div className="space-y-2">
-                  {activeReqs.map((r) => <RequestCard key={r.id} req={r} />)}
-                </div>
-              </div>
-            )}
-
-            {pastReqs.length > 0 && (
-              <div>
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 mt-4">Past Requests</p>
-                <div className="space-y-2">
-                  {pastReqs.map((r) => <RequestCard key={r.id} req={r} />)}
-                </div>
-              </div>
-            )}
-
-            {menteeRequests.length === 0 && (
-              <p className="text-sm text-gray-400 italic text-center py-8">No requests yet</p>
-            )}
-          </>
-        )}
-      </div>
-    </div>
-  )
-}
-
-function RequestCard({ req }: { req: MentoringRequest }) {
-  const statusColor: Record<string, string> = {
-    "Draft": "bg-gray-100 text-gray-600",
-    "New": "bg-blue-100 text-blue-700",
-    "Match Approval Pending": "bg-amber-100 text-amber-700",
-    "Mentor Response Pending": "bg-yellow-100 text-yellow-700",
-    "No Match Found": "bg-red-100 text-red-600",
-    "Matched": "bg-green-100 text-green-700",
-    "Closed - Feedback Pending": "bg-gray-100 text-gray-500",
-    "Expired": "bg-gray-100 text-gray-400",
-    "Closed - With Feedback": "bg-green-50 text-green-600",
-  }
-  return (
-    <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 space-y-1.5">
-      <div className="flex items-center justify-between gap-2">
-        <span className="font-mono text-xs text-gray-500">{req.id}</span>
-        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${statusColor[req.status]}`}>{req.status}</span>
-      </div>
-      <p className="text-xs font-medium text-gray-800 leading-snug">{req.theme}</p>
-      <div className="flex items-center gap-2 text-xs text-gray-500">
-        <span>{new Date(req.requestDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</span>
-        {req.matchedMentor && <><span>·</span><span className="text-gray-700">👤 {req.matchedMentor}</span></>}
-      </div>
-      {req.skillsNeeded.length > 0 && (
-        <div className="flex flex-wrap gap-1 pt-0.5">
-          {req.skillsNeeded.slice(0, 3).map((s) => (
-            <span key={s} className="text-xs bg-white border border-gray-200 text-gray-600 px-1.5 py-0.5 rounded">{s}</span>
-          ))}
-          {req.skillsNeeded.length > 3 && <span className="text-xs text-gray-400">+{req.skillsNeeded.length - 3}</span>}
+        {/* Footer */}
+        <div className="flex gap-2 px-5 py-4 border-t border-gray-100 shrink-0">
+          <Button variant="outline" className="flex-1" onClick={onClose}>Cancel</Button>
+          <Button className="flex-1" disabled={!canSave} onClick={handleSave}>
+            <Plus className="w-3.5 h-3.5" /> Add Mentee
+          </Button>
         </div>
-      )}
-    </div>
-  )
-}
-
-function PaneSection({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1.5">{label}</p>
-      {children}
+      </div>
     </div>
   )
 }
@@ -293,12 +361,14 @@ function PaneSection({ label, children }: { label: string; children: React.React
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function Mentees() {
-  const [mentees] = useState<Mentee[]>(mockMentees)
+  const [mentees, setMentees] = useState<Mentee[]>(mockMentees)
   const [search, setSearch] = useState("")
   const [filterNGO, setFilterNGO] = useState("All")
   const [filterStatus, setFilterStatus] = useState("All")
   const [filterGender, setFilterGender] = useState("All")
   const [selectedMentee, setSelectedMentee] = useState<Mentee | null>(null)
+  const [showUploadCSV, setShowUploadCSV] = useState(false)
+  const [showAddMentee, setShowAddMentee] = useState(false)
 
   const filtered = useMemo(() => mentees.filter((m) => {
     const q = search.toLowerCase()
@@ -334,8 +404,12 @@ export default function Mentees() {
             <p className="text-sm text-gray-500 mt-0.5">Manage end users across all NGO partners</p>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline">Upload CSV</Button>
-            <Button><Plus className="w-4 h-4" />Add Mentee</Button>
+            <Button variant="outline" onClick={() => setShowUploadCSV(true)}>
+              <Upload className="w-4 h-4" />Upload CSV
+            </Button>
+            <Button onClick={() => setShowAddMentee(true)}>
+              <Plus className="w-4 h-4" />Add Mentee
+            </Button>
           </div>
         </div>
 
@@ -490,6 +564,17 @@ export default function Mentees() {
       {/* Side Pane */}
       {selectedMentee && (
         <MenteePane mentee={selectedMentee} onClose={() => setSelectedMentee(null)} />
+      )}
+
+      {showUploadCSV && (
+        <UploadCSVModal onClose={() => setShowUploadCSV(false)} />
+      )}
+
+      {showAddMentee && (
+        <AddMenteeModal
+          onSave={(m) => { setMentees(prev => [m, ...prev]); setShowAddMentee(false) }}
+          onClose={() => setShowAddMentee(false)}
+        />
       )}
     </div>
   )
