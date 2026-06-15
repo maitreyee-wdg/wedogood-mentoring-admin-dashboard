@@ -17,12 +17,6 @@ const orientationVariant: Record<OrientationStatus, "success" | "warning" | "sec
   "Orientation Rescheduled": "outline",
 }
 
-const orientationShort: Record<OrientationStatus, string> = {
-  "Orientation Done":        "Done",
-  "Orientation Slot Booked": "Slot Booked",
-  "Orientation Pending":     "Pending",
-  "Orientation Rescheduled": "Rescheduled",
-}
 
 function StarRating({ value }: { value: number }) {
   return (

@@ -378,7 +378,6 @@ export default function Volunteers() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
   const [drawerMentor, setDrawerMentor] = useState<Volunteer | null>(null)
-  const [drawerTab, setDrawerTab] = useState<"profile" | "orientation" | "requests" | "ratings">("profile")
   const [bulkActionOpen, setBulkActionOpen] = useState(false)
   const [showUploadCSV, setShowUploadCSV] = useState(false)
   const [showAddVolunteer, setShowAddVolunteer] = useState(false)

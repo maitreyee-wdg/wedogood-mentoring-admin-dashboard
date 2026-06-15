@@ -9,7 +9,7 @@ import { mockVolunteers } from "@/data/volunteersData"
 import { VolunteerPane } from "@/components/VolunteerSidePane"
 import {
   Search, Send, Check, CheckCheck, MessageSquare,
-  ClipboardList, Plus, X, CheckCircle2, AlertCircle, PauseCircle, Bot,
+  ClipboardList, X, CheckCircle2, AlertCircle, PauseCircle, Bot,
   LayoutTemplate, ImagePlus, Bold,
 } from "lucide-react"
 import { TemplatePickerModal, TemplatesView } from "@/components/WaTemplateComponents"

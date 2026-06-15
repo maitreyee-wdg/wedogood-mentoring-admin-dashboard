@@ -9,7 +9,7 @@ import { mockMentees } from "@/data/menteesData"
 import { MenteePane } from "@/components/MenteeSidePane"
 import {
   Search, Send, Check, CheckCheck, MessageSquare,
-  ClipboardList, Plus, X, CheckCircle2, AlertCircle,
+  ClipboardList, X, CheckCircle2, AlertCircle,
   PauseCircle, Bot,
   LayoutTemplate, ImagePlus, Bold,
 } from "lucide-react"
