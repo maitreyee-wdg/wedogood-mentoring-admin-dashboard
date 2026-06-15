@@ -440,7 +440,6 @@ export default function Volunteers() {
 
   const openDrawer = (v: Volunteer) => {
     setDrawerMentor(v)
-    setDrawerTab("profile")
     setOpenMenuId(null)
   }
 

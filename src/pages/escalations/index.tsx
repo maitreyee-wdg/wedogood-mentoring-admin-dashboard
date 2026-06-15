@@ -2,7 +2,7 @@ import { useState, useMemo, useRef, useEffect } from "react"
 import { Input } from "@/components/ui/input"
 import { Select } from "@/components/ui/select"
 import {
-  AlertTriangle, Bot, User, Clock,
+  Bot, User, Clock,
   Search, CheckCircle2, Star, Send,
   Briefcase, TicketCheck, X,
   LayoutList, LayoutGrid, Cpu, PauseCircle, PlayCircle,
