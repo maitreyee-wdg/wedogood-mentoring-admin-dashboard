@@ -75,6 +75,21 @@ const WORKFLOW_TRIGGER_OPTIONS = [
   "Volunteer has orientation slot today",
 ]
 
+// ─── Volunteer workflow triggers ──────────────────────────────────────────────
+
+const VOLUNTEER_WORKFLOW_TRIGGER_OPTIONS = [
+  "Volunteer sends first WhatsApp message",
+  "Volunteer orientation slot confirmed",
+  "Session marked 'completed' in system",
+  "Support keyword or chip detected in mentor message",
+  "Volunteer status remains 'Orientation pending' for 24 hours",
+  "Mentor accepts a match request",
+  "Mentor declines a match request",
+  "Mentoring request has 4 days remaining",
+  "30 days since last volunteer engagement",
+  "Volunteer marks session as done",
+]
+
 // ─── Tool catalogue ───────────────────────────────────────────────────────────
 
 const ALL_TOOLS: AgentTool[] = [
@@ -112,6 +127,152 @@ const ALL_TOOLS: AgentTool[] = [
   { name: "send_holding_message",      description: "Sends a fixed holding message to the user: 'Our team has been notified and will be in touch shortly.'" },
   { name: "admin_send_message",        description: "Allows an admin to send a message into the mentee's chat thread directly from within the ticket view." },
   { name: "resolve_and_resume",        description: "Marks the ticket resolved, sets human_takeover = false, and resumes normal A1 conversation flow." },
+]
+
+// ─── Volunteer tool catalogue ─────────────────────────────────────────────────
+
+const VOLUNTEER_TOOLS: AgentTool[] = [
+  // M-A1 — Conversation Agent
+  { name: "get_mentor_context",           description: "Loads full volunteer/mentor profile, current engagement status, and active requests from DB." },
+  { name: "get_session_history",          description: "Retrieves the last N messages of the current WhatsApp session for the mentor." },
+  { name: "send_message",                 description: "Sends a WhatsApp message (text, chips, or template) to the mentor via the messaging gateway." },
+  { name: "get_quick_replies",            description: "Returns platform-appropriate chip/button options for the current mentor conversation state." },
+  { name: "detect_support_keyword",       description: "Evaluates each incoming message for support keywords or chip taps before M-A1 responds." },
+  // M-A3 — Feedback Agent
+  { name: "send_feedback_question",       description: "Delivers the next feedback question to the mentor via WhatsApp with chip response options." },
+  { name: "write_feedback_record",        description: "Writes each structured feedback answer directly to the DB immediately as the mentor responds." },
+  { name: "update_session_status",        description: "Marks the session as feedback-complete and updates the engagement status in DB." },
+  { name: "trigger_next_request_prompt",  description: "Schedules the next session check-in or re-engagement prompt via M-A1 after feedback completion." },
+  // M-A4 — Support Agent
+  { name: "create_support_ticket",        description: "Creates a support ticket in the admin system with conversation context snapshot attached." },
+  { name: "set_human_takeover",           description: "Sets human_takeover = true on the conversation, silencing M-A1 and M-A3 until admin resolves." },
+  { name: "notify_admin_team",            description: "Sends a real-time alert to the admin team via internal channel with the ticket details and urgency." },
+  { name: "send_holding_message",         description: "Sends a fixed holding message to the mentor: 'Our team has been notified and will be in touch shortly.'" },
+  { name: "resolve_and_resume",           description: "Marks the ticket resolved, sets human_takeover = false, and resumes normal M-A1 conversation flow." },
+]
+
+// ─── Volunteer agent data ─────────────────────────────────────────────────────
+
+const VOLUNTEER_AGENTS: Agent[] = [
+  {
+    id: "vol-agent-ma1", shortId: "M-A1",
+    name: "Conversation Agent",
+    role: "orchestrator",
+    roleLabel: "LLM · Always On",
+    description: "The only agent the mentor speaks to directly. Handles open Q&A, session check-in conversation, and bridges between notification events. Reads full conversation history every turn. Detects support keywords and hands off to M-A4, hands off to M-A3 when session is confirmed.",
+    prompt: `You are Mira, a supportive coordinator from WeDoGood speaking with a mentor volunteer.
+
+Your job is to check in after sessions, answer questions about the platform and the mentee they are working with, and facilitate a smooth mentoring experience.
+
+Always:
+- Greet the mentor by name if available in context
+- Keep messages short and warm
+- Offer chip options where relevant
+- Check human_takeover flag before every reply — if true, send holding message only
+- When the mentor confirms a session happened, hand off to M-A3 immediately
+
+Never:
+- Send proactive or scheduled notifications (that is handled by system triggers)
+- Write to feedback_records directly
+- Create support tickets yourself — always hand off to M-A4
+- Re-ask questions already answered in the session history`,
+    model: "claude-sonnet-4-5",
+    contextFiles: ["mentor_profile_schema.json"],
+    tools: ["get_mentor_context", "get_session_history", "send_message", "get_quick_replies", "detect_support_keyword"],
+    accessTo: ["M-A3", "M-A4"],
+    isPredefined: true,
+    color: { bg: "bg-teal-50", border: "border-teal-200", badge: "bg-teal-600", text: "text-teal-700", dot: "bg-teal-500" },
+  },
+  {
+    id: "vol-agent-ma3", shortId: "M-A3",
+    name: "Feedback Agent",
+    role: "background",
+    roleLabel: "Lightweight LLM · Mandatory Sequence",
+    description: "Fires immediately after M-A1 confirms a session happened. Delivers 5 mandatory questions one at a time. Phrasing can vary but order and topics are fixed. Stores each answer to DB immediately. Triggers next request prompt after the final question.",
+    prompt: `You are the feedback collection agent for WeDoGood mentor sessions.
+
+You must ask exactly 5 questions in order. You cannot skip or reorder them.
+
+Rules:
+- Deliver one question at a time with chip response options
+- You MAY vary the phrasing and tone to feel natural
+- You CANNOT change the meaning, intent, or answer options of any question
+- Chip answers are written to DB exactly as received — no interpretation
+- Free text answers are stored verbatim — no summarising
+- After question 5 is answered, trigger the next request prompt via trigger_next_request_prompt
+
+Tone: Brief, warm, appreciative. The session just happened — keep it light.
+
+You cannot:
+- Skip or reorder questions
+- Engage in open conversation
+- Initiate feedback unless M-A1 has confirmed the session happened
+- Override the human_takeover flag`,
+    model: "claude-haiku-4-5",
+    tools: ["send_feedback_question", "write_feedback_record", "update_session_status", "trigger_next_request_prompt"],
+    accessTo: [],
+    isPredefined: true,
+    color: { bg: "bg-green-50", border: "border-green-200", badge: "bg-green-600", text: "text-green-700", dot: "bg-green-500" },
+  },
+  {
+    id: "vol-agent-ma4", shortId: "M-A4",
+    name: "Support Agent",
+    role: "rule-based",
+    roleLabel: "Rule-Based · Intercepts Any Phase",
+    description: "Intercepts at any point when a support keyword or chip is detected in the mentor conversation. Creates ticket, silences M-A1 and M-A3, notifies admin team with full context snapshot. Admin resolves the ticket and flips the flag to resume normal conversation.",
+    prompt: `[Rule-based agent — no LLM inference used]
+
+Trigger conditions (evaluated on every message before M-A1 responds):
+- Mentor taps "I need help" / "Support" chip
+- Message contains any of: help, problem, issue, complaint, stuck, wrong, error, uncomfortable, unsafe, worried
+
+On trigger:
+1. Snapshot current conversation context
+2. Create support ticket with context snapshot
+3. Set human_takeover = true on the conversation record (silences M-A1 and M-A3)
+4. Send fixed holding message to mentor
+5. Notify admin team with ticket link and urgency level
+
+Cannot:
+- Resolve tickets autonomously
+- Engage in conversation while takeover is active
+- Initiate proactively without a keyword trigger`,
+    model: "rule-based",
+    tools: ["create_support_ticket", "set_human_takeover", "notify_admin_team", "send_holding_message", "resolve_and_resume"],
+    accessTo: ["M-A1"],
+    isPredefined: true,
+    color: { bg: "bg-purple-50", border: "border-purple-200", badge: "bg-purple-600", text: "text-purple-700", dot: "bg-purple-500" },
+  },
+]
+
+const VOLUNTEER_WORKFLOWS: Workflow[] = [
+  {
+    id: "vol-wf-1",
+    name: "Post-Session Check-in",
+    purpose: "Confirm the session happened and immediately collect structured feedback from the mentor.",
+    trigger: "Session marked 'completed' in system",
+    agentChain: ["M-A1", "M-A3"],
+    status: "Active",
+    isPredefined: true,
+  },
+  {
+    id: "vol-wf-2",
+    name: "Support Escalation",
+    purpose: "Intercept support signals from the mentor and hand off to admin immediately.",
+    trigger: "Support keyword or chip detected in mentor message",
+    agentChain: ["M-A1", "M-A4"],
+    status: "Active",
+    isPredefined: true,
+  },
+  {
+    id: "vol-wf-3",
+    name: "Match Request Notification",
+    purpose: "Notify the mentor of a new match request and collect their response.",
+    trigger: "Mentor accepts a match request",
+    agentChain: ["M-A1"],
+    status: "Active",
+    isPredefined: true,
+  },
 ]
 
 // ─── Agent data ───────────────────────────────────────────────────────────────
@@ -623,15 +784,15 @@ function AgentPane({ agent, agents, onClose, onSave, onDelete, onRestoreDefault 
 
 // ─── Tools Tab ────────────────────────────────────────────────────────────────
 
-function ToolsTab() {
+function ToolsTab({ tools }: { tools: AgentTool[] }) {
   return (
     <div className="p-6">
       <div className="mb-4">
         <h2 className="text-base font-semibold text-gray-900">Available Tools</h2>
-        <p className="text-sm text-gray-500">{ALL_TOOLS.length} tools available across all agents</p>
+        <p className="text-sm text-gray-500">{tools.length} tools available across all agents</p>
       </div>
       <div className="grid grid-cols-2 gap-3">
-        {ALL_TOOLS.map((tool) => (
+        {tools.map((tool) => (
           <div key={tool.name} className="bg-white border border-gray-200 rounded-xl p-4 hover:border-gray-300 transition-colors">
             <p className="text-xs font-semibold font-mono text-gray-800 mb-1.5">{tool.name}</p>
             <p className="text-xs text-gray-500 leading-relaxed">{tool.description}</p>
@@ -647,6 +808,7 @@ function ToolsTab() {
 function WorkflowsTab({ agents, workflows, onAddWorkflow, onAddAgentToWorkflow, onRemoveAgentFromWorkflow, onToggleWorkflow, onDeleteWorkflow, onEditWorkflow }: {
   agents: Agent[]
   workflows: Workflow[]
+  triggerOptions?: string[]
   onAddWorkflow: () => void
   onAddAgentToWorkflow: (wfId: string, sid: string) => void
   onRemoveAgentFromWorkflow: (wfId: string, sid: string) => void
@@ -1096,75 +1258,55 @@ function AddWorkflowModal({ onClose, onAdd, agents, initial }: {
   )
 }
 
-// ─── Main page ────────────────────────────────────────────────────────────────
+// ─── Layer Panel (shared between Mentee and Volunteer) ───────────────────────
 
-type Tab = "agents" | "tools" | "workflows"
-
-export default function AIAgents() {
+function LayerPanel({
+  layerLabel,
+  orchestratorId,
+  orchestratorNote,
+  allAgents,
+  allWorkflows,
+  allTools,
+  triggerOptions,
+  defaultAgents,
+}: {
+  layerLabel: string
+  orchestratorId: string
+  orchestratorNote: string
+  allAgents: Agent[]
+  allWorkflows: Workflow[]
+  allTools: AgentTool[]
+  triggerOptions: string[]
+  defaultAgents: Agent[]
+}) {
   const [tab, setTab] = useState<Tab>("agents")
-  const [agents, setAgents] = useState<Agent[]>(AGENTS)
-  const [workflows, setWorkflows] = useState<Workflow[]>(WORKFLOWS)
+  const [agents, setAgents] = useState<Agent[]>(allAgents)
+  const [workflows, setWorkflows] = useState<Workflow[]>(allWorkflows)
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null)
   const [showAddModal, setShowAddModal] = useState(false)
   const [showAddWorkflow, setShowAddWorkflow] = useState(false)
   const [editWorkflow, setEditWorkflow] = useState<Workflow | null>(null)
+  const [restoreTargetId, setRestoreTargetId] = useState<string | null>(null)
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null)
 
   const handleSaveAgent = (id: string, updates: Partial<Agent>) => {
     setAgents((prev) => prev.map((a) => a.id === id ? { ...a, ...updates } : a))
     setSelectedAgent((prev) => prev?.id === id ? { ...prev, ...updates } : prev)
   }
-
-  const handleAddAgent = (a: Agent) => {
-    setAgents((prev) => [...prev, a])
-    setShowAddModal(false)
-  }
-
-  const handleAddWorkflow = (w: Workflow) => {
-    setWorkflows((prev) => [...prev, { ...w, status: "Active" }])
-    setShowAddWorkflow(false)
-  }
-
-  const handleSaveEditWorkflow = (w: Workflow) => {
-    setWorkflows((prev) => prev.map((wf) => wf.id === w.id ? w : wf))
-    setEditWorkflow(null)
-  }
-
-  const handleAddAgentToWorkflow = (wfId: string, sid: string) => {
-    setWorkflows((prev) => prev.map((w) =>
-      w.id === wfId ? { ...w, agentChain: [...w.agentChain, sid] } : w
-    ))
-  }
-
-  const handleRemoveAgentFromWorkflow = (wfId: string, sid: string) => {
-    setWorkflows((prev) => prev.map((w) =>
-      w.id === wfId ? { ...w, agentChain: w.agentChain.filter((x) => x !== sid) } : w
-    ))
-  }
-
-  const handleToggleWorkflow = (wfId: string) => {
-    setWorkflows((prev) => prev.map((w) =>
-      w.id === wfId ? { ...w, status: w.status === "Active" ? "Paused" : "Active" } : w
-    ))
-  }
-
-  const handleDeleteWorkflow = (wfId: string) => {
-    setWorkflows((prev) => prev.filter((w) => w.id !== wfId))
-  }
-
-  const [restoreTargetId, setRestoreTargetId] = useState<string | null>(null)
-  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null)
-
+  const handleAddAgent = (a: Agent) => { setAgents((prev) => [...prev, a]); setShowAddModal(false) }
+  const handleAddWorkflow = (w: Workflow) => { setWorkflows((prev) => [...prev, { ...w, status: "Active" }]); setShowAddWorkflow(false) }
+  const handleSaveEditWorkflow = (w: Workflow) => { setWorkflows((prev) => prev.map((wf) => wf.id === w.id ? w : wf)); setEditWorkflow(null) }
+  const handleAddAgentToWorkflow = (wfId: string, sid: string) => setWorkflows((prev) => prev.map((w) => w.id === wfId ? { ...w, agentChain: [...w.agentChain, sid] } : w))
+  const handleRemoveAgentFromWorkflow = (wfId: string, sid: string) => setWorkflows((prev) => prev.map((w) => w.id === wfId ? { ...w, agentChain: w.agentChain.filter((x) => x !== sid) } : w))
+  const handleToggleWorkflow = (wfId: string) => setWorkflows((prev) => prev.map((w) => w.id === wfId ? { ...w, status: w.status === "Active" ? "Paused" : "Active" } : w))
+  const handleDeleteWorkflow = (wfId: string) => setWorkflows((prev) => prev.filter((w) => w.id !== wfId))
   const handleRestoreDefault = (id: string) => setRestoreTargetId(id)
   const confirmRestoreDefault = () => {
     if (!restoreTargetId) return
-    const original = AGENTS.find(a => a.id === restoreTargetId)
-    if (original) {
-      setAgents(prev => prev.map(a => a.id === restoreTargetId ? { ...original } : a))
-      setSelectedAgent({ ...original })
-    }
+    const original = defaultAgents.find(a => a.id === restoreTargetId)
+    if (original) { setAgents(prev => prev.map(a => a.id === restoreTargetId ? { ...original } : a)); setSelectedAgent({ ...original }) }
     setRestoreTargetId(null)
   }
-
   const handleDeleteAgent = (id: string) => setDeleteTargetId(id)
   const confirmDeleteAgent = () => {
     if (!deleteTargetId) return
@@ -1181,92 +1323,49 @@ export default function AIAgents() {
 
   return (
     <div className="h-full flex overflow-hidden">
-      {/* Left panel */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Header */}
-        <div className="px-6 pt-6 pb-0 border-b border-gray-200 bg-white">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 bg-indigo-100 rounded-xl flex items-center justify-center">
-                <BrainCircuit className="w-5 h-5 text-indigo-600" />
-              </div>
-              <div>
-                <h1 className="text-xl font-semibold text-gray-900">AI Agents</h1>
-                <p className="text-sm text-gray-500">{agents.length} agents · {agents.filter((a) => a.isPredefined).length} predefined</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              {tab === "agents" && (
-                <Button size="sm" onClick={() => setShowAddModal(true)}>
-                  <Plus className="w-4 h-4 mr-1" /> New Agent
-                </Button>
-              )}
-            </div>
+        {/* Sub-header */}
+        <div className="px-6 pt-4 pb-0 border-b border-gray-200 bg-white">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-sm text-gray-500">{agents.length} agents · {agents.filter((a) => a.isPredefined).length} predefined</p>
+            {tab === "agents" && (
+              <Button size="sm" onClick={() => setShowAddModal(true)}>
+                <Plus className="w-4 h-4 mr-1" /> New Agent
+              </Button>
+            )}
           </div>
-
-          {/* Tabs */}
           <div className="flex gap-1">
-            {tabs.map(({ id, label, icon: Icon }) => {
-              if (id === "workflows") {
-                return (
-                  <div key={id} className="relative flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 border-transparent text-gray-300 cursor-not-allowed select-none">
-                    <Icon className="w-3.5 h-3.5" />
-                    {label}
-                    <span className="ml-1.5 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-400 text-[10px] font-semibold border border-gray-200">
-                      🔒 Coming soon
-                    </span>
-                  </div>
-                )
-              }
-              return (
-                <button
-                  key={id}
-                  onClick={() => setTab(id)}
-                  className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
-                    tab === id
-                      ? "border-blue-600 text-blue-600"
-                      : "border-transparent text-gray-500 hover:text-gray-700"
-                  }`}
-                >
-                  <Icon className="w-3.5 h-3.5" /> {label}
-                </button>
-              )
-            })}
+            {tabs.map(({ id, label, icon: Icon }) => (
+              <button key={id} onClick={() => setTab(id)}
+                className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${tab === id ? "border-blue-600 text-blue-600" : "border-transparent text-gray-500 hover:text-gray-700"}`}>
+                <Icon className="w-3.5 h-3.5" /> {label}
+              </button>
+            ))}
           </div>
         </div>
 
-        {/* Tab content */}
+        {/* Content */}
         <div className="flex-1 overflow-y-auto">
           {tab === "agents" && (
             <div className="p-6">
-              {/* Orchestration note */}
               <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 mb-5 flex items-start gap-3">
-                <div className="w-6 h-6 rounded-full bg-blue-600 text-white text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">A1</div>
+                <div className="w-6 h-6 rounded-full bg-blue-600 text-white text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">{orchestratorId}</div>
                 <div>
                   <p className="text-xs font-semibold text-blue-800">Orchestration layer</p>
-                  <p className="text-xs text-blue-600 mt-0.5">A1 (Conversation Agent) is the always-on orchestrator with access to all agents. All user-facing messages pass through it.</p>
+                  <p className="text-xs text-blue-600 mt-0.5">{orchestratorNote}</p>
                 </div>
               </div>
-
-              {/* All agents in a 2-col grid, left-aligned */}
               <div className="grid grid-cols-2 gap-4">
                 {agents.map((agent) => (
-                  <AgentCard
-                    key={agent.id}
-                    agent={agent}
-                    onClick={() => setSelectedAgent(agent)}
-                    onDelete={handleDeleteAgent}
-                  />
+                  <AgentCard key={agent.id} agent={agent} onClick={() => setSelectedAgent(agent)} onDelete={handleDeleteAgent} />
                 ))}
               </div>
             </div>
           )}
-
-          {tab === "tools" && <ToolsTab />}
+          {tab === "tools" && <ToolsTab tools={allTools} />}
           {tab === "workflows" && (
             <WorkflowsTab
-              agents={agents}
-              workflows={workflows}
+              agents={agents} workflows={workflows}
               onAddWorkflow={() => setShowAddWorkflow(true)}
               onAddAgentToWorkflow={handleAddAgentToWorkflow}
               onRemoveAgentFromWorkflow={handleRemoveAgentFromWorkflow}
@@ -1278,94 +1377,126 @@ export default function AIAgents() {
         </div>
       </div>
 
-      {/* Right pane */}
       {selectedAgent && (
-        <AgentPane
-          agent={selectedAgent}
-          agents={agents}
-          onClose={() => setSelectedAgent(null)}
-          onSave={handleSaveAgent}
-          onDelete={handleDeleteAgent}
-          onRestoreDefault={handleRestoreDefault}
-        />
+        <AgentPane agent={selectedAgent} agents={agents} onClose={() => setSelectedAgent(null)}
+          onSave={handleSaveAgent} onDelete={handleDeleteAgent} onRestoreDefault={handleRestoreDefault} />
       )}
 
-      {showAddModal && (
-        <AddAgentModal
-          onClose={() => setShowAddModal(false)}
-          onAdd={handleAddAgent}
-          agents={agents}
-        />
-      )}
+      {showAddModal && <AddAgentModal onClose={() => setShowAddModal(false)} onAdd={handleAddAgent} agents={agents} />}
 
       {showAddWorkflow && (
-        <AddWorkflowModal
-          onClose={() => setShowAddWorkflow(false)}
-          onAdd={handleAddWorkflow}
-          agents={agents}
-        />
+        <AddWorkflowModal onClose={() => setShowAddWorkflow(false)} onAdd={handleAddWorkflow} agents={agents} />
       )}
-
       {editWorkflow && (
-        <AddWorkflowModal
-          onClose={() => setEditWorkflow(null)}
-          onAdd={(w) => handleSaveEditWorkflow({ ...editWorkflow, ...w })}
-          agents={agents}
-          initial={editWorkflow}
-        />
+        <AddWorkflowModal onClose={() => setEditWorkflow(null)} onAdd={(w) => handleSaveEditWorkflow({ ...editWorkflow, ...w })} agents={agents} initial={editWorkflow} />
       )}
 
-      {/* Restore single agent to default */}
       {restoreTargetId && (() => {
         const a = agents.find(x => x.id === restoreTargetId)
         return (
           <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-xl shadow-xl w-[420px] p-6">
               <div className="flex items-center gap-3 mb-3">
-                <div className="w-9 h-9 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
-                  <RotateCcw className="w-4 h-4 text-amber-600" />
-                </div>
+                <div className="w-9 h-9 rounded-full bg-amber-100 flex items-center justify-center shrink-0"><RotateCcw className="w-4 h-4 text-amber-600" /></div>
                 <h2 className="font-semibold text-gray-900">Restore {a?.name} to Default?</h2>
               </div>
-              <p className="text-sm text-gray-600 mb-5">
-                This will reset <strong>{a?.shortId} — {a?.name}</strong> back to its original prompt, tools, model, and configuration. Any edits you've made to this agent will be lost.
-              </p>
+              <p className="text-sm text-gray-600 mb-5">This will reset <strong>{a?.shortId} — {a?.name}</strong> back to its original prompt, tools, model, and configuration.</p>
               <div className="flex gap-2">
                 <Button variant="outline" className="flex-1" onClick={() => setRestoreTargetId(null)}>Cancel</Button>
-                <Button className="flex-1 bg-amber-500 hover:bg-amber-600 text-white" onClick={confirmRestoreDefault}>
-                  Yes, Restore Default
-                </Button>
+                <Button className="flex-1 bg-amber-500 hover:bg-amber-600 text-white" onClick={confirmRestoreDefault}>Yes, Restore Default</Button>
               </div>
             </div>
           </div>
         )
       })()}
 
-      {/* Delete custom agent confirm */}
       {deleteTargetId && (() => {
         const a = agents.find(x => x.id === deleteTargetId)
         return (
           <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-xl shadow-xl w-[420px] p-6">
               <div className="flex items-center gap-3 mb-3">
-                <div className="w-9 h-9 rounded-full bg-red-100 flex items-center justify-center shrink-0">
-                  <Trash2 className="w-4 h-4 text-red-500" />
-                </div>
+                <div className="w-9 h-9 rounded-full bg-red-100 flex items-center justify-center shrink-0"><Trash2 className="w-4 h-4 text-red-500" /></div>
                 <h2 className="font-semibold text-gray-900">Delete {a?.name}?</h2>
               </div>
-              <p className="text-sm text-gray-600 mb-5">
-                <strong>{a?.shortId} — {a?.name}</strong> will be permanently deleted. Any workflows that reference this agent will need to be updated manually.
-              </p>
+              <p className="text-sm text-gray-600 mb-5"><strong>{a?.shortId} — {a?.name}</strong> will be permanently deleted. Any workflows that reference this agent will need to be updated manually.</p>
               <div className="flex gap-2">
                 <Button variant="outline" className="flex-1" onClick={() => setDeleteTargetId(null)}>Cancel</Button>
-                <Button className="flex-1 bg-red-500 hover:bg-red-600 text-white" onClick={confirmDeleteAgent}>
-                  Yes, Delete Agent
-                </Button>
+                <Button className="flex-1 bg-red-500 hover:bg-red-600 text-white" onClick={confirmDeleteAgent}>Yes, Delete Agent</Button>
               </div>
             </div>
           </div>
         )
       })()}
+    </div>
+  )
+}
+
+// ─── Main page ────────────────────────────────────────────────────────────────
+
+type Tab = "agents" | "tools" | "workflows"
+type Layer = "mentee" | "volunteer"
+
+export default function AIAgents() {
+  const [layer, setLayer] = useState<Layer>("mentee")
+
+  return (
+    <div className="h-full flex flex-col overflow-hidden">
+      {/* Page header with layer switcher */}
+      <div className="px-6 pt-6 pb-0 border-b border-gray-200 bg-white shrink-0">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 bg-indigo-100 rounded-xl flex items-center justify-center">
+              <BrainCircuit className="w-5 h-5 text-indigo-600" />
+            </div>
+            <div>
+              <h1 className="text-xl font-semibold text-gray-900">AI Agents</h1>
+              <p className="text-sm text-gray-500">Configure intelligent agents for each user layer</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Layer tabs */}
+        <div className="flex gap-1">
+          {([
+            { id: "mentee" as Layer, label: "Mentee AI Agent" },
+            { id: "volunteer" as Layer, label: "Volunteer AI Agent" },
+          ]).map(({ id, label }) => (
+            <button key={id} onClick={() => setLayer(id)}
+              className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${layer === id ? "border-blue-600 text-blue-600" : "border-transparent text-gray-500 hover:text-gray-700"}`}>
+              <Bot className="w-3.5 h-3.5" /> {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Layer content */}
+      <div className="flex-1 overflow-hidden">
+        {layer === "mentee" && (
+          <LayerPanel
+            layerLabel="Mentee AI Agent"
+            orchestratorId="A1"
+            orchestratorNote="A1 (Conversation Agent) is the always-on orchestrator with access to all agents. All user-facing messages pass through it."
+            allAgents={AGENTS}
+            allWorkflows={WORKFLOWS}
+            allTools={ALL_TOOLS}
+            triggerOptions={WORKFLOW_TRIGGER_OPTIONS}
+            defaultAgents={AGENTS}
+          />
+        )}
+        {layer === "volunteer" && (
+          <LayerPanel
+            layerLabel="Volunteer AI Agent"
+            orchestratorId="M-A1"
+            orchestratorNote="M-A1 (Conversation Agent) is the always-on orchestrator for mentors. All mentor-facing messages pass through it. Hands off to M-A3 after session confirmation, and to M-A4 on support detection."
+            allAgents={VOLUNTEER_AGENTS}
+            allWorkflows={VOLUNTEER_WORKFLOWS}
+            allTools={VOLUNTEER_TOOLS}
+            triggerOptions={VOLUNTEER_WORKFLOW_TRIGGER_OPTIONS}
+            defaultAgents={VOLUNTEER_AGENTS}
+          />
+        )}
+      </div>
     </div>
   )
 }
