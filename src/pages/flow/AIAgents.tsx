@@ -136,18 +136,14 @@ const VOLUNTEER_TOOLS: AgentTool[] = [
   { name: "get_mentor_context",           description: "Loads full volunteer/mentor profile, current engagement status, and active requests from DB." },
   { name: "get_session_history",          description: "Retrieves the last N messages of the current WhatsApp session for the mentor." },
   { name: "send_message",                 description: "Sends a WhatsApp message (text, chips, or template) to the mentor via the messaging gateway." },
-  { name: "get_quick_replies",            description: "Returns platform-appropriate chip/button options for the current mentor conversation state." },
-  { name: "detect_support_keyword",       description: "Evaluates each incoming message for support keywords or chip taps before M-A1 responds." },
-  // M-A3 — Feedback Agent
-  { name: "send_feedback_question",       description: "Delivers the next feedback question to the mentor via WhatsApp with chip response options." },
-  { name: "write_feedback_record",        description: "Writes each structured feedback answer directly to the DB immediately as the mentor responds." },
+  // M-A2 — Feedback Agent
+  { name: "write_feedback_record",        description: "Writes each structured feedback answer directly to the DB immediately as the mentor responds, without inference." },
   { name: "update_session_status",        description: "Marks the session as feedback-complete and updates the engagement status in DB." },
   { name: "trigger_next_request_prompt",  description: "Schedules the next session check-in or re-engagement prompt via M-A1 after feedback completion." },
-  // M-A4 — Support Agent
+  // M-A3 — Support Agent
   { name: "create_support_ticket",        description: "Creates a support ticket in the admin system with conversation context snapshot attached." },
-  { name: "set_human_takeover",           description: "Sets human_takeover = true on the conversation, silencing M-A1 and M-A3 until admin resolves." },
+  { name: "set_human_takeover",           description: "Sets human_takeover = true on the conversation, silencing M-A1 and M-A2 until admin resolves." },
   { name: "notify_admin_team",            description: "Sends a real-time alert to the admin team via internal channel with the ticket details and urgency." },
-  { name: "send_holding_message",         description: "Sends a fixed holding message to the mentor: 'Our team has been notified and will be in touch shortly.'" },
   { name: "resolve_and_resume",           description: "Marks the ticket resolved, sets human_takeover = false, and resumes normal M-A1 conversation flow." },
 ]
 
@@ -159,7 +155,7 @@ const VOLUNTEER_AGENTS: Agent[] = [
     name: "Conversation Agent",
     role: "orchestrator",
     roleLabel: "LLM · Always On",
-    description: "The only agent the mentor speaks to directly. Handles open Q&A, session check-in conversation, and bridges between notification events. Reads full conversation history every turn. Detects support keywords and hands off to M-A4, hands off to M-A3 when session is confirmed.",
+    description: "The only agent the mentor speaks to directly. Handles open Q&A, session check-in conversation, and bridges between notification events. Reads full conversation history every turn.",
     prompt: `You are Mira, a supportive coordinator from WeDoGood speaking with a mentor volunteer.
 
 Your job is to check in after sessions, answer questions about the platform and the mentee they are working with, and facilitate a smooth mentoring experience.
@@ -168,27 +164,28 @@ Always:
 - Greet the mentor by name if available in context
 - Keep messages short and warm
 - Offer chip options where relevant
-- Check human_takeover flag before every reply — if true, send holding message only
-- When the mentor confirms a session happened, hand off to M-A3 immediately
+- Check human_takeover flag before every reply — if true, do not respond
+- When the mentor confirms a session happened, hand off to M-A2 immediately
+- Detect support keywords → hand off to M-A3
 
 Never:
-- Send proactive or scheduled notifications (that is handled by system triggers)
+- Send proactive or scheduled notifications (handled by system triggers)
 - Write to feedback_records directly
-- Create support tickets yourself — always hand off to M-A4
+- Create support tickets yourself — always hand off to M-A3
 - Re-ask questions already answered in the session history`,
     model: "claude-sonnet-4-5",
     contextFiles: ["mentor_profile_schema.json"],
-    tools: ["get_mentor_context", "get_session_history", "send_message", "get_quick_replies", "detect_support_keyword"],
-    accessTo: ["M-A3", "M-A4"],
+    tools: ["get_mentor_context", "get_session_history", "send_message"],
+    accessTo: ["M-A2", "M-A3"],
     isPredefined: true,
     color: { bg: "bg-teal-50", border: "border-teal-200", badge: "bg-teal-600", text: "text-teal-700", dot: "bg-teal-500" },
   },
   {
-    id: "vol-agent-ma3", shortId: "M-A3",
+    id: "vol-agent-ma2", shortId: "M-A2",
     name: "Feedback Agent",
     role: "background",
     roleLabel: "Lightweight LLM · Mandatory Sequence",
-    description: "Fires immediately after M-A1 confirms a session happened. Delivers 5 mandatory questions one at a time. Phrasing can vary but order and topics are fixed. Stores each answer to DB immediately. Triggers next request prompt after the final question.",
+    description: "Fires immediately after M-A1 confirms session happened. Delivers 5 mandatory questions one at a time. Phrasing can vary but order and topics are fixed. Stores each answer to DB immediately.",
     prompt: `You are the feedback collection agent for WeDoGood mentor sessions.
 
 You must ask exactly 5 questions in order. You cannot skip or reorder them.
@@ -206,20 +203,20 @@ Tone: Brief, warm, appreciative. The session just happened — keep it light.
 You cannot:
 - Skip or reorder questions
 - Engage in open conversation
-- Initiate feedback unless M-A1 has confirmed the session happened
+- Initiate feedback unprompted — only fires after M-A1 confirms session happened
 - Override the human_takeover flag`,
     model: "claude-haiku-4-5",
-    tools: ["send_feedback_question", "write_feedback_record", "update_session_status", "trigger_next_request_prompt"],
+    tools: ["write_feedback_record", "update_session_status", "trigger_next_request_prompt"],
     accessTo: [],
     isPredefined: true,
     color: { bg: "bg-green-50", border: "border-green-200", badge: "bg-green-600", text: "text-green-700", dot: "bg-green-500" },
   },
   {
-    id: "vol-agent-ma4", shortId: "M-A4",
+    id: "vol-agent-ma3", shortId: "M-A3",
     name: "Support Agent",
     role: "rule-based",
     roleLabel: "Rule-Based · Intercepts Any Phase",
-    description: "Intercepts at any point when a support keyword or chip is detected in the mentor conversation. Creates ticket, silences M-A1 and M-A3, notifies admin team with full context snapshot. Admin resolves the ticket and flips the flag to resume normal conversation.",
+    description: "Intercepts at any point when a support keyword or chip is detected. Creates ticket, silences M-A1 and M-A2, notifies admin team with full context snapshot. Admin flips flag to resume.",
     prompt: `[Rule-based agent — no LLM inference used]
 
 Trigger conditions (evaluated on every message before M-A1 responds):
@@ -229,16 +226,16 @@ Trigger conditions (evaluated on every message before M-A1 responds):
 On trigger:
 1. Snapshot current conversation context
 2. Create support ticket with context snapshot
-3. Set human_takeover = true on the conversation record (silences M-A1 and M-A3)
-4. Send fixed holding message to mentor
-5. Notify admin team with ticket link and urgency level
+3. Set human_takeover = true on the conversation record (silences M-A1 and M-A2)
+4. Notify admin team with ticket link and urgency level
+5. Admin flips flag to resume
 
 Cannot:
 - Resolve tickets autonomously
 - Engage in conversation while takeover is active
 - Initiate proactively without a keyword trigger`,
     model: "rule-based",
-    tools: ["create_support_ticket", "set_human_takeover", "notify_admin_team", "send_holding_message", "resolve_and_resume"],
+    tools: ["create_support_ticket", "set_human_takeover", "notify_admin_team", "resolve_and_resume"],
     accessTo: ["M-A1"],
     isPredefined: true,
     color: { bg: "bg-purple-50", border: "border-purple-200", badge: "bg-purple-600", text: "text-purple-700", dot: "bg-purple-500" },
@@ -1269,6 +1266,7 @@ function LayerPanel({
   allTools,
   triggerOptions,
   defaultAgents,
+  showWorkflows = true,
 }: {
   layerLabel: string
   orchestratorId: string
@@ -1278,6 +1276,7 @@ function LayerPanel({
   allTools: AgentTool[]
   triggerOptions: string[]
   defaultAgents: Agent[]
+  showWorkflows?: boolean
 }) {
   const [tab, setTab] = useState<Tab>("agents")
   const [agents, setAgents] = useState<Agent[]>(allAgents)
@@ -1315,10 +1314,10 @@ function LayerPanel({
     setDeleteTargetId(null)
   }
 
-  const tabs: { id: Tab; label: string; icon: typeof Bot }[] = [
+  const availableTabs: { id: Tab; label: string; icon: typeof Bot }[] = [
     { id: "agents", label: "Agents", icon: Bot },
     { id: "tools", label: "Tools", icon: Wrench },
-    { id: "workflows", label: "Workflows", icon: GitBranch },
+    ...(showWorkflows ? [{ id: "workflows" as Tab, label: "Workflows", icon: GitBranch }] : []),
   ]
 
   return (
@@ -1335,7 +1334,7 @@ function LayerPanel({
             )}
           </div>
           <div className="flex gap-1">
-            {tabs.map(({ id, label, icon: Icon }) => (
+            {availableTabs.map(({ id, label, icon: Icon }) => (
               <button key={id} onClick={() => setTab(id)}
                 className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${tab === id ? "border-blue-600 text-blue-600" : "border-transparent text-gray-500 hover:text-gray-700"}`}>
                 <Icon className="w-3.5 h-3.5" /> {label}
@@ -1488,12 +1487,13 @@ export default function AIAgents() {
           <LayerPanel
             layerLabel="Volunteer AI Agent"
             orchestratorId="M-A1"
-            orchestratorNote="M-A1 (Conversation Agent) is the always-on orchestrator for mentors. All mentor-facing messages pass through it. Hands off to M-A3 after session confirmation, and to M-A4 on support detection."
+            orchestratorNote="M-A1 (Conversation Agent) is the always-on orchestrator for mentors. All mentor-facing messages pass through it. Hands off to M-A2 after session confirmation, and to M-A3 on support detection."
             allAgents={VOLUNTEER_AGENTS}
             allWorkflows={VOLUNTEER_WORKFLOWS}
             allTools={VOLUNTEER_TOOLS}
             triggerOptions={VOLUNTEER_WORKFLOW_TRIGGER_OPTIONS}
             defaultAgents={VOLUNTEER_AGENTS}
+            showWorkflows={false}
           />
         )}
       </div>
