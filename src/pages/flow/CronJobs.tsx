@@ -4,8 +4,8 @@ import { Zap, Plus, Play, Pause, Pencil, Trash2, X, ChevronDown, ChevronRight, L
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type TriggerCategory = "Mentee" | "Mentor" | "Volunteer"
-type TriggerEntity = "mentee" | "mentor" | "volunteer" | "request"
+type TriggerCategory = "Mentee" | "Volunteer"
+type TriggerEntity = "mentee" | "volunteer" | "request"
 type TriggerType = "status_duration" | "days_remaining" | "days_since" | "time_of_day"
 type DurationUnit = "hours" | "days"
 
@@ -43,8 +43,7 @@ interface TriggerLog {
 
 const STATUS_OPTIONS: Record<TriggerEntity, string[]> = {
   mentee: ["Profile unfinished", "Request chat unfinished", "Active", "Completed", "Inactive"],
-  mentor: ["Profile unfinished", "Mentor matched", "Number accessed", "Active", "Inactive"],
-  volunteer: ["Orientation pending", "Active", "Inactive", "Onboarding"],
+  volunteer: ["Profile unfinished", "Orientation pending", "Active", "Inactive", "Onboarding"],
   request: ["Mentor matched", "Number accessed", "Scheduled", "Confirmed", "Completed", "Cancelled"],
 }
 
@@ -64,13 +63,11 @@ const TEMPLATES_BY_CATEGORY: Record<TriggerCategory, WATemplate[]> = {
     { name: "Re-engagement Nudge", content: "Hi {name}! We noticed it's been a while since your last interaction. Your mentor is still here for you — would you like to reconnect? 💬" },
     { name: "Request Chat Nudge", content: "Hi {name}! Your request is almost complete. Just a few more details to help us find the best mentor match for you. Can you finish it? 🙏" },
   ],
-  Mentor: [
-    { name: "Complete Profile", content: "Hi {name}! 👋 Your mentor profile on WeDoGood is almost complete. A full profile helps us match you with the right mentee. Can you finish it? 🙏" },
-    { name: "Mentee Matched — View Details", content: "Hi {name}! We've matched you with a mentee who needs your expertise. 🎉 View their profile here: [webapp link]. Please confirm within 24 hours." },
-    { name: "Request Confirmation Reminder", content: "Hi {name}! Just a heads-up — you have less than 1 hour to confirm your upcoming mentee engagement. Please confirm ASAP so we can notify the mentee. ⏰" },
-    { name: "Mentoring Session Feedback", content: "Hi {name}! How did your recent session with your mentee go? We'd love to hear your thoughts — any wins, challenges, or next steps? 💬" },
-  ],
   Volunteer: [
+    { name: "Complete Profile", content: "Hi {name}! 👋 Your WeDoGood volunteer profile is almost complete. A full profile helps us match you with the right mentee. Can you finish it? 🙏" },
+    { name: "Mentee Matched — View Details", content: "Hi {name}! We've matched you with a mentee who needs your expertise. 🎉 View their profile here: [webapp link]. Please confirm within 24 hours." },
+    { name: "Request Confirmation Reminder", content: "Hi {name}! Just a heads-up — you have less than 1 hour to confirm your upcoming engagement. Please confirm ASAP so we can notify the mentee. ⏰" },
+    { name: "Mentoring Session Feedback", content: "Hi {name}! How did your recent session with your mentee go? We'd love to hear your thoughts — any wins, challenges, or next steps? 💬" },
     { name: "Complete Orientation", content: "Hi {name}! Your orientation session is still pending. It's a quick 30-minute call to get you started. Would you like to pick a slot? Reply with a preferred date and time. 😊" },
     { name: "Orientation Slot Reminder", content: "Hi {name}! A friendly reminder — your orientation is scheduled for *today*. We're looking forward to speaking with you! 🌟" },
     { name: "Recommend a Friend", content: "Hi {name}! We're always looking for skilled mentors to support youth from NGO partners. If you know someone who'd be great, please share: [wedogood.org/volunteer] 🙏" },
@@ -82,12 +79,12 @@ const TEMPLATES_BY_CATEGORY: Record<TriggerCategory, WATemplate[]> = {
 const MOCK_LOGS: TriggerLog[] = [
   { id: "L1", triggerId: "PT-M3", triggerName: "Mentor Matched — Notify Mentee", firedAt: "2026-06-04 11:02 AM", template: "Mentor Matched — View Details", recipients: ["Priya Sharma", "Rohan Das"], sentCount: 2, deliveredCount: 2, readCount: 2 },
   { id: "L2", triggerId: "PT-M1", triggerName: "Mentee Profile Nudge", firedAt: "2026-06-04 09:00 AM", template: "Complete Profile", recipients: ["Kavya Nair", "Meena Iyer"], sentCount: 2, deliveredCount: 2, readCount: 1 },
-  { id: "L3", triggerId: "PT-MN3", triggerName: "Mentor Matched — Notify Mentor", firedAt: "2026-06-04 11:02 AM", template: "Mentee Matched — View Details", recipients: ["Rahul Mehta", "Sneha Rao"], sentCount: 2, deliveredCount: 2, readCount: 2 },
-  { id: "L4", triggerId: "PT-V1", triggerName: "Orientation Pending Reminder", firedAt: "2026-06-03 09:00 AM", template: "Complete Orientation", recipients: ["Amit Joshi"], sentCount: 1, deliveredCount: 1, readCount: 1 },
+  { id: "L3", triggerId: "PT-V2", triggerName: "Volunteer Matched — Notify Volunteer", firedAt: "2026-06-04 11:02 AM", template: "Mentee Matched — View Details", recipients: ["Rahul Mehta", "Sneha Rao"], sentCount: 2, deliveredCount: 2, readCount: 2 },
+  { id: "L4", triggerId: "PT-V4", triggerName: "Orientation Pending Reminder", firedAt: "2026-06-03 09:00 AM", template: "Complete Orientation", recipients: ["Amit Joshi"], sentCount: 1, deliveredCount: 1, readCount: 1 },
   { id: "L5", triggerId: "PT-M4", triggerName: "Confirm Call Happened", firedAt: "2026-06-03 02:15 PM", template: "Confirm If Call Happened", recipients: ["Arjun Patel", "Priya Sharma"], sentCount: 2, deliveredCount: 2, readCount: 1 },
-  { id: "L6", triggerId: "PT-V2", triggerName: "Orientation Slot Today", firedAt: "2026-06-03 09:00 AM", template: "Orientation Slot Reminder", recipients: ["Divya Krishnan"], sentCount: 1, deliveredCount: 1, readCount: 1 },
+  { id: "L6", triggerId: "PT-V5", triggerName: "Orientation Slot Today", firedAt: "2026-06-03 09:00 AM", template: "Orientation Slot Reminder", recipients: ["Divya Krishnan"], sentCount: 1, deliveredCount: 1, readCount: 1 },
   { id: "L7", triggerId: "PT-M2", triggerName: "Request Chat Nudge", firedAt: "2026-06-02 09:00 AM", template: "Request Chat Nudge", recipients: ["Meena Iyer", "Kavya Nair"], sentCount: 2, deliveredCount: 1, readCount: 0 },
-  { id: "L8", triggerId: "PT-MN1", triggerName: "Mentor Profile Nudge", firedAt: "2026-06-01 09:00 AM", template: "Complete Profile", recipients: ["Kiran Bhat", "Pooja Verma"], sentCount: 2, deliveredCount: 2, readCount: 2 },
+  { id: "L8", triggerId: "PT-V1", triggerName: "Volunteer Profile Nudge", firedAt: "2026-06-01 09:00 AM", template: "Complete Profile", recipients: ["Kiran Bhat", "Pooja Verma"], sentCount: 2, deliveredCount: 2, readCount: 2 },
 ]
 
 // ─── Predefined triggers ──────────────────────────────────────────────────────
@@ -99,11 +96,11 @@ const PREDEFINED: SystemTrigger[] = [
   { id: "PT-M4", name: "Confirm Call Happened", isPredefined: true, category: "Mentee", triggerType: "status_duration", triggerEntity: "request", triggerStatus: "Number accessed", triggerDuration: 1, triggerDurationUnit: "hours", whatsappTemplate: "Confirm If Call Happened", status: "Active", runCount: 47 },
   { id: "PT-M5", name: "Days Left Reminder", isPredefined: true, category: "Mentee", triggerType: "days_remaining", triggerEntity: "mentee", triggerDaysValue: 4, whatsappTemplate: "Days Remaining Reminder", status: "Active", runCount: 12 },
   { id: "PT-M6", name: "Re-engagement Nudge", isPredefined: true, category: "Mentee", triggerType: "days_since", triggerEntity: "mentee", triggerDaysValue: 30, whatsappTemplate: "Re-engagement Nudge", status: "Active", runCount: 9 },
-  { id: "PT-MN1", name: "Mentor Profile Nudge", isPredefined: true, category: "Mentor", triggerType: "status_duration", triggerEntity: "mentor", triggerStatus: "Profile unfinished", triggerDuration: 4, triggerDurationUnit: "hours", whatsappTemplate: "Complete Profile", status: "Active", runCount: 18 },
-  { id: "PT-MN2", name: "Confirmation Deadline Reminder", isPredefined: true, category: "Mentor", triggerType: "status_duration", triggerEntity: "request", triggerStatus: "Scheduled", triggerDuration: 1, triggerDurationUnit: "hours", whatsappTemplate: "Request Confirmation Reminder", status: "Active", runCount: 26 },
-  { id: "PT-MN3", name: "Mentor Matched — Notify Mentor", isPredefined: true, category: "Mentor", triggerType: "status_duration", triggerEntity: "request", triggerStatus: "Mentor matched", triggerDuration: 0, triggerDurationUnit: "hours", whatsappTemplate: "Mentee Matched — View Details", status: "Active", runCount: 58 },
-  { id: "PT-V1", name: "Orientation Pending Reminder", isPredefined: true, category: "Volunteer", triggerType: "status_duration", triggerEntity: "volunteer", triggerStatus: "Orientation pending", triggerDuration: 4, triggerDurationUnit: "hours", whatsappTemplate: "Complete Orientation", status: "Active", runCount: 31 },
-  { id: "PT-V2", name: "Orientation Slot Today", isPredefined: true, category: "Volunteer", triggerType: "time_of_day", triggerEntity: "volunteer", triggerTime: "09:00", whatsappTemplate: "Orientation Slot Reminder", status: "Active", runCount: 14 },
+  { id: "PT-V1", name: "Volunteer Profile Nudge", isPredefined: true, category: "Volunteer", triggerType: "status_duration", triggerEntity: "volunteer", triggerStatus: "Profile unfinished", triggerDuration: 4, triggerDurationUnit: "hours", whatsappTemplate: "Complete Profile", status: "Active", runCount: 18 },
+  { id: "PT-V2", name: "Volunteer Matched — Notify Volunteer", isPredefined: true, category: "Volunteer", triggerType: "status_duration", triggerEntity: "request", triggerStatus: "Mentor matched", triggerDuration: 0, triggerDurationUnit: "hours", whatsappTemplate: "Mentee Matched — View Details", status: "Active", runCount: 58 },
+  { id: "PT-V3", name: "Confirmation Deadline Reminder", isPredefined: true, category: "Volunteer", triggerType: "status_duration", triggerEntity: "request", triggerStatus: "Scheduled", triggerDuration: 1, triggerDurationUnit: "hours", whatsappTemplate: "Request Confirmation Reminder", status: "Active", runCount: 26 },
+  { id: "PT-V4", name: "Orientation Pending Reminder", isPredefined: true, category: "Volunteer", triggerType: "status_duration", triggerEntity: "volunteer", triggerStatus: "Orientation pending", triggerDuration: 4, triggerDurationUnit: "hours", whatsappTemplate: "Complete Orientation", status: "Active", runCount: 31 },
+  { id: "PT-V5", name: "Orientation Slot Today", isPredefined: true, category: "Volunteer", triggerType: "time_of_day", triggerEntity: "volunteer", triggerTime: "09:00", whatsappTemplate: "Orientation Slot Reminder", status: "Active", runCount: 14 },
 ]
 
 // ─── Sentence builder helpers ─────────────────────────────────────────────────
@@ -228,7 +225,6 @@ function TriggerModal({
               }}
               className={inlineSel}>
               <option value="mentee">mentee</option>
-              <option value="mentor">mentor</option>
               <option value="volunteer">volunteer</option>
               <option value="request">request</option>
             </select>{" "}
@@ -314,7 +310,7 @@ function TriggerModal({
                     setCategory(e.target.value as TriggerCategory)
                     setWhatsappTemplate(TEMPLATES_BY_CATEGORY[e.target.value as TriggerCategory][0].name)
                   }}>
-                  <option>Mentee</option><option>Mentor</option><option>Volunteer</option>
+                  <option>Mentee</option><option>Volunteer</option>
                 </select>
               </div>
               <div>
@@ -410,7 +406,6 @@ function TriggerModal({
 
 const CATEGORY_COLORS: Record<TriggerCategory, string> = {
   Mentee: "bg-violet-100 text-violet-700",
-  Mentor: "bg-sky-100 text-sky-700",
   Volunteer: "bg-emerald-100 text-emerald-700",
 }
 
@@ -576,7 +571,7 @@ export default function CronJobs() {
   }
 
   const activeCount = triggers.filter((t) => t.status === "Active").length
-  const categories: TriggerCategory[] = ["Mentee", "Mentor", "Volunteer"]
+  const categories: TriggerCategory[] = ["Mentee", "Volunteer"]
 
   return (
     <div className="h-full flex flex-col overflow-hidden">
