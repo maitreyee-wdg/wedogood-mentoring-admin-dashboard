@@ -17,6 +17,13 @@ export const ngoColor: Record<string, string> = {
   "Parivarthan": "bg-purple-100 text-purple-700",
 }
 
+const careerStageBadge: Record<string, string> = {
+  "Student": "bg-indigo-50 text-indigo-700",
+  "Working": "bg-green-50 text-green-700",
+  "Fresh Graduate": "bg-sky-50 text-sky-700",
+  "Unemployed": "bg-amber-50 text-amber-700",
+}
+
 export function StarDisplay({ value }: { value: number }) {
   if (!value) return <span className="text-xs text-gray-400 italic">Unrated</span>
   return (
@@ -44,9 +51,10 @@ export function RequestCard({ req }: { req: MentoringRequest }) {
     "Mentor Response Pending": "bg-yellow-100 text-yellow-700",
     "No Match Found": "bg-red-100 text-red-600",
     "Matched": "bg-green-100 text-green-700",
-    "Closed - Feedback Pending": "bg-gray-100 text-gray-500",
+    "Accessed Contact": "bg-teal-100 text-teal-700",
+    "Call Done — Feedback Pending": "bg-orange-100 text-orange-700",
+    "Closed — Feedback Pending": "bg-gray-100 text-gray-500",
     "Expired": "bg-gray-100 text-gray-400",
-    "Closed - With Feedback": "bg-green-50 text-green-600",
   }
   return (
     <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 space-y-1.5">
@@ -74,9 +82,15 @@ export function RequestCard({ req }: { req: MentoringRequest }) {
 export function MenteePane({ mentee, onClose }: { mentee: Mentee; onClose: () => void }) {
   const [tab, setTab] = useState<"profile" | "requests">("profile")
 
+  const fullName = `${mentee.firstName} ${mentee.lastName}`
+  const initials = [mentee.firstName, mentee.lastName].map(n => n[0]).join("")
+
   const menteeRequests = mockRequests.filter((r) => r.menteeId === mentee.id)
   const activeReqs = menteeRequests.filter((r) => ACTIVE_STATUSES.includes(r.status))
   const pastReqs = menteeRequests.filter((r) => !ACTIVE_STATUSES.includes(r.status))
+
+  const fmtLocation = (loc: { city: string; state: string; country: string }) =>
+    [loc.city, loc.state, loc.country].filter(Boolean).join(", ")
 
   return (
     <div className="w-[420px] border-l border-gray-200 bg-white flex flex-col overflow-hidden shrink-0">
@@ -93,14 +107,14 @@ export function MenteePane({ mentee, onClose }: { mentee: Mentee; onClose: () =>
       <div className="px-5 py-4 border-b border-gray-100 shrink-0">
         <div className="flex items-start gap-3">
           <div className="w-12 h-12 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-lg font-bold shrink-0">
-            {mentee.name.split(" ").map((n) => n[0]).join("")}
+            {initials}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="font-semibold text-gray-900">{mentee.name}</p>
+            <p className="font-semibold text-gray-900">{fullName}</p>
             <p className="text-xs text-gray-500">{mentee.id} · {mentee.gender} · Age {mentee.age}</p>
             <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
               <Badge variant={statusVariant[mentee.engagementStatus]}>{mentee.engagementStatus}</Badge>
-              {mentee.isStudent && <span className="text-xs bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full font-medium">Student</span>}
+              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${careerStageBadge[mentee.careerStage] ?? "bg-gray-100 text-gray-600"}`}>{mentee.careerStage}</span>
               <StarDisplay value={mentee.rating} />
             </div>
           </div>
@@ -135,19 +149,20 @@ export function MenteePane({ mentee, onClose }: { mentee: Mentee; onClose: () =>
                 <div>
                   <p className="text-gray-900 font-medium">{mentee.currentRole}</p>
                   {mentee.currentCompany !== "—" && <p className="text-gray-500 text-xs">{mentee.currentCompany} · {mentee.totalYearsExp} yr{mentee.totalYearsExp !== 1 ? "s" : ""} exp</p>}
+                  {mentee.domain && <p className="text-xs text-blue-600 mt-0.5">Domain: {mentee.domain}</p>}
                 </div>
               </div>
             </PaneSection>
 
-            {mentee.pastExperience.length > 0 && (
-              <PaneSection label="Past Experience">
+            {mentee.previousRoles.length > 0 && (
+              <PaneSection label="Previous Roles">
                 <div className="space-y-2">
-                  {mentee.pastExperience.map((e, i) => (
+                  {mentee.previousRoles.map((e, i) => (
                     <div key={i} className="flex items-start gap-2">
                       <div className="w-1.5 h-1.5 rounded-full bg-gray-300 mt-1.5 shrink-0" />
                       <div>
                         <p className="text-gray-800 font-medium text-xs">{e.role}</p>
-                        <p className="text-gray-500 text-xs">{e.company} · {e.duration}</p>
+                        <p className="text-gray-500 text-xs">{e.company} · {e.years} yr{e.years !== 1 ? "s" : ""}</p>
                       </div>
                     </div>
                   ))}
@@ -196,16 +211,27 @@ export function MenteePane({ mentee, onClose }: { mentee: Mentee; onClose: () =>
               </div>
             </PaneSection>
 
-            <PaneSection label="Location & Language">
-              <div className="space-y-1">
-                <div className="flex items-center gap-1.5 text-xs text-gray-700">
-                  <MapPin className="w-3.5 h-3.5 text-gray-400" />{mentee.location}
-                </div>
-                <div className="flex items-center gap-1.5 text-xs text-gray-700">
-                  <Globe className="w-3.5 h-3.5 text-gray-400" />{mentee.language}
-                </div>
+            <PaneSection label="Hometown">
+              <div className="flex items-center gap-1.5 text-xs text-gray-700">
+                <MapPin className="w-3.5 h-3.5 text-gray-400" />{fmtLocation(mentee.hometown)}
               </div>
             </PaneSection>
+
+            <PaneSection label="Current Location">
+              <div className="flex items-center gap-1.5 text-xs text-gray-700">
+                <Globe className="w-3.5 h-3.5 text-gray-400" />{fmtLocation(mentee.currentLocation)}
+              </div>
+            </PaneSection>
+
+            {mentee.preferredLanguages.length > 0 && (
+              <PaneSection label="Preferred Languages">
+                <div className="flex flex-wrap gap-1.5">
+                  {mentee.preferredLanguages.map((l) => (
+                    <span key={l} className="text-xs bg-purple-50 text-purple-700 px-2 py-0.5 rounded-full">{l}</span>
+                  ))}
+                </div>
+              </PaneSection>
+            )}
 
             <PaneSection label="Contact">
               <div className="space-y-1.5">

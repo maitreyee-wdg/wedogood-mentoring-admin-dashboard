@@ -68,12 +68,8 @@ export function VolunteerPane({
             <p className="text-xs text-gray-500">{v.currentRole} · {v.currentCompany}</p>
             <div className="flex items-center gap-2 mt-1.5 flex-wrap">
               <StarRating value={v.rating} />
-              <span className="text-xs text-gray-400">·</span>
-              <Badge variant={v.engagementStatus === "Active" ? "success" : "secondary"}>
-                {v.engagementStatus}
-              </Badge>
-              <Badge variant={v.availability === "Available" ? "success" : "warning"}>
-                {v.availability}
+              <Badge variant={v.sessionAvailability === "Available" ? "success" : "warning"}>
+                {v.sessionAvailability}
               </Badge>
             </div>
           </div>
@@ -128,9 +124,9 @@ export function VolunteerPane({
               </div>
             </DrawerSection>
 
-            <DrawerSection label="Interested in Mentoring">
+            <DrawerSection label="Preferred Mentee Stage">
               <div className="flex flex-wrap gap-1.5">
-                {v.interestedIn.map(i => (
+                {v.preferredMenteeStage.map(i => (
                   <span key={i} className="text-xs bg-green-50 text-green-700 px-2 py-0.5 rounded-full">{i}</span>
                 ))}
               </div>

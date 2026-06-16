@@ -423,7 +423,7 @@ export default function MenteesComms() {
       )}
 
       {showProfile && activeContact && (() => {
-        const mentee = mockMentees.find(m => m.name === activeContact.name)
+        const mentee = mockMentees.find(m => `${m.firstName} ${m.lastName}` === activeContact.name)
         return mentee ? (
           <MenteePane mentee={mentee} onClose={() => setShowProfile(false)} />
         ) : null

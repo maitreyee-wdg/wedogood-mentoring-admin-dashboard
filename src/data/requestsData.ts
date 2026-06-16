@@ -5,18 +5,19 @@ export type RequestStatus =
   | "Mentor Response Pending"
   | "No Match Found"
   | "Matched"
-  | "Closed - Feedback Pending"
+  | "Accessed Contact"
+  | "Call Done — Feedback Pending"
+  | "Closed — Feedback Pending"
   | "Expired"
-  | "Closed - With Feedback"
 
 export type RequestType = "New Mentor" | "Existing Mentor"
 
 export const ACTIVE_STATUSES: RequestStatus[] = [
-  "Draft", "New", "Match Approval Pending", "Mentor Response Pending", "No Match Found", "Matched",
+  "Draft", "New", "Match Approval Pending", "Mentor Response Pending", "No Match Found", "Matched", "Accessed Contact",
 ]
 
 export const INACTIVE_STATUSES: RequestStatus[] = [
-  "Closed - Feedback Pending", "Expired", "Closed - With Feedback",
+  "Call Done — Feedback Pending", "Closed — Feedback Pending", "Expired",
 ]
 
 export interface MatchCandidate {
@@ -36,6 +37,43 @@ export interface AiMessage {
   timestamp: string   // ISO string
 }
 
+export interface CascadeLogEntry {
+  mentorId: string
+  mentorName: string
+  notifiedAt: string
+  respondedAt?: string
+  response: "accepted" | "declined" | "no_response"
+  reason?: string
+}
+
+export interface MatchScoreBreakdown {
+  experienceGap: number
+  domainDepth: number
+  stateOrigin: number
+  cityTier: number
+  collegeType: number
+  companyTrajectory: number
+  careerTrajectory: number
+  platformRating: number
+  priorExperience: number
+}
+
+export interface MenteeFeedback {
+  q1Relevance?: number       // 1–5: How relevant was the guidance?
+  q2Understanding?: number   // 1–5: Did the mentor understand your challenge?
+  q3Actionability?: number   // 1–5: How actionable was the advice?
+  q4Continue?: boolean       // Would you want to continue with this mentor?
+  q5Needs?: string           // What other help do you need?
+  freeText?: string
+  submittedAt?: string
+}
+
+export interface MentorFeedback {
+  rating?: number            // 1–5: Rating of the mentee
+  notes?: string
+  submittedAt?: string
+}
+
 export interface MentoringRequest {
   id: string
   menteeId: string
@@ -44,6 +82,7 @@ export interface MentoringRequest {
   ngo: string
   requestDate: string
   theme: string
+  goal?: string
   targetDomain: string
   targetRole: string
   skillsNeeded: string[]
@@ -53,7 +92,12 @@ export interface MentoringRequest {
   activeDays: number
   aiConversation: AiMessage[]
   matchCandidates: MatchCandidate[]
+  cascadeLog?: CascadeLogEntry[]
+  matchScore?: number
+  matchScoreBreakdown?: MatchScoreBreakdown
   approvedTemplate?: string
+  menteeFeedback?: MenteeFeedback
+  mentorFeedback?: MentorFeedback
 }
 
 export const matchingTemplates = [
@@ -74,6 +118,7 @@ export const mockRequests: MentoringRequest[] = [
     ngo: "Akanksha Foundation",
     requestDate: "2026-04-30",
     theme: "Resume & Interview Prep for First Job",
+    goal: "Build a strong first resume and pass at least 2 mock interviews before applying to HR/admin roles",
     targetDomain: "Human Resources / Career Services",
     targetRole: "Entry-level Job Aspirant",
     skillsNeeded: ["Resume Writing", "Interview Preparation", "Career Guidance"],
@@ -94,6 +139,11 @@ export const mockRequests: MentoringRequest[] = [
       { id: "VOL-001", name: "Rahul Mehta", role: "HR Business Partner", company: "Infosys", matchPercent: 94, matchReason: "Exact skills match; has coached fresh graduates on resume & interviews", outreachStatus: "Accepted", outreachSentAt: "2026-04-30T14:00:00" },
       { id: "VOL-006", name: "Divya Krishnan", role: "Marketing Lead", company: "Zomato", matchPercent: 71, matchReason: "Communication & career coaching skills; hiring experience", outreachStatus: "Pending" },
     ],
+    cascadeLog: [
+      { mentorId: "VOL-001", mentorName: "Rahul Mehta", notifiedAt: "2026-04-30T14:00:00", respondedAt: "2026-04-30T16:30:00", response: "accepted" },
+    ],
+    matchScore: 94,
+    matchScoreBreakdown: { experienceGap: 18, domainDepth: 20, stateOrigin: 8, cityTier: 7, collegeType: 10, companyTrajectory: 10, careerTrajectory: 9, platformRating: 9, priorExperience: 3 },
   },
 
   // ── REQ-002: Matched — Arjun Patel / Software Engineering ─────────────────
@@ -105,6 +155,7 @@ export const mockRequests: MentoringRequest[] = [
     ngo: "NavGurukul",
     requestDate: "2026-05-03",
     theme: "Breaking into Software Engineering as a Self-taught Dev",
+    goal: "Land a full-time SDE role at a product company within 3 months",
     targetDomain: "Technology",
     targetRole: "Junior Software Engineer",
     skillsNeeded: ["Software Engineering", "React", "Career Guidance", "Code Reviews"],
@@ -123,6 +174,11 @@ export const mockRequests: MentoringRequest[] = [
       { id: "VOL-002", name: "Sneha Rao", role: "Senior Software Engineer", company: "Google", matchPercent: 92, matchReason: "React specialist, has guided self-taught devs in job search before", outreachStatus: "Accepted", outreachSentAt: "2026-05-03T10:00:00" },
       { id: "VOL-003", name: "Amit Joshi", role: "Data Analyst", company: "Swiggy", matchPercent: 68, matchReason: "Python & coding skills; limited front-end experience", outreachStatus: "Pending" },
     ],
+    cascadeLog: [
+      { mentorId: "VOL-002", mentorName: "Sneha Rao", notifiedAt: "2026-05-03T10:00:00", respondedAt: "2026-05-03T11:15:00", response: "accepted" },
+    ],
+    matchScore: 92,
+    matchScoreBreakdown: { experienceGap: 16, domainDepth: 20, stateOrigin: 5, cityTier: 8, collegeType: 8, companyTrajectory: 12, careerTrajectory: 10, platformRating: 9, priorExperience: 4 },
   },
 
   // ── REQ-003: Match Approval Pending — Kavya Nair / Product Management ──────
@@ -134,6 +190,7 @@ export const mockRequests: MentoringRequest[] = [
     ngo: "Parivarthan",
     requestDate: "2026-06-01",
     theme: "Transitioning from Operations to Product Management",
+    goal: "Understand PM fundamentals and get clarity on how to position my ops experience for a PM role",
     targetDomain: "Product Management",
     targetRole: "Associate Product Manager",
     skillsNeeded: ["Product Management", "Product Roadmapping", "User Research", "Prioritisation Frameworks"],
@@ -167,6 +224,7 @@ export const mockRequests: MentoringRequest[] = [
     ngo: "Akanksha Foundation",
     requestDate: "2026-05-08",
     theme: "Upskilling in Data Analysis & Advanced Excel",
+    goal: "Be able to independently run data analysis projects and write basic SQL queries",
     targetDomain: "Data & Analytics",
     targetRole: "Data Analyst",
     skillsNeeded: ["Data Analysis", "Advanced Excel", "SQL", "Python (basics)"],
@@ -186,6 +244,10 @@ export const mockRequests: MentoringRequest[] = [
       { id: "VOL-002", name: "Sneha Rao", role: "Senior Software Engineer", company: "Google", matchPercent: 78, matchReason: "Strong Python and data skills; experienced in technical mentoring", outreachStatus: "Sent", outreachSentAt: "2026-05-08T22:30:00" },
       { id: "VOL-001", name: "Rahul Mehta", role: "HR Business Partner", company: "Infosys", matchPercent: 45, matchReason: "Career guidance skills; limited depth in data analysis", outreachStatus: "Pending" },
     ],
+    cascadeLog: [
+      { mentorId: "VOL-003", mentorName: "Amit Joshi", notifiedAt: "2026-05-08T10:00:00", response: "no_response" },
+      { mentorId: "VOL-002", mentorName: "Sneha Rao", notifiedAt: "2026-05-08T22:30:00", response: "no_response" },
+    ],
   },
 
   // ── REQ-005: New — Meena Iyer / Public Speaking ────────────────────────────
@@ -197,6 +259,7 @@ export const mockRequests: MentoringRequest[] = [
     ngo: "NavGurukul",
     requestDate: "2026-06-02",
     theme: "Overcoming Stage Fright & Building Communication Confidence",
+    goal: "Be able to speak up confidently in group settings and deliver a 5-minute presentation without anxiety",
     targetDomain: "Communication & Soft Skills",
     targetRole: "Entry-level Professional",
     skillsNeeded: ["Public Speaking", "Presentation Skills", "Confidence Building"],
@@ -223,6 +286,7 @@ export const mockRequests: MentoringRequest[] = [
     ngo: "Akanksha Foundation",
     requestDate: "2026-05-11",
     theme: "Personal Finance & Investment Planning Basics",
+    goal: "Start a SIP, understand mutual fund categories, and build a basic personal financial plan",
     targetDomain: "Finance & Investment",
     targetRole: "Finance Associate",
     skillsNeeded: ["Investment Basics", "Mutual Funds", "Financial Planning", "Portfolio Management"],
@@ -271,7 +335,7 @@ export const mockRequests: MentoringRequest[] = [
     matchCandidates: [],
   },
 
-  // ── REQ-008: Closed with Feedback — Vikram Rao / Backend Dev ──────────────
+  // ── REQ-008: Closed — Feedback Pending — Vikram Rao / Backend Dev ──────────
   {
     id: "REQ-008",
     menteeId: "MTE-008",
@@ -280,11 +344,12 @@ export const mockRequests: MentoringRequest[] = [
     ngo: "NavGurukul",
     requestDate: "2026-02-01",
     theme: "Backend Development & REST API Design",
+    goal: "Design and build a portfolio REST API project demonstrating proper system design principles",
     targetDomain: "Technology",
     targetRole: "Backend Developer",
     skillsNeeded: ["Backend Development", "REST APIs", "Java", "System Design basics"],
     requestType: "New Mentor",
-    status: "Closed - With Feedback",
+    status: "Closed — Feedback Pending",
     matchedMentor: "Rahul Mehta",
     activeDays: 92,
     aiConversation: [
@@ -297,6 +362,23 @@ export const mockRequests: MentoringRequest[] = [
     matchCandidates: [
       { id: "VOL-001", name: "Rahul Mehta", role: "HR Business Partner", company: "Infosys", matchPercent: 77, matchReason: "Java background, Infosys experience; career + technical guidance", outreachStatus: "Accepted", outreachSentAt: "2026-02-01T10:00:00" },
     ],
+    cascadeLog: [
+      { mentorId: "VOL-001", mentorName: "Rahul Mehta", notifiedAt: "2026-02-01T10:00:00", respondedAt: "2026-02-01T14:00:00", response: "accepted" },
+    ],
+    menteeFeedback: {
+      q1Relevance: 4,
+      q2Understanding: 5,
+      q3Actionability: 4,
+      q4Continue: true,
+      q5Needs: "More guidance on system design patterns",
+      freeText: "Rahul was very patient and helped me structure my thinking around REST APIs. Would love to continue.",
+      submittedAt: "2026-05-05T10:00:00",
+    },
+    mentorFeedback: {
+      rating: 4,
+      notes: "Vikram is a fast learner. Good grasp of Java fundamentals. Needs more practice with database design.",
+      submittedAt: "2026-05-06T09:30:00",
+    },
   },
 
   // ── REQ-009: No Match Found — Arjun Patel / System Design ─────────────────
@@ -327,9 +409,14 @@ export const mockRequests: MentoringRequest[] = [
       { id: "VOL-007", name: "Arjun Sharma", role: "Operations Manager", company: "Amazon India", matchPercent: 68, matchReason: "System thinking at scale (ops); limited software design depth", outreachStatus: "No Response", outreachSentAt: "2026-04-10T21:30:00" },
       { id: "VOL-005", name: "Kiran Bhat", role: "Product Manager", company: "Razorpay", matchPercent: 61, matchReason: "Product-system understanding; non-technical mentor", outreachStatus: "Declined", outreachSentAt: "2026-04-11T10:00:00" },
     ],
+    cascadeLog: [
+      { mentorId: "VOL-002", mentorName: "Sneha Rao", notifiedAt: "2026-04-10T09:00:00", response: "no_response" },
+      { mentorId: "VOL-007", mentorName: "Arjun Sharma", notifiedAt: "2026-04-10T21:30:00", response: "no_response" },
+      { mentorId: "VOL-005", mentorName: "Kiran Bhat", notifiedAt: "2026-04-11T10:00:00", respondedAt: "2026-04-11T18:00:00", response: "declined", reason: "Outside my area of expertise" },
+    ],
   },
 
-  // ── REQ-010: Closed Feedback Pending — Priya Sharma / Interview Skills ─────
+  // ── REQ-010: Closed — Feedback Pending — Priya Sharma / Interview Skills ───
   {
     id: "REQ-010",
     menteeId: "MTE-001",
@@ -338,11 +425,12 @@ export const mockRequests: MentoringRequest[] = [
     ngo: "Akanksha Foundation",
     requestDate: "2026-03-15",
     theme: "Mock Interview Practice for First Job Placement",
+    goal: "Complete 5 mock interviews and receive structured feedback on improvement areas",
     targetDomain: "Career Services",
     targetRole: "Entry-level Candidate",
     skillsNeeded: ["Mock Interviews", "Body Language", "Answering Behavioural Questions"],
     requestType: "Existing Mentor",
-    status: "Closed - Feedback Pending",
+    status: "Closed — Feedback Pending",
     matchedMentor: "Rahul Mehta",
     activeDays: 45,
     aiConversation: [
@@ -354,6 +442,9 @@ export const mockRequests: MentoringRequest[] = [
     ],
     matchCandidates: [
       { id: "VOL-001", name: "Rahul Mehta", role: "HR Business Partner", company: "Infosys", matchPercent: 96, matchReason: "Existing mentor; specialises in interview coaching", outreachStatus: "Accepted", outreachSentAt: "2026-03-15T10:00:00" },
+    ],
+    cascadeLog: [
+      { mentorId: "VOL-001", mentorName: "Rahul Mehta", notifiedAt: "2026-03-15T10:00:00", respondedAt: "2026-03-15T11:00:00", response: "accepted" },
     ],
   },
 
@@ -383,6 +474,10 @@ export const mockRequests: MentoringRequest[] = [
     matchCandidates: [
       { id: "VOL-002", name: "Sneha Rao", role: "Senior Software Engineer", company: "Google", matchPercent: 80, matchReason: "Python expert; data engineering background", outreachStatus: "No Response", outreachSentAt: "2026-03-20T10:00:00" },
       { id: "VOL-003", name: "Amit Joshi", role: "Data Analyst", company: "Swiggy", matchPercent: 75, matchReason: "Python for data — Pandas & data wrangling experience", outreachStatus: "No Response", outreachSentAt: "2026-03-20T22:30:00" },
+    ],
+    cascadeLog: [
+      { mentorId: "VOL-002", mentorName: "Sneha Rao", notifiedAt: "2026-03-20T10:00:00", response: "no_response" },
+      { mentorId: "VOL-003", mentorName: "Amit Joshi", notifiedAt: "2026-03-20T22:30:00", response: "no_response" },
     ],
   },
 ]

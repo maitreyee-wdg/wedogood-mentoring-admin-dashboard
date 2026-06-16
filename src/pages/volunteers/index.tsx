@@ -5,8 +5,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select } from "@/components/ui/select"
 import {
-  mockVolunteers, volunteerGroups,
-  type Volunteer, type VolunteeringType, type Location, type VolunteerStatus, type OrientationStatus,
+  mockVolunteers, volunteerGroups, DOMAINS, INDUSTRIES,
+  type Volunteer, type VolunteeringType, type Location, type VolunteerStatus, type OrientationStatus, type PreferredMenteeStage,
 } from "@/data/volunteersData"
 import { commsTemplates, type CommTemplate } from "@/data/commsData"
 import {
@@ -20,21 +20,28 @@ import {
 
 const VOL_CSV_HEADERS = [
   "name", "currentRole", "currentCompany", "totalYearsExp",
-  "skills", "volunteeringType", "interestedIn", "preferredLanguages",
+  "skills", "volunteeringType", "preferredMenteeStage", "domain", "industry", "preferredLanguages",
   "volunteerGroup", "currentCity", "currentState",
   "whatsapp", "email", "officialEmail", "linkedin",
 ]
 
+const VOL_CSV_MANDATORY = new Set(["name", "whatsapp"])
+
 const VOL_CSV_EXAMPLE = [
   "Rahul Mehta", "HR Business Partner", "Infosys", "8",
   "Resume Writing;Interview Prep;Career Guidance", "Mentoring",
-  "College students/Fresh graduates;0-4 years experience", "English;Hindi",
+  "College students;Fresh graduates;0–4 yrs", "HR & People", "Technology", "English;Hindi",
   "HR & People", "Bengaluru", "Karnataka",
   "+91 98765 11001", "rahul@gmail.com", "rahul@infosys.com", "linkedin.com/in/rahulmehta",
 ]
 
 function downloadVolCSVTemplate() {
-  const rows = [VOL_CSV_HEADERS.join(","), VOL_CSV_EXAMPLE.map(v => `"${v}"`).join(",")]
+  const requiredRow = VOL_CSV_HEADERS.map(h => VOL_CSV_MANDATORY.has(h) ? "required" : "optional")
+  const rows = [
+    VOL_CSV_HEADERS.join(","),
+    requiredRow.map(v => `"${v}"`).join(","),
+    VOL_CSV_EXAMPLE.map(v => `"${v}"`).join(","),
+  ]
   const blob = new Blob([rows.join("\n")], { type: "text/csv" })
   const url = URL.createObjectURL(blob)
   const a = document.createElement("a")
@@ -114,8 +121,13 @@ function UploadCSVModal({ onClose }: { onClose: () => void }) {
           <details className="text-xs text-gray-500">
             <summary className="cursor-pointer font-medium text-gray-600 hover:text-gray-800">View expected columns</summary>
             <div className="mt-2 flex flex-wrap gap-1">
-              {VOL_CSV_HEADERS.map(h => <span key={h} className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded font-mono">{h}</span>)}
+              {VOL_CSV_HEADERS.map(h => (
+                <span key={h} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded font-mono ${VOL_CSV_MANDATORY.has(h) ? "bg-red-50 text-red-700 border border-red-200" : "bg-gray-100 text-gray-600"}`}>
+                  {h}{VOL_CSV_MANDATORY.has(h) && <span className="text-red-500 font-bold">*</span>}
+                </span>
+              ))}
             </div>
+            <p className="mt-2 text-gray-400"><span className="text-red-500 font-bold">*</span> required</p>
           </details>
         </div>
         <div className="flex gap-2 px-5 py-4 border-t border-gray-100">
@@ -134,12 +146,16 @@ const LABEL_CLS = "text-xs font-medium text-gray-500 uppercase tracking-wide blo
 const SEC_CLS = "space-y-3"
 const SEC_TITLE_CLS = "text-xs font-semibold text-gray-400 uppercase tracking-wide border-b border-gray-100 pb-1"
 
+const PREFERRED_MENTEE_STAGES: PreferredMenteeStage[] = ["College students", "Fresh graduates", "0–4 yrs", "4–8 yrs"]
+
 interface VolFormData {
   name: string
   currentRole: string; currentCompany: string; totalYearsExp: string
   skills: string
   volunteeringType: "Mentoring" | "Projects" | "Both"
-  interestedIn: string; preferredLanguages: string
+  preferredMenteeStage: PreferredMenteeStage[]
+  domain: string; industry: string
+  preferredLanguages: string
   group: string
   currentCity: string; currentState: string
   whatsapp: string; email: string; officialEmail: string; linkedin: string
@@ -147,14 +163,20 @@ interface VolFormData {
 
 const EMPTY_VOL: VolFormData = {
   name: "", currentRole: "", currentCompany: "", totalYearsExp: "0",
-  skills: "", volunteeringType: "Mentoring", interestedIn: "", preferredLanguages: "",
-  group: "", currentCity: "", currentState: "",
+  skills: "", volunteeringType: "Mentoring", preferredMenteeStage: [], domain: "", industry: "",
+  preferredLanguages: "", group: "", currentCity: "", currentState: "",
   whatsapp: "", email: "", officialEmail: "", linkedin: "",
 }
 
 function AddVolunteerModal({ onSave, onClose }: { onSave: (v: Volunteer) => void; onClose: () => void }) {
   const [form, setForm] = useState<VolFormData>(EMPTY_VOL)
-  const set = (k: keyof VolFormData, v: string) => setForm(p => ({ ...p, [k]: v }))
+  const set = (k: keyof VolFormData, v: string | PreferredMenteeStage[]) => setForm(p => ({ ...p, [k]: v }))
+  const toggleStage = (s: PreferredMenteeStage) => setForm(p => ({
+    ...p,
+    preferredMenteeStage: p.preferredMenteeStage.includes(s)
+      ? p.preferredMenteeStage.filter(x => x !== s)
+      : [...p.preferredMenteeStage, s],
+  }))
   const canSave = form.name.trim() && form.whatsapp.trim()
 
   const handleSave = () => {
@@ -169,7 +191,9 @@ function AddVolunteerModal({ onSave, onClose }: { onSave: (v: Volunteer) => void
       pastExperience: [],
       skills: splitSemi(form.skills),
       volunteeringType: form.volunteeringType,
-      interestedIn: splitSemi(form.interestedIn) as Volunteer["interestedIn"],
+      preferredMenteeStage: form.preferredMenteeStage,
+      domain: form.domain.trim(),
+      industry: form.industry.trim(),
       mentoringRating: 0, projectsRating: 0, rating: 0,
       group: form.group || "—",
       preferredLanguages: splitSemi(form.preferredLanguages),
@@ -182,8 +206,7 @@ function AddVolunteerModal({ onSave, onClose }: { onSave: (v: Volunteer) => void
       status: "Orientation Pending",
       orientationStatus: "Orientation Pending",
       signedUpDate: new Date().toISOString().split("T")[0],
-      engagementStatus: "Not Engaged",
-      availability: "Available",
+      sessionAvailability: "Available",
       pastRequests: [], activeProjects: [], pastProjects: [],
     }
     onSave(newVol)
@@ -282,8 +305,29 @@ function AddVolunteerModal({ onSave, onClose }: { onSave: (v: Volunteer) => void
                 </select>
               </div>
               <div>
-                <label className={LABEL_CLS}>Interested in Mentoring <span className="font-normal normal-case text-gray-400">(semicolons)</span></label>
-                <input className={FIELD_CLS} placeholder="e.g. College students/Fresh graduates" value={form.interestedIn} onChange={e => set("interestedIn", e.target.value)} />
+                <label className={LABEL_CLS}>Domain</label>
+                <select className={FIELD_CLS} value={form.domain} onChange={e => set("domain", e.target.value)}>
+                  <option value="">— Select domain —</option>
+                  {DOMAINS.map(d => <option key={d}>{d}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className={LABEL_CLS}>Industry</label>
+                <select className={FIELD_CLS} value={form.industry} onChange={e => set("industry", e.target.value)}>
+                  <option value="">— Select industry —</option>
+                  {INDUSTRIES.map(i => <option key={i}>{i}</option>)}
+                </select>
+              </div>
+            </div>
+            <div>
+              <label className={LABEL_CLS}>Preferred Mentee Stage</label>
+              <div className="flex flex-wrap gap-2 mt-1">
+                {PREFERRED_MENTEE_STAGES.map(s => (
+                  <label key={s} className="flex items-center gap-1.5 text-xs cursor-pointer">
+                    <input type="checkbox" checked={form.preferredMenteeStage.includes(s)} onChange={() => toggleStage(s)} className="rounded border-gray-300" />
+                    {s}
+                  </label>
+                ))}
               </div>
             </div>
           </div>
@@ -319,6 +363,7 @@ const typeVariant: Record<VolunteeringType, "default" | "success" | "secondary">
 
 const statusColors: Record<VolunteerStatus, string> = {
   "Active": "bg-green-100 text-green-700",
+  "Occupied": "bg-blue-100 text-blue-700",
   "Orientation Pending": "bg-yellow-100 text-yellow-700",
   "Inactive": "bg-gray-100 text-gray-500",
   "Archived": "bg-red-50 text-red-500",
@@ -344,7 +389,7 @@ function StarRating({ value }: { value: number }) {
 type SortKey = "name" | "signedUpDate" | "mentoringRating" | "projectsRating" | "totalYearsExp"
 type SortDir = "asc" | "desc"
 
-type ColKey = "name" | "signedUpDate" | "volunteeringType" | "status" | "projectsRating" | "mentoringRating" | "group" | "availability"
+type ColKey = "name" | "signedUpDate" | "volunteeringType" | "status" | "projectsRating" | "mentoringRating" | "group" | "sessionAvailability"
 
 const ALL_COLUMNS: { key: ColKey; label: string; always?: boolean }[] = [
   { key: "name", label: "Name", always: true },
@@ -354,7 +399,7 @@ const ALL_COLUMNS: { key: ColKey; label: string; always?: boolean }[] = [
   { key: "mentoringRating", label: "Mentoring Rating" },
   { key: "projectsRating", label: "Projects Rating" },
   { key: "group", label: "Group" },
-  { key: "availability", label: "Availability" },
+  { key: "sessionAvailability", label: "Session Availability" },
 ]
 
 // ── Modals ───────────────────────────────────────────────────────────────────
@@ -383,7 +428,7 @@ function AssignGroupModal({ names, onAssign, onClose }: { names: string[]; onAss
 
 function ChangeStatusModal({ names, current, onSave, onClose }: { names: string[]; current: VolunteerStatus; onSave: (s: VolunteerStatus) => void; onClose: () => void }) {
   const [selected, setSelected] = useState<VolunteerStatus>(current)
-  const statuses: VolunteerStatus[] = ["Orientation Pending", "Active", "Inactive", "Archived"]
+  const statuses: VolunteerStatus[] = ["Orientation Pending", "Active", "Occupied", "Inactive", "Archived"]
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
       <div className="bg-white rounded-xl shadow-xl w-80 p-6">
@@ -737,7 +782,7 @@ function ProfilePane({
             <PaneSection label="Status">
               {mode === "edit" ? (
                 <Select value={data.status} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => set("status", e.target.value as VolunteerStatus)} className="w-full text-xs">
-                  <option>Orientation Pending</option><option>Active</option><option>Inactive</option><option>Archived</option>
+                  <option>Orientation Pending</option><option>Active</option><option>Occupied</option><option>Inactive</option><option>Archived</option>
                 </Select>
               ) : (
                 <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusColors[v.status]}`}>{v.status}</span>
@@ -781,9 +826,9 @@ function ProfilePane({
                         )}
                       </div>
                     )}
-                    {(v.volunteeringType === "Mentoring" || v.volunteeringType === "Both") && v.interestedIn.length > 0 && (
+                    {(v.volunteeringType === "Mentoring" || v.volunteeringType === "Both") && v.preferredMenteeStage.length > 0 && (
                       <div className="flex flex-wrap gap-1 mt-1">
-                        {v.interestedIn.map((i) => <span key={i} className="text-xs bg-green-50 text-green-700 px-2 py-0.5 rounded-full">{i}</span>)}
+                        {v.preferredMenteeStage.map((i) => <span key={i} className="text-xs bg-green-50 text-green-700 px-2 py-0.5 rounded-full">{i}</span>)}
                       </div>
                     )}
                   </div>
@@ -810,14 +855,36 @@ function ProfilePane({
               )}
             </PaneSection>
 
-            <PaneSection label="Availability">
+            <PaneSection label="Domain">
               {mode === "edit" ? (
-                <Select value={data.availability} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => set("availability", e.target.value as Volunteer["availability"])} className="w-full text-xs">
+                <Select value={data.domain} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => set("domain", e.target.value)} className="w-full text-xs">
+                  <option value="">— Select domain —</option>
+                  {DOMAINS.map(d => <option key={d}>{d}</option>)}
+                </Select>
+              ) : (
+                <span className="text-xs text-gray-700">{v.domain || "—"}</span>
+              )}
+            </PaneSection>
+
+            <PaneSection label="Industry">
+              {mode === "edit" ? (
+                <Select value={data.industry} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => set("industry", e.target.value)} className="w-full text-xs">
+                  <option value="">— Select industry —</option>
+                  {INDUSTRIES.map(i => <option key={i}>{i}</option>)}
+                </Select>
+              ) : (
+                <span className="text-xs text-gray-700">{v.industry || "—"}</span>
+              )}
+            </PaneSection>
+
+            <PaneSection label="Session Availability">
+              {mode === "edit" ? (
+                <Select value={data.sessionAvailability} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => set("sessionAvailability", e.target.value as Volunteer["sessionAvailability"])} className="w-full text-xs">
                   <option>Available</option><option>On Leave</option><option>Inactive</option>
                 </Select>
               ) : (
-                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${v.availability === "Available" ? "bg-green-100 text-green-700" : v.availability === "On Leave" ? "bg-yellow-100 text-yellow-700" : "bg-gray-100 text-gray-500"}`}>
-                  {v.availability}
+                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${v.sessionAvailability === "Available" ? "bg-green-100 text-green-700" : v.sessionAvailability === "On Leave" ? "bg-yellow-100 text-yellow-700" : "bg-gray-100 text-gray-500"}`}>
+                  {v.sessionAvailability}
                 </span>
               )}
             </PaneSection>
@@ -1194,7 +1261,7 @@ export default function VolunteersList() {
           <div className="flex flex-col gap-1">
             <label className="text-xs font-medium text-gray-500">Status</label>
             <Select value={filterStatus} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFilterStatus(e.target.value)} className="w-44">
-              <option>All</option><option>Active</option><option>Orientation Pending</option><option>Inactive</option><option>Archived</option>
+              <option>All</option><option>Active</option><option>Occupied</option><option>Orientation Pending</option><option>Inactive</option><option>Archived</option>
             </Select>
           </div>
           <div className="flex flex-col gap-1">
@@ -1280,7 +1347,7 @@ export default function VolunteersList() {
                   </th>
                 )}
                 {visibleCols.has("group") && <th className="text-left px-4 py-3 font-medium text-gray-600">Group</th>}
-                {visibleCols.has("availability") && <th className="text-left px-4 py-3 font-medium text-gray-600">Availability</th>}
+                {visibleCols.has("sessionAvailability") && <th className="text-left px-4 py-3 font-medium text-gray-600">Session Availability</th>}
                 <th className="px-4 py-3 w-10"></th>
               </tr>
             </thead>
@@ -1327,10 +1394,10 @@ export default function VolunteersList() {
                       <span className="text-xs bg-purple-50 text-purple-700 px-2 py-0.5 rounded-full font-medium">{v.group}</span>
                     </td>
                   )}
-                  {visibleCols.has("availability") && (
+                  {visibleCols.has("sessionAvailability") && (
                     <td className="px-4 py-3">
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${v.availability === "Available" ? "bg-green-100 text-green-700" : v.availability === "On Leave" ? "bg-yellow-100 text-yellow-700" : "bg-gray-100 text-gray-500"}`}>
-                        {v.availability}
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${v.sessionAvailability === "Available" ? "bg-green-100 text-green-700" : v.sessionAvailability === "On Leave" ? "bg-yellow-100 text-yellow-700" : "bg-gray-100 text-gray-500"}`}>
+                        {v.sessionAvailability}
                       </span>
                     </td>
                   )}

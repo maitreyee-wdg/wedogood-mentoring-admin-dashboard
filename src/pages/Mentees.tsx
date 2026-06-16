@@ -3,32 +3,43 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select } from "@/components/ui/select"
-import { mockMentees, ngoGroups, type Mentee } from "@/data/menteesData"
+import { mockMentees, ngoGroups, type Mentee, type CareerStage, type PreviousRole } from "@/data/menteesData"
 import { mockRequests, ACTIVE_STATUSES } from "@/data/requestsData"
 import { Search, Plus, Users, BookOpen, Download, Upload, X, FileSpreadsheet } from "lucide-react"
 import { MenteePane, StarDisplay, statusVariant, ngoColor } from "@/components/MenteeSidePane"
 
-// ── CSV template columns (must match Mentee fields the importer will read) ────
+// ── CSV template columns ───────────────────────────────────────────────────────
 const CSV_HEADERS = [
-  "name", "gender", "age", "isStudent",
+  "firstName", "lastName", "gender", "age", "careerStage",
   "beneficiaryGroup",
-  "currentRole", "currentCompany", "totalYearsExp",
+  "currentRole", "currentCompany", "totalYearsExp", "domain",
   "educationLevel", "educationDegree", "educationInstitute", "educationYear",
-  "skills", "goals", "language", "location",
+  "skills", "goals", "preferredLanguages",
+  "hometownCity", "hometownState", "hometownCountry",
+  "currentCity", "currentState", "currentCountry",
   "whatsapp", "email", "linkedin",
 ]
 
+const CSV_MANDATORY = new Set(["firstName", "whatsapp"])
+
 const CSV_EXAMPLE_ROW = [
-  "Priya Sharma", "Female", "18", "true",
+  "Priya", "Sharma", "Female", "18", "Student",
   "Akanksha — Batch 2026",
-  "Student", "—", "0",
+  "Student", "—", "0", "Career Counselling",
   "12th Grade", "Science", "St. Xavier's School, Mumbai", "2026",
-  "Excel;Communication;English", "Career Clarity;Job Readiness", "English", "Mumbai",
+  "Excel;Communication", "Career Clarity;Job Readiness", "English;Hindi",
+  "Mumbai", "Maharashtra", "India",
+  "Mumbai", "Maharashtra", "India",
   "+91 98765 00001", "priya@gmail.com", "linkedin.com/in/priya",
 ]
 
 function downloadCSVTemplate() {
-  const rows = [CSV_HEADERS.join(","), CSV_EXAMPLE_ROW.map(v => `"${v}"`).join(",")]
+  const requiredRow = CSV_HEADERS.map(h => CSV_MANDATORY.has(h) ? "required" : "optional")
+  const rows = [
+    CSV_HEADERS.join(","),
+    requiredRow.map(v => `"${v}"`).join(","),
+    CSV_EXAMPLE_ROW.map(v => `"${v}"`).join(","),
+  ]
   const blob = new Blob([rows.join("\n")], { type: "text/csv" })
   const url = URL.createObjectURL(blob)
   const a = document.createElement("a")
@@ -55,7 +66,6 @@ function UploadCSVModal({ onClose }: { onClose: () => void }) {
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-xl shadow-xl w-[500px]">
-        {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
           <div>
             <h2 className="font-semibold text-gray-900">Upload Mentees via CSV</h2>
@@ -65,14 +75,13 @@ function UploadCSVModal({ onClose }: { onClose: () => void }) {
         </div>
 
         <div className="px-5 py-5 space-y-4">
-          {/* Step 1 — download template */}
           <div className="bg-blue-50 border border-blue-100 rounded-lg p-4">
             <div className="flex items-start gap-3">
               <FileSpreadsheet className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
               <div className="flex-1">
                 <p className="text-sm font-medium text-blue-900">Step 1 — Download the template</p>
                 <p className="text-xs text-blue-700 mt-0.5">
-                  Fill in the CSV with one mentee per row. Use semicolons to separate multiple values in Skills and Goals columns.
+                  Fill in the CSV with one mentee per row. Use semicolons to separate multiple values in Skills, Goals, and Preferred Languages columns.
                 </p>
                 <button
                   onClick={downloadCSVTemplate}
@@ -84,7 +93,6 @@ function UploadCSVModal({ onClose }: { onClose: () => void }) {
             </div>
           </div>
 
-          {/* Step 2 — upload */}
           <div>
             <p className="text-sm font-medium text-gray-700 mb-2">Step 2 — Upload your filled CSV</p>
             <div
@@ -118,18 +126,19 @@ function UploadCSVModal({ onClose }: { onClose: () => void }) {
             )}
           </div>
 
-          {/* Column reference */}
           <details className="text-xs text-gray-500">
             <summary className="cursor-pointer font-medium text-gray-600 hover:text-gray-800">View expected columns</summary>
             <div className="mt-2 flex flex-wrap gap-1">
               {CSV_HEADERS.map(h => (
-                <span key={h} className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded font-mono">{h}</span>
+                <span key={h} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded font-mono ${CSV_MANDATORY.has(h) ? "bg-red-50 text-red-700 border border-red-200" : "bg-gray-100 text-gray-600"}`}>
+                  {h}{CSV_MANDATORY.has(h) && <span className="text-red-500 font-bold">*</span>}
+                </span>
               ))}
             </div>
+            <p className="mt-2 text-gray-400"><span className="text-red-500 font-bold">*</span> required</p>
           </details>
         </div>
 
-        {/* Footer */}
         <div className="flex gap-2 px-5 py-4 border-t border-gray-100">
           <Button variant="outline" className="flex-1" onClick={onClose}>Cancel</Button>
           <Button className="flex-1" disabled={!file}>
@@ -148,44 +157,80 @@ const LABEL_CLS = "text-xs font-medium text-gray-500 uppercase tracking-wide blo
 const SECTION_CLS = "space-y-3"
 const SECTION_TITLE_CLS = "text-xs font-semibold text-gray-400 uppercase tracking-wide border-b border-gray-100 pb-1"
 
+const CAREER_STAGES: CareerStage[] = ["Student", "Working", "Unemployed", "Fresh Graduate"]
+
+const ALL_LANGUAGES = [
+  "English", "Hindi", "Bengali", "Telugu", "Marathi", "Tamil",
+  "Gujarati", "Kannada", "Malayalam", "Punjabi", "Odia", "Assamese", "Urdu",
+]
+
 interface MenteeFormData {
-  name: string; gender: "Male" | "Female" | "Other"; age: string; isStudent: boolean
+  firstName: string; lastName: string
+  gender: "Male" | "Female" | "Other"
+  age: string
+  careerStage: CareerStage
   group: string
-  currentRole: string; currentCompany: string; totalYearsExp: string
+  currentRole: string; currentCompany: string; totalYearsExp: string; domain: string
   educationLevel: string; educationDegree: string; educationInstitute: string; educationYear: string
-  skills: string; goals: string; language: string; location: string
+  skills: string; goals: string
+  hometownCity: string; hometownState: string; hometownCountry: string
+  currentCity: string; currentState: string; currentCountry: string
   whatsapp: string; email: string; linkedin: string
 }
 
 const EMPTY_FORM: MenteeFormData = {
-  name: "", gender: "Female", age: "", isStudent: false,
+  firstName: "", lastName: "",
+  gender: "Female", age: "", careerStage: "Student",
   group: "",
-  currentRole: "", currentCompany: "", totalYearsExp: "0",
+  currentRole: "", currentCompany: "", totalYearsExp: "0", domain: "",
   educationLevel: "", educationDegree: "", educationInstitute: "", educationYear: "",
-  skills: "", goals: "", language: "", location: "",
+  skills: "", goals: "",
+  hometownCity: "", hometownState: "", hometownCountry: "India",
+  currentCity: "", currentState: "", currentCountry: "India",
   whatsapp: "", email: "", linkedin: "",
 }
 
+const EMPTY_ROLE: PreviousRole = { role: "", company: "", years: 0 }
+
 function AddMenteeModal({ onSave, onClose }: { onSave: (m: Mentee) => void; onClose: () => void }) {
   const [form, setForm] = useState<MenteeFormData>(EMPTY_FORM)
-  const set = (k: keyof MenteeFormData, v: string | boolean) => setForm(p => ({ ...p, [k]: v }))
+  const [preferredLanguages, setPreferredLanguages] = useState<string[]>([])
+  const [previousRoles, setPreviousRoles] = useState<PreviousRole[]>([])
+  const [langInput, setLangInput] = useState("")
 
-  const canSave = form.name.trim() && form.whatsapp
+  const set = (k: keyof MenteeFormData, v: string) => setForm(p => ({ ...p, [k]: v }))
+
+  const addLanguage = (lang: string) => {
+    if (lang && !preferredLanguages.includes(lang)) {
+      setPreferredLanguages(p => [...p, lang])
+    }
+    setLangInput("")
+  }
+  const removeLang = (lang: string) => setPreferredLanguages(p => p.filter(l => l !== lang))
+
+  const addRole = () => setPreviousRoles(p => [...p, { ...EMPTY_ROLE }])
+  const removeRole = (i: number) => setPreviousRoles(p => p.filter((_, idx) => idx !== i))
+  const setRole = (i: number, field: keyof PreviousRole, val: string | number) =>
+    setPreviousRoles(p => p.map((r, idx) => idx === i ? { ...r, [field]: val } : r))
+
+  const canSave = form.firstName.trim() && form.whatsapp
 
   const handleSave = () => {
     if (!canSave) return
     const newMentee: Mentee = {
       id: `MTE-${String(Date.now()).slice(-4)}`,
-      name: form.name.trim(),
+      firstName: form.firstName.trim(),
+      lastName: form.lastName.trim(),
       gender: form.gender,
+      careerStage: form.careerStage,
       age: parseInt(form.age) || 0,
-      isStudent: form.isStudent,
       ngo: "",
       group: form.group.trim(),
-      currentRole: form.currentRole.trim() || (form.isStudent ? "Student" : "—"),
+      currentRole: form.currentRole.trim() || (form.careerStage === "Student" ? "Student" : "—"),
       currentCompany: form.currentCompany.trim() || "—",
       totalYearsExp: parseFloat(form.totalYearsExp) || 0,
-      pastExperience: [],
+      domain: form.domain.trim(),
+      previousRoles: previousRoles.filter(r => r.role.trim()),
       education: {
         level: form.educationLevel.trim(),
         degree: form.educationDegree.trim(),
@@ -195,8 +240,9 @@ function AddMenteeModal({ onSave, onClose }: { onSave: (m: Mentee) => void; onCl
       skills: form.skills.split(";").map(s => s.trim()).filter(Boolean),
       goals: form.goals.split(";").map(g => g.trim()).filter(Boolean),
       rating: 0,
-      language: form.language.trim() || "English",
-      location: form.location.trim(),
+      preferredLanguages: preferredLanguages.length ? preferredLanguages : ["English"],
+      hometown: { city: form.hometownCity.trim(), state: form.hometownState.trim(), country: form.hometownCountry.trim() },
+      currentLocation: { city: form.currentCity.trim(), state: form.currentState.trim(), country: form.currentCountry.trim() },
       scopedNeed: "Unsure — needs scoping",
       knowsTheirNeed: false,
       engagementStatus: "Pending Match",
@@ -211,7 +257,6 @@ function AddMenteeModal({ onSave, onClose }: { onSave: (m: Mentee) => void; onCl
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-xl shadow-xl w-[600px] max-h-[90vh] flex flex-col">
-        {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
           <div>
             <h2 className="font-semibold text-gray-900">Add New Mentee</h2>
@@ -220,16 +265,19 @@ function AddMenteeModal({ onSave, onClose }: { onSave: (m: Mentee) => void; onCl
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X className="w-4 h-4" /></button>
         </div>
 
-        {/* Scrollable body */}
         <div className="flex-1 overflow-y-auto px-5 py-5 space-y-6">
 
           {/* Basic Info */}
           <div className={SECTION_CLS}>
             <p className={SECTION_TITLE_CLS}>Basic Info</p>
             <div className="grid grid-cols-2 gap-3">
-              <div className="col-span-2">
-                <label className={LABEL_CLS}>Full Name *</label>
-                <input className={FIELD_CLS} placeholder="e.g. Priya Sharma" value={form.name} onChange={e => set("name", e.target.value)} />
+              <div>
+                <label className={LABEL_CLS}>First Name *</label>
+                <input className={FIELD_CLS} placeholder="e.g. Priya" value={form.firstName} onChange={e => set("firstName", e.target.value)} />
+              </div>
+              <div>
+                <label className={LABEL_CLS}>Last Name</label>
+                <input className={FIELD_CLS} placeholder="e.g. Sharma" value={form.lastName} onChange={e => set("lastName", e.target.value)} />
               </div>
               <div>
                 <label className={LABEL_CLS}>Gender</label>
@@ -241,17 +289,11 @@ function AddMenteeModal({ onSave, onClose }: { onSave: (m: Mentee) => void; onCl
                 <label className={LABEL_CLS}>Age</label>
                 <input className={FIELD_CLS} type="number" min="10" max="60" placeholder="e.g. 22" value={form.age} onChange={e => set("age", e.target.value)} />
               </div>
-              <div>
-                <label className={LABEL_CLS}>Location</label>
-                <input className={FIELD_CLS} placeholder="e.g. Mumbai" value={form.location} onChange={e => set("location", e.target.value)} />
-              </div>
-              <div>
-                <label className={LABEL_CLS}>Language</label>
-                <input className={FIELD_CLS} placeholder="e.g. English / Hindi" value={form.language} onChange={e => set("language", e.target.value)} />
-              </div>
-              <div className="col-span-2 flex items-center gap-2">
-                <input type="checkbox" id="isStudent" checked={form.isStudent} onChange={e => set("isStudent", e.target.checked)} className="w-4 h-4 accent-blue-600" />
-                <label htmlFor="isStudent" className="text-sm text-gray-700 cursor-pointer">Currently a student</label>
+              <div className="col-span-2">
+                <label className={LABEL_CLS}>Career Stage</label>
+                <select className={FIELD_CLS} value={form.careerStage} onChange={e => set("careerStage", e.target.value)}>
+                  {CAREER_STAGES.map(s => <option key={s}>{s}</option>)}
+                </select>
               </div>
             </div>
           </div>
@@ -287,6 +329,74 @@ function AddMenteeModal({ onSave, onClose }: { onSave: (m: Mentee) => void; onCl
                 <option>NavGurukul — Cohort 12</option>
                 <option>Parivarthan — Batch 1</option>
               </select>
+            </div>
+          </div>
+
+          {/* Location */}
+          <div className={SECTION_CLS}>
+            <p className={SECTION_TITLE_CLS}>Location</p>
+            <p className="text-xs text-gray-500 -mt-1">Hometown</p>
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <label className={LABEL_CLS}>City</label>
+                <input className={FIELD_CLS} placeholder="e.g. Mumbai" value={form.hometownCity} onChange={e => set("hometownCity", e.target.value)} />
+              </div>
+              <div>
+                <label className={LABEL_CLS}>State</label>
+                <input className={FIELD_CLS} placeholder="e.g. Maharashtra" value={form.hometownState} onChange={e => set("hometownState", e.target.value)} />
+              </div>
+              <div>
+                <label className={LABEL_CLS}>Country</label>
+                <input className={FIELD_CLS} placeholder="India" value={form.hometownCountry} onChange={e => set("hometownCountry", e.target.value)} />
+              </div>
+            </div>
+            <p className="text-xs text-gray-500 mt-1">Current Location</p>
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <label className={LABEL_CLS}>City</label>
+                <input className={FIELD_CLS} placeholder="e.g. Pune" value={form.currentCity} onChange={e => set("currentCity", e.target.value)} />
+              </div>
+              <div>
+                <label className={LABEL_CLS}>State</label>
+                <input className={FIELD_CLS} placeholder="e.g. Maharashtra" value={form.currentState} onChange={e => set("currentState", e.target.value)} />
+              </div>
+              <div>
+                <label className={LABEL_CLS}>Country</label>
+                <input className={FIELD_CLS} placeholder="India" value={form.currentCountry} onChange={e => set("currentCountry", e.target.value)} />
+              </div>
+            </div>
+          </div>
+
+          {/* Preferred Languages */}
+          <div className={SECTION_CLS}>
+            <p className={SECTION_TITLE_CLS}>Preferred Languages</p>
+            <div className="flex flex-wrap gap-1.5 mb-2">
+              {preferredLanguages.map(l => (
+                <span key={l} className="flex items-center gap-1 text-xs bg-purple-50 text-purple-700 px-2 py-0.5 rounded-full">
+                  {l}<button type="button" onClick={() => removeLang(l)}><X className="w-2.5 h-2.5" /></button>
+                </span>
+              ))}
+              {preferredLanguages.length === 0 && <span className="text-xs text-gray-400 italic">No languages added</span>}
+            </div>
+            <div className="flex gap-2">
+              <select
+                className={FIELD_CLS}
+                value={langInput}
+                onChange={e => setLangInput(e.target.value)}
+              >
+                <option value="">— Select a language —</option>
+                {ALL_LANGUAGES.filter(l => !preferredLanguages.includes(l)).map(l => (
+                  <option key={l}>{l}</option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={() => addLanguage(langInput)}
+                disabled={!langInput}
+                className="text-xs text-blue-600 font-medium px-3 py-1.5 border border-blue-200 rounded-lg hover:bg-blue-50 disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
+              >
+                Add
+              </button>
             </div>
           </div>
 
@@ -329,7 +439,42 @@ function AddMenteeModal({ onSave, onClose }: { onSave: (m: Mentee) => void; onCl
                 <label className={LABEL_CLS}>Total Years of Experience</label>
                 <input className={FIELD_CLS} type="number" min="0" step="0.5" placeholder="0" value={form.totalYearsExp} onChange={e => set("totalYearsExp", e.target.value)} />
               </div>
+              <div>
+                <label className={LABEL_CLS}>Domain</label>
+                <input className={FIELD_CLS} placeholder="e.g. Software Engineering" value={form.domain} onChange={e => set("domain", e.target.value)} />
+              </div>
             </div>
+          </div>
+
+          {/* Previous Roles */}
+          <div className={SECTION_CLS}>
+            <p className={SECTION_TITLE_CLS}>Previous Roles</p>
+            {previousRoles.length === 0 && (
+              <p className="text-xs text-gray-400 italic">No previous roles added</p>
+            )}
+            {previousRoles.map((r, i) => (
+              <div key={i} className="grid grid-cols-[1fr_1fr_80px_28px] gap-2 items-end">
+                <div>
+                  {i === 0 && <label className={LABEL_CLS}>Role</label>}
+                  <input className={FIELD_CLS} placeholder="e.g. Intern" value={r.role} onChange={e => setRole(i, "role", e.target.value)} />
+                </div>
+                <div>
+                  {i === 0 && <label className={LABEL_CLS}>Company</label>}
+                  <input className={FIELD_CLS} placeholder="e.g. TCS" value={r.company} onChange={e => setRole(i, "company", e.target.value)} />
+                </div>
+                <div>
+                  {i === 0 && <label className={LABEL_CLS}>Years</label>}
+                  <input className={FIELD_CLS} type="number" min="0" step="0.5" placeholder="1" value={r.years || ""} onChange={e => setRole(i, "years", parseFloat(e.target.value) || 0)} />
+                </div>
+                <button type="button" onClick={() => removeRole(i)} className={`text-gray-400 hover:text-red-500 ${i === 0 ? "mt-5" : ""}`}>
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
+            <button type="button" onClick={addRole}
+              className="text-xs text-blue-600 font-medium flex items-center gap-1 hover:text-blue-700">
+              <Plus className="w-3.5 h-3.5" /> Add Role
+            </button>
           </div>
 
           {/* Skills & Goals */}
@@ -337,7 +482,7 @@ function AddMenteeModal({ onSave, onClose }: { onSave: (m: Mentee) => void; onCl
             <p className={SECTION_TITLE_CLS}>Skills & Goals</p>
             <div>
               <label className={LABEL_CLS}>Skills <span className="font-normal normal-case text-gray-400">(separate with semicolons)</span></label>
-              <input className={FIELD_CLS} placeholder="e.g. Excel; Communication; English" value={form.skills} onChange={e => set("skills", e.target.value)} />
+              <input className={FIELD_CLS} placeholder="e.g. Excel; Communication" value={form.skills} onChange={e => set("skills", e.target.value)} />
             </div>
             <div>
               <label className={LABEL_CLS}>Goals <span className="font-normal normal-case text-gray-400">(separate with semicolons)</span></label>
@@ -346,7 +491,6 @@ function AddMenteeModal({ onSave, onClose }: { onSave: (m: Mentee) => void; onCl
           </div>
         </div>
 
-        {/* Footer */}
         <div className="flex gap-2 px-5 py-4 border-t border-gray-100 shrink-0">
           <Button variant="outline" className="flex-1" onClick={onClose}>Cancel</Button>
           <Button className="flex-1" disabled={!canSave} onClick={handleSave}>
@@ -372,10 +516,13 @@ export default function Mentees() {
 
   const filtered = useMemo(() => mentees.filter((m) => {
     const q = search.toLowerCase()
+    const fullName = `${m.firstName} ${m.lastName}`.toLowerCase()
     const matchSearch =
-      m.name.toLowerCase().includes(q) ||
+      fullName.includes(q) ||
       m.id.toLowerCase().includes(q) ||
-      m.location.toLowerCase().includes(q) ||
+      m.currentLocation.city.toLowerCase().includes(q) ||
+      m.hometown.city.toLowerCase().includes(q) ||
+      m.domain.toLowerCase().includes(q) ||
       m.scopedNeed.toLowerCase().includes(q) ||
       m.skills.some((s) => s.toLowerCase().includes(q))
     return (
@@ -395,7 +542,6 @@ export default function Mentees() {
 
   return (
     <div className="flex h-full">
-      {/* Main */}
       <div className="flex-1 p-6 space-y-6 overflow-auto">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -448,7 +594,7 @@ export default function Mentees() {
             <label className="text-xs font-medium text-gray-500">Search</label>
             <div className="relative">
               <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
-              <Input placeholder="Search by name, ID, skill, need…" className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
+              <Input placeholder="Search by name, ID, skill, domain…" className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
             </div>
           </div>
           <div className="flex flex-col gap-1">
@@ -501,67 +647,69 @@ export default function Mentees() {
             <tbody className="divide-y divide-gray-100">
               {filtered.length === 0 ? (
                 <tr><td colSpan={10} className="px-4 py-8 text-center text-gray-400">No mentees match your filters</td></tr>
-              ) : filtered.map((m) => (
-                <tr key={m.id} className={`hover:bg-gray-50 transition-colors cursor-pointer ${selectedMentee?.id === m.id ? "bg-blue-50" : ""}`}
-                  onClick={() => setSelectedMentee(selectedMentee?.id === m.id ? null : m)}>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <div className="w-7 h-7 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-semibold shrink-0">
-                        {m.name.split(" ").map((n) => n[0]).join("")}
+              ) : filtered.map((m) => {
+                const fullName = `${m.firstName} ${m.lastName}`
+                return (
+                  <tr key={m.id} className={`hover:bg-gray-50 transition-colors cursor-pointer ${selectedMentee?.id === m.id ? "bg-blue-50" : ""}`}
+                    onClick={() => setSelectedMentee(selectedMentee?.id === m.id ? null : m)}>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-semibold shrink-0">
+                          {[m.firstName, m.lastName].map(n => n[0]).join("")}
+                        </div>
+                        <div>
+                          <p className="font-medium text-gray-900">{fullName}</p>
+                          <p className="text-xs text-gray-400">{m.id} · {m.gender} · {m.age}y</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="font-medium text-gray-900">{m.name}</p>
-                        <p className="text-xs text-gray-400">{m.id} · {m.gender} · {m.age}y</p>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${ngoColor[m.ngo] ?? "bg-gray-100 text-gray-700"}`}>{m.ngo}</span>
+                      <p className="text-xs text-gray-400 mt-0.5 truncate max-w-[120px]">{m.group}</p>
+                    </td>
+                    <td className="px-4 py-3 text-gray-600 text-xs">{m.education.level}</td>
+                    <td className="px-4 py-3">
+                      <div className="flex flex-wrap gap-1">
+                        {m.skills.slice(0, 2).map((s) => (
+                          <span key={s} className="text-xs bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">{s}</span>
+                        ))}
+                        {m.skills.length > 2 && <span className="text-xs text-gray-400">+{m.skills.length - 2}</span>}
                       </div>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${ngoColor[m.ngo] ?? "bg-gray-100 text-gray-700"}`}>{m.ngo}</span>
-                    <p className="text-xs text-gray-400 mt-0.5 truncate max-w-[120px]">{m.group}</p>
-                  </td>
-                  <td className="px-4 py-3 text-gray-600 text-xs">{m.education.level}</td>
-                  <td className="px-4 py-3">
-                    <div className="flex flex-wrap gap-1">
-                      {m.skills.slice(0, 2).map((s) => (
-                        <span key={s} className="text-xs bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">{s}</span>
-                      ))}
-                      {m.skills.length > 2 && <span className="text-xs text-gray-400">+{m.skills.length - 2}</span>}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <p className="text-gray-800 text-xs max-w-[140px] truncate">{m.scopedNeed}</p>
-                    {!m.knowsTheirNeed && <span className="text-xs text-amber-600 italic">Needs scoping</span>}
-                  </td>
-                  <td className="px-4 py-3 text-xs">
-                    {(() => {
-                      const active = mockRequests.filter((r) => r.menteeId === m.id && ACTIVE_STATUSES.includes(r.status))
-                      return active.length > 0
-                        ? <p className="text-gray-800 max-w-[150px] truncate">{active[0].theme}{active.length > 1 && <span className="text-gray-400 ml-1">+{active.length - 1}</span>}</p>
-                        : <span className="text-gray-400 italic">No active request</span>
-                    })()}
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    <span className="text-xs font-medium text-gray-700">
-                      {mockRequests.filter((r) => r.menteeId === m.id).length}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <Badge variant={statusVariant[m.engagementStatus]}>{m.engagementStatus}</Badge>
-                  </td>
-                  <td className="px-4 py-3">
-                    <StarDisplay value={m.rating} />
-                  </td>
-                  <td className="px-4 py-3">
-                    <BookOpen className="w-4 h-4 text-gray-300" />
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                    <td className="px-4 py-3">
+                      <p className="text-gray-800 text-xs max-w-[140px] truncate">{m.scopedNeed}</p>
+                      {!m.knowsTheirNeed && <span className="text-xs text-amber-600 italic">Needs scoping</span>}
+                    </td>
+                    <td className="px-4 py-3 text-xs">
+                      {(() => {
+                        const active = mockRequests.filter((r) => r.menteeId === m.id && ACTIVE_STATUSES.includes(r.status))
+                        return active.length > 0
+                          ? <p className="text-gray-800 max-w-[150px] truncate">{active[0].theme}{active.length > 1 && <span className="text-gray-400 ml-1">+{active.length - 1}</span>}</p>
+                          : <span className="text-gray-400 italic">No active request</span>
+                      })()}
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      <span className="text-xs font-medium text-gray-700">
+                        {mockRequests.filter((r) => r.menteeId === m.id).length}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <Badge variant={statusVariant[m.engagementStatus]}>{m.engagementStatus}</Badge>
+                    </td>
+                    <td className="px-4 py-3">
+                      <StarDisplay value={m.rating} />
+                    </td>
+                    <td className="px-4 py-3">
+                      <BookOpen className="w-4 h-4 text-gray-300" />
+                    </td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         </div>
       </div>
 
-      {/* Side Pane */}
       {selectedMentee && (
         <MenteePane mentee={selectedMentee} onClose={() => setSelectedMentee(null)} />
       )}

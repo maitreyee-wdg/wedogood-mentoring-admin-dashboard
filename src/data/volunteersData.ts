@@ -4,9 +4,8 @@ export type OrientationStatus =
   | "Orientation Done"
   | "Orientation Rescheduled"
 
-export type VolunteerStatus = "Orientation Pending" | "Active" | "Inactive" | "Archived"
-export type EngagementStatus = "Active" | "Not Engaged"
-export type MenteeInterest = "College students/Fresh graduates" | "0-4 years experience" | "4-8 years experience"
+export type VolunteerStatus = "Orientation Pending" | "Active" | "Occupied" | "Inactive" | "Archived"
+export type PreferredMenteeStage = "College students" | "Fresh graduates" | "0–4 yrs" | "4–8 yrs"
 export type VolunteeringType = "Mentoring" | "Projects" | "Both"
 
 export interface Experience {
@@ -56,7 +55,9 @@ export interface Volunteer {
   pastExperience: Experience[]
   skills: string[]
   volunteeringType: VolunteeringType
-  interestedIn: MenteeInterest[]          // only relevant if Mentoring or Both
+  preferredMenteeStage: PreferredMenteeStage[]   // only relevant if Mentoring or Both
+  domain: string
+  industry: string
   mentoringRating: number
   projectsRating: number
   group: string
@@ -72,8 +73,7 @@ export interface Volunteer {
   orientationStatus: OrientationStatus
   orientationDate?: string
   signedUpDate: string
-  engagementStatus: EngagementStatus
-  availability: "Available" | "On Leave" | "Inactive"
+  sessionAvailability: "Available" | "On Leave" | "Inactive"
   activeRequest?: ActiveRequest
   pastRequests: PastRequest[]
   activeProjects: Project[]
@@ -95,7 +95,9 @@ export const mockVolunteers: Volunteer[] = [
     ],
     skills: ["Resume Writing", "Interview Prep", "Career Guidance"],
     volunteeringType: "Mentoring",
-    interestedIn: ["College students/Fresh graduates", "0-4 years experience"],
+    preferredMenteeStage: ["College students", "Fresh graduates", "0–4 yrs"],
+    domain: "HR & People",
+    industry: "Technology",
     mentoringRating: 4.7,
     projectsRating: 0,
     rating: 4.7,
@@ -110,14 +112,13 @@ export const mockVolunteers: Volunteer[] = [
     status: "Active",
     orientationStatus: "Orientation Done",
     signedUpDate: "2025-09-10",
-    engagementStatus: "Active",
     activeRequest: { id: "REQ-001", menteeName: "Priya Sharma", skill: "Resume Writing", startedAt: "2026-05-01" },
     pastRequests: [
       { id: "REQ-P01", menteeName: "Ankit Verma", skill: "Interview Prep", closedAt: "2026-03-10", feedback: "Very helpful and patient mentor.", rating: 5 },
     ],
     activeProjects: [],
     pastProjects: [],
-    availability: "Available",
+    sessionAvailability: "Available",
   },
   {
     id: "VOL-002",
@@ -131,7 +132,9 @@ export const mockVolunteers: Volunteer[] = [
     ],
     skills: ["Software Engineering", "React", "Career Guidance", "System Design"],
     volunteeringType: "Both",
-    interestedIn: ["0-4 years experience", "4-8 years experience"],
+    preferredMenteeStage: ["0–4 yrs", "4–8 yrs"],
+    domain: "Technology",
+    industry: "Technology",
     mentoringRating: 4.5,
     projectsRating: 4.6,
     rating: 4.5,
@@ -146,7 +149,6 @@ export const mockVolunteers: Volunteer[] = [
     status: "Active",
     orientationStatus: "Orientation Done",
     signedUpDate: "2025-08-22",
-    engagementStatus: "Active",
     activeRequest: { id: "REQ-002", menteeName: "Arjun Patel", skill: "Software Engineering", startedAt: "2026-05-03" },
     pastRequests: [
       { id: "REQ-P02", menteeName: "Rohit Das", skill: "React", closedAt: "2026-02-20", feedback: "Excellent mentor, very knowledgeable.", rating: 4 },
@@ -154,7 +156,7 @@ export const mockVolunteers: Volunteer[] = [
     ],
     activeProjects: [{ projectName: "Code4Good Bootcamp", programName: "Tech Skills Program", ngo: "NavGurukul" }],
     pastProjects: [{ projectName: "Hackathon Facilitation", programName: "Youth Innovation", ngo: "Akanksha Foundation", endDate: "2025-11-30" }],
-    availability: "Available",
+    sessionAvailability: "Available",
   },
   {
     id: "VOL-003",
@@ -168,7 +170,9 @@ export const mockVolunteers: Volunteer[] = [
     ],
     skills: ["Data Analysis", "Excel", "Python", "SQL"],
     volunteeringType: "Mentoring",
-    interestedIn: ["College students/Fresh graduates", "0-4 years experience"],
+    preferredMenteeStage: ["College students", "Fresh graduates", "0–4 yrs"],
+    domain: "Data & Analytics",
+    industry: "Consumer/E-commerce",
     mentoringRating: 4.2,
     projectsRating: 0,
     rating: 4.2,
@@ -184,12 +188,11 @@ export const mockVolunteers: Volunteer[] = [
     orientationStatus: "Orientation Slot Booked",
     orientationDate: "2026-06-05",
     signedUpDate: "2025-10-05",
-    engagementStatus: "Active",
     activeRequest: { id: "REQ-004", menteeName: "Rohan Das", skill: "Data Analysis", startedAt: "2026-05-08" },
     pastRequests: [],
     activeProjects: [],
     pastProjects: [],
-    availability: "Available",
+    sessionAvailability: "Available",
   },
   {
     id: "VOL-004",
@@ -203,7 +206,9 @@ export const mockVolunteers: Volunteer[] = [
     ],
     skills: ["Finance", "Investment Basics", "Accounting", "Budgeting"],
     volunteeringType: "Both",
-    interestedIn: ["4-8 years experience"],
+    preferredMenteeStage: ["4–8 yrs"],
+    domain: "Finance",
+    industry: "Banking & Finance",
     mentoringRating: 3.9,
     projectsRating: 4.1,
     rating: 3.9,
@@ -219,13 +224,12 @@ export const mockVolunteers: Volunteer[] = [
     orientationStatus: "Orientation Rescheduled",
     orientationDate: "2026-06-10",
     signedUpDate: "2025-07-18",
-    engagementStatus: "Not Engaged",
     pastRequests: [
       { id: "REQ-P04", menteeName: "Siddharth Kumar", skill: "Finance", closedAt: "2026-04-01", feedback: "Good guidance but could be more proactive.", rating: 4 },
     ],
     activeProjects: [{ projectName: "Financial Literacy Drive", programName: "Finwise", ngo: "Parivarthan" }],
     pastProjects: [],
-    availability: "On Leave",
+    sessionAvailability: "On Leave",
   },
   {
     id: "VOL-005",
@@ -239,7 +243,9 @@ export const mockVolunteers: Volunteer[] = [
     ],
     skills: ["Product Management", "Roadmapping", "User Research"],
     volunteeringType: "Mentoring",
-    interestedIn: ["0-4 years experience", "4-8 years experience"],
+    preferredMenteeStage: ["0–4 yrs", "4–8 yrs"],
+    domain: "Product Management",
+    industry: "Banking & Finance",
     mentoringRating: 4.8,
     projectsRating: 0,
     rating: 4.8,
@@ -254,11 +260,10 @@ export const mockVolunteers: Volunteer[] = [
     status: "Orientation Pending",
     orientationStatus: "Orientation Pending",
     signedUpDate: "2025-11-02",
-    engagementStatus: "Not Engaged",
     pastRequests: [],
     activeProjects: [],
     pastProjects: [],
-    availability: "Available",
+    sessionAvailability: "Available",
   },
   {
     id: "VOL-006",
@@ -272,7 +277,9 @@ export const mockVolunteers: Volunteer[] = [
     ],
     skills: ["Marketing", "Brand Building", "Content Strategy", "Communication"],
     volunteeringType: "Both",
-    interestedIn: ["College students/Fresh graduates", "0-4 years experience"],
+    preferredMenteeStage: ["College students", "Fresh graduates", "0–4 yrs"],
+    domain: "Marketing",
+    industry: "Consumer/E-commerce",
     mentoringRating: 4.6,
     projectsRating: 4.8,
     rating: 4.6,
@@ -287,13 +294,12 @@ export const mockVolunteers: Volunteer[] = [
     status: "Inactive",
     orientationStatus: "Orientation Done",
     signedUpDate: "2025-06-30",
-    engagementStatus: "Not Engaged",
     pastRequests: [
       { id: "REQ-P05", menteeName: "Meena Iyer", skill: "Communication", closedAt: "2026-03-20", feedback: "Very inspiring mentor.", rating: 5 },
     ],
     activeProjects: [{ projectName: "Brand Workshop Series", programName: "Creative Skills", ngo: "Akanksha Foundation" }],
     pastProjects: [{ projectName: "Content Creation Sprint", programName: "Digital Literacy", ngo: "NavGurukul", endDate: "2025-10-15" }],
-    availability: "Available",
+    sessionAvailability: "Available",
   },
   {
     id: "VOL-007",
@@ -307,7 +313,9 @@ export const mockVolunteers: Volunteer[] = [
     ],
     skills: ["Operations", "Project Management", "Logistics", "Event Management"],
     volunteeringType: "Projects",
-    interestedIn: [],
+    preferredMenteeStage: [],
+    domain: "Operations",
+    industry: "Consumer/E-commerce",
     mentoringRating: 0,
     projectsRating: 4.4,
     rating: 4.4,
@@ -322,12 +330,11 @@ export const mockVolunteers: Volunteer[] = [
     status: "Active",
     orientationStatus: "Orientation Done",
     signedUpDate: "2025-09-25",
-    engagementStatus: "Active",
     activeRequest: undefined,
     pastRequests: [],
     activeProjects: [{ projectName: "Youth Employment Fair", programName: "Career Connect", ngo: "NavGurukul" }],
     pastProjects: [{ projectName: "NGO Operations Audit", programName: "Capacity Building", ngo: "Parivarthan", endDate: "2025-12-31" }],
-    availability: "Available",
+    sessionAvailability: "Available",
   },
   {
     id: "VOL-008",
@@ -340,7 +347,9 @@ export const mockVolunteers: Volunteer[] = [
     ],
     skills: ["UX Design", "Figma", "User Research", "Prototyping"],
     volunteeringType: "Projects",
-    interestedIn: [],
+    preferredMenteeStage: [],
+    domain: "Design",
+    industry: "Consumer/E-commerce",
     mentoringRating: 0,
     projectsRating: 4.3,
     rating: 4.3,
@@ -355,11 +364,10 @@ export const mockVolunteers: Volunteer[] = [
     status: "Active",
     orientationStatus: "Orientation Done",
     signedUpDate: "2025-12-01",
-    engagementStatus: "Active",
     pastRequests: [],
     activeProjects: [{ projectName: "App Redesign for NGO", programName: "Tech4Good", ngo: "Akanksha Foundation" }],
     pastProjects: [],
-    availability: "Available",
+    sessionAvailability: "Available",
   },
   {
     id: "VOL-009",
@@ -373,7 +381,9 @@ export const mockVolunteers: Volunteer[] = [
     ],
     skills: ["Sales", "Leadership", "Communication", "Negotiation", "Career Coaching"],
     volunteeringType: "Both",
-    interestedIn: ["4-8 years experience"],
+    preferredMenteeStage: ["4–8 yrs"],
+    domain: "Sales & Business Development",
+    industry: "Technology",
     mentoringRating: 4.9,
     projectsRating: 4.7,
     rating: 4.9,
@@ -388,11 +398,10 @@ export const mockVolunteers: Volunteer[] = [
     status: "Inactive",
     orientationStatus: "Orientation Done",
     signedUpDate: "2025-05-15",
-    engagementStatus: "Not Engaged",
     pastRequests: [],
     activeProjects: [{ projectName: "Entrepreneurship Workshop", programName: "BizBoost", ngo: "NavGurukul" }],
     pastProjects: [{ projectName: "Sales Training Camp", programName: "Skills Connect", ngo: "Parivarthan", endDate: "2026-01-20" }],
-    availability: "Available",
+    sessionAvailability: "Available",
   },
   {
     id: "VOL-010",
@@ -405,7 +414,9 @@ export const mockVolunteers: Volunteer[] = [
     ],
     skills: ["Content Writing", "Social Media", "Copywriting"],
     volunteeringType: "Projects",
-    interestedIn: [],
+    preferredMenteeStage: [],
+    domain: "Content & Communications",
+    industry: "Education & EdTech",
     mentoringRating: 0,
     projectsRating: 3.8,
     rating: 3.8,
@@ -420,14 +431,26 @@ export const mockVolunteers: Volunteer[] = [
     status: "Orientation Pending",
     orientationStatus: "Orientation Pending",
     signedUpDate: "2026-01-10",
-    engagementStatus: "Not Engaged",
     pastRequests: [],
     activeProjects: [],
     pastProjects: [],
-    availability: "Available",
+    sessionAvailability: "Available",
   },
 ]
 
 export const mentorGroups = ["HR & People", "Technology", "Analytics", "Finance", "Product", "Marketing", "Operations", "Design", "Sales & BD"]
 
 export const volunteerGroups = [...mentorGroups]
+
+export const DOMAINS = [
+  "HR & People", "Technology", "Data & Analytics", "Finance", "Product Management",
+  "Marketing", "Operations", "Design", "Sales & Business Development",
+  "Content & Communications", "Legal", "Engineering", "Healthcare", "Education",
+]
+
+export const INDUSTRIES = [
+  "Technology", "Banking & Finance", "Consumer/E-commerce", "Healthcare",
+  "Education & EdTech", "Media & Entertainment", "Consulting", "Manufacturing",
+  "NGO/Social Impact", "Retail", "Logistics", "Real Estate",
+  "Government & Public Sector", "Automotive", "FMCG",
+]
