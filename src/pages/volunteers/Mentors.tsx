@@ -134,7 +134,7 @@ function MentorPane({ mentor, onClose, onSave }: {
             <p className="text-xs text-gray-500">{mentor.currentRole} · {mentor.currentCompany}</p>
             <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
               <StarRating value={mentor.mentoringRating} />
-              <Badge variant={mentor.engagementStatus === "Active" ? "success" : "secondary"}>{mentor.engagementStatus}</Badge>
+              <Badge variant={!!mentor.activeRequest ? "success" : "secondary"}>{mentor.activeRequest ? "Active" : "Not Engaged"}</Badge>
               <Badge variant={orientationVariant[mentor.orientationStatus]}>{orientationShort[mentor.orientationStatus]}</Badge>
             </div>
           </div>
@@ -194,19 +194,19 @@ function MentorPane({ mentor, onClose, onSave }: {
               )}
             </PaneSection>
 
-            <PaneSection label="Interested in Mentoring">
+            <PaneSection label="Preferred Mentee Stage">
               {mode === "edit" ? (
                 <div className="space-y-1">
-                  {(["College students/Fresh graduates", "0-4 years experience", "4-8 years experience"] as const).map((lvl) => (
+                  {(["College students", "Fresh graduates", "0–4 yrs", "4–8 yrs"] as const).map((lvl) => (
                     <label key={lvl} className="flex items-center gap-2 text-xs cursor-pointer">
-                      <input type="checkbox" checked={data.interestedIn.includes(lvl)} onChange={(e) => set("interestedIn", e.target.checked ? [...data.interestedIn, lvl] : data.interestedIn.filter((x) => x !== lvl))} className="rounded border-gray-300" />
+                      <input type="checkbox" checked={data.preferredMenteeStage.includes(lvl)} onChange={(e) => set("preferredMenteeStage", e.target.checked ? [...data.preferredMenteeStage, lvl] : data.preferredMenteeStage.filter((x) => x !== lvl))} className="rounded border-gray-300" />
                       {lvl}
                     </label>
                   ))}
                 </div>
               ) : (
                 <div className="flex flex-wrap gap-1.5">
-                  {v.interestedIn.map((i) => <span key={i} className="text-xs bg-green-50 text-green-700 px-2 py-0.5 rounded-full">{i}</span>)}
+                  {v.preferredMenteeStage.map((i) => <span key={i} className="text-xs bg-green-50 text-green-700 px-2 py-0.5 rounded-full">{i}</span>)}
                 </div>
               )}
             </PaneSection>
@@ -403,8 +403,8 @@ export default function MentorsList() {
         (v.name.toLowerCase().includes(q) || v.currentRole.toLowerCase().includes(q) || v.skills.some((s) => s.toLowerCase().includes(q))) &&
         (filterOrientation === "All" || v.orientationStatus === filterOrientation) &&
         (filterGroup === "All" || v.group === filterGroup) &&
-        (filterEngagement === "All" || v.engagementStatus === filterEngagement) &&
-        (filterAvailability === "All" || v.availability === filterAvailability)
+        (filterEngagement === "All" || (filterEngagement === "Active" ? !!v.activeRequest : !v.activeRequest)) &&
+        (filterAvailability === "All" || v.sessionAvailability === filterAvailability)
       )
     })
     result = [...result].sort((a, b) => {
@@ -451,7 +451,7 @@ export default function MentorsList() {
   const stats = {
     total: list.length,
     done: list.filter((v) => v.orientationStatus === "Orientation Done").length,
-    active: list.filter((v) => v.engagementStatus === "Active").length,
+    active: list.filter((v) => !!v.activeRequest).length,
     avgRating: list.length ? (list.reduce((s, v) => s + v.mentoringRating, 0) / list.length).toFixed(1) : "—",
   }
 
@@ -593,7 +593,7 @@ export default function MentorsList() {
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex flex-wrap gap-1">
-                      {v.interestedIn.map((i) => (
+                      {v.preferredMenteeStage.map((i) => (
                         <span key={i} className="text-xs bg-green-50 text-green-700 px-1.5 py-0.5 rounded-full">{i}</span>
                       ))}
                     </div>

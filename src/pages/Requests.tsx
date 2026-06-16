@@ -21,9 +21,10 @@ const statusVariant: Record<RequestStatus, "default" | "success" | "warning" | "
   "Mentor Response Pending": "warning",
   "No Match Found": "destructive",
   "Matched": "success",
-  "Closed - Feedback Pending": "secondary",
+  "Accessed Contact": "default",
+  "Call Done — Feedback Pending": "warning",
+  "Closed — Feedback Pending": "secondary",
   "Expired": "secondary",
-  "Closed - With Feedback": "success",
 }
 
 const typeVariant: Record<string, string> = {
@@ -320,9 +321,9 @@ function RequestPane({ request: initial, onClose, onUpdate }: {
               </div>
             )}
 
-            {(req.status === "Closed - With Feedback" || req.status === "Closed - Feedback Pending" || req.status === "Expired") && (
+            {(req.status === "Call Done — Feedback Pending" || req.status === "Closed — Feedback Pending" || req.status === "Expired") && (
               <div className="space-y-4">
-                <div className={`border rounded-xl p-4 text-center space-y-2 ${req.status === "Closed - With Feedback" ? "bg-green-50 border-green-200" : "bg-gray-50 border-gray-200"}`}>
+                <div className="border rounded-xl p-4 text-center space-y-2 bg-gray-50 border-gray-200">
                   <p className="text-sm font-medium text-gray-700">{req.status}</p>
                   {req.matchedMentor && <p className="text-xs text-gray-500">Matched with {req.matchedMentor}</p>}
                 </div>
@@ -362,7 +363,8 @@ function PaneSection({ label, children }: { label: string; children: React.React
 
 const ALL_STATUSES: RequestStatus[] = [
   "Draft", "New", "Match Approval Pending", "Mentor Response Pending",
-  "No Match Found", "Matched", "Closed - Feedback Pending", "Expired", "Closed - With Feedback",
+  "No Match Found", "Matched", "Accessed Contact", "Call Done — Feedback Pending",
+  "Closed — Feedback Pending", "Expired",
 ]
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
@@ -406,7 +408,7 @@ export default function AllRequests() {
     total: requests.length,
     active: requests.filter((r) => ACTIVE_STATUSES.includes(r.status)).length,
     matched: requests.filter((r) => r.status === "Matched").length,
-    closed: requests.filter((r) => r.status === "Closed - With Feedback").length,
+    closed: requests.filter((r) => r.status === "Closed — Feedback Pending" || r.status === "Call Done — Feedback Pending").length,
   }
 
   const handleUpdate = (updated: MentoringRequest) => {

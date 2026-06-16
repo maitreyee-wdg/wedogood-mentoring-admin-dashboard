@@ -23,9 +23,10 @@ const statusVariant: Record<RequestStatus, "default" | "success" | "warning" | "
   "Mentor Response Pending": "warning",
   "No Match Found": "destructive",
   "Matched": "success",
-  "Closed - Feedback Pending": "secondary",
+  "Accessed Contact": "default",
+  "Call Done — Feedback Pending": "warning",
+  "Closed — Feedback Pending": "secondary",
   "Expired": "secondary",
-  "Closed - With Feedback": "success",
 }
 
 const typeVariant: Record<string, string> = {
@@ -61,11 +62,11 @@ function ManualAssignModal({ req, onAssign, onClose, mode = "assign" }: {
   }, [search])
 
   const availabilityBadge = (v: Volunteer) => {
-    if (v.availability === "Available" && !v.activeRequest)
+    if (v.sessionAvailability === "Available" && !v.activeRequest)
       return <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-700">Available</span>
-    if (v.availability === "Available" && v.activeRequest)
+    if (v.sessionAvailability === "Available" && v.activeRequest)
       return <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">Active Engagement</span>
-    if (v.availability === "On Leave")
+    if (v.sessionAvailability === "On Leave")
       return <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">On Leave</span>
     return <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-400">Inactive</span>
   }
@@ -746,9 +747,9 @@ function RequestPane({ request: initial, onClose, onUpdate }: {
             )}
 
             {/* CLOSED / EXPIRED */}
-            {(req.status === "Closed - With Feedback" || req.status === "Closed - Feedback Pending" || req.status === "Expired") && (
+            {(req.status === "Call Done — Feedback Pending" || req.status === "Closed — Feedback Pending" || req.status === "Expired") && (
               <div className="space-y-4">
-                <div className={`border rounded-xl p-4 text-center space-y-2 ${req.status === "Closed - With Feedback" ? "bg-green-50 border-green-200" : "bg-gray-50 border-gray-200"}`}>
+                <div className="border rounded-xl p-4 text-center space-y-2 bg-gray-50 border-gray-200">
                   <p className="text-sm font-medium text-gray-700">{req.status}</p>
                   {req.matchedMentor && <p className="text-xs text-gray-500">Matched with {req.matchedMentor}</p>}
                 </div>

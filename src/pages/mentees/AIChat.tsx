@@ -70,7 +70,7 @@ export default function AIChatPage() {
       const conv = menteeConversations[m.id]
       if (!conv) return false
 
-      if (!m.name.toLowerCase().includes(search.toLowerCase())) return false
+      if (!`${m.firstName} ${m.lastName}`.toLowerCase().includes(search.toLowerCase())) return false
       if (filterGroup !== "All" && m.group !== filterGroup) return false
 
       if (filterLastActive !== "All") {
@@ -226,7 +226,7 @@ export default function AIChatPage() {
                 <div className="flex items-start gap-2.5">
                   <div className="relative shrink-0">
                     <div className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-semibold ${hasEsc ? "bg-red-100 text-red-700" : "bg-purple-100 text-purple-700"}`}>
-                      {mentee.name.split(" ").map(n => n[0]).join("")}
+                      {[mentee.firstName, mentee.lastName].map((n: string) => n[0]).join("")}
                     </div>
                     {isTakeover && (
                       <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-blue-500 rounded-full flex items-center justify-center">
@@ -236,7 +236,7 @@ export default function AIChatPage() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-1">
-                      <p className={`text-xs font-semibold truncate ${hasEsc ? "text-red-800" : "text-gray-900"}`}>{mentee.name}</p>
+                      <p className={`text-xs font-semibold truncate ${hasEsc ? "text-red-800" : "text-gray-900"}`}>{`${mentee.firstName} ${mentee.lastName}`}</p>
                       {lastMsg && <span className="text-[10px] text-gray-400 shrink-0">{fmt(lastMsg.timestamp)}</span>}
                     </div>
                     <p className="text-[10px] text-gray-500 truncate">{mentee.ngo}</p>
@@ -280,10 +280,10 @@ export default function AIChatPage() {
                 className="flex items-center gap-2.5 hover:opacity-80 transition-opacity"
               >
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold ${hasOpenEscalation(selectedMentee.id) ? "bg-red-100 text-red-700" : "bg-purple-100 text-purple-700"}`}>
-                  {selectedMentee.name.split(" ").map(n => n[0]).join("")}
+                  {[selectedMentee.firstName, selectedMentee.lastName].map((n: string) => n[0]).join("")}
                 </div>
                 <div className="text-left">
-                  <p className="text-sm font-semibold text-gray-900 hover:text-blue-600 leading-tight">{selectedMentee.name}</p>
+                  <p className="text-sm font-semibold text-gray-900 hover:text-blue-600 leading-tight">{`${selectedMentee.firstName} ${selectedMentee.lastName}`}</p>
                   <p className="text-xs text-gray-500 leading-tight">{selectedMentee.ngo}</p>
                 </div>
               </button>
@@ -339,7 +339,7 @@ export default function AIChatPage() {
                 <div key={i} className={`flex ${isMira ? "justify-end" : "justify-start"}`}>
                   {!isMira && (
                     <div className="w-6 h-6 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center text-[10px] font-bold shrink-0 mr-1.5 mt-0.5">
-                      {selectedMentee.name.split(" ").map(n => n[0]).join("")}
+                      {[selectedMentee.firstName, selectedMentee.lastName].map((n: string) => n[0]).join("")}
                     </div>
                   )}
                   <div className={`max-w-xs lg:max-w-sm xl:max-w-md rounded-2xl px-3.5 py-2.5 ${

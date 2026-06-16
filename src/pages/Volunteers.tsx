@@ -15,7 +15,7 @@ import { VolunteerPane } from "@/components/VolunteerSidePane"
 
 const VOL_CSV_HEADERS = [
   "name", "currentRole", "currentCompany", "totalYearsExp",
-  "skills", "volunteeringType", "interestedIn", "preferredLanguages",
+  "skills", "volunteeringType", "preferredMenteeStage", "preferredLanguages",
   "mentorGroup",
   "currentCity", "currentState",
   "whatsapp", "email", "officialEmail", "linkedin",
@@ -151,7 +151,6 @@ interface VolFormData {
   currentRole: string; currentCompany: string; totalYearsExp: string
   skills: string
   volunteeringType: "Mentoring" | "Projects" | "Both"
-  interestedIn: string
   preferredLanguages: string
   group: string
   currentCity: string; currentState: string
@@ -163,7 +162,6 @@ const EMPTY_VOL: VolFormData = {
   currentRole: "", currentCompany: "", totalYearsExp: "0",
   skills: "",
   volunteeringType: "Mentoring",
-  interestedIn: "",
   preferredLanguages: "",
   group: "",
   currentCity: "", currentState: "",
@@ -188,7 +186,7 @@ function AddVolunteerModal({ onSave, onClose }: { onSave: (v: Volunteer) => void
       pastExperience: [],
       skills: splitSemi(form.skills),
       volunteeringType: form.volunteeringType,
-      interestedIn: splitSemi(form.interestedIn) as Volunteer["interestedIn"],
+      preferredMenteeStage: [],
       mentoringRating: 0,
       projectsRating: 0,
       rating: 0,
@@ -203,8 +201,7 @@ function AddVolunteerModal({ onSave, onClose }: { onSave: (v: Volunteer) => void
       status: "Orientation Pending",
       orientationStatus: "Orientation Pending",
       signedUpDate: new Date().toISOString().split("T")[0],
-      engagementStatus: "Not Engaged",
-      availability: "Available",
+      sessionAvailability: "Available",
       pastRequests: [],
       activeProjects: [],
       pastProjects: [],
@@ -308,8 +305,8 @@ function AddVolunteerModal({ onSave, onClose }: { onSave: (v: Volunteer) => void
                 </select>
               </div>
               <div>
-                <label className={LABEL_CLS}>Interested in Mentoring <span className="font-normal normal-case text-gray-400">(semicolons)</span></label>
-                <input className={FIELD_CLS} placeholder="e.g. College students/Fresh graduates" value={form.interestedIn} onChange={e => set("interestedIn", e.target.value)} />
+                <label className={LABEL_CLS}>Preferred Mentee Stage</label>
+                <p className="text-xs text-gray-400 italic">Set after profile creation</p>
               </div>
             </div>
           </div>
@@ -395,8 +392,8 @@ export default function Volunteers() {
         matchesSearch &&
         (filterGroup === "All" || v.group === filterGroup) &&
         (filterOrientation === "All" || v.orientationStatus === filterOrientation) &&
-        (filterEngagement === "All" || v.engagementStatus === filterEngagement) &&
-        (filterAvailability === "All" || v.availability === filterAvailability)
+        (filterEngagement === "All" || (filterEngagement === "Active" ? !!v.activeRequest : !v.activeRequest)) &&
+        (filterAvailability === "All" || v.sessionAvailability === filterAvailability)
       )
     })
     list = [...list].sort((a, b) => {
@@ -445,7 +442,7 @@ export default function Volunteers() {
 
   const stats = {
     total: volunteers.length,
-    active: volunteers.filter((v) => v.engagementStatus === "Active").length,
+    active: volunteers.filter((v) => !!v.activeRequest).length,
     done: volunteers.filter((v) => v.orientationStatus === "Orientation Done").length,
     avgRating: (volunteers.reduce((s, v) => s + v.rating, 0) / volunteers.length).toFixed(1),
   }
@@ -611,8 +608,8 @@ export default function Volunteers() {
                     <span className="text-xs bg-purple-50 text-purple-700 px-2 py-0.5 rounded-full font-medium">{v.group}</span>
                   </td>
                   <td className="px-4 py-3">
-                    <Badge variant={v.engagementStatus === "Active" ? "success" : "secondary"}>
-                      {v.engagementStatus === "Active" ? `Active · ${v.activeRequest?.menteeName}` : "Not Engaged"}
+                    <Badge variant={!!v.activeRequest ? "success" : "secondary"}>
+                      {v.activeRequest ? `Active · ${v.activeRequest.menteeName}` : "Not Engaged"}
                     </Badge>
                   </td>
                   <td className="px-4 py-3"><StarRating value={v.rating} /></td>
