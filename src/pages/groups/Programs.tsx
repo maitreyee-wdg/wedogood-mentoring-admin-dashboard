@@ -112,7 +112,7 @@ function NewProgramModal({ onSave, onClose }: {
                   <input className={inputCls} value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Akanksha Mentoring Cohort 2026" />
                 </div>
                 <div className="col-span-2">
-                  <label className={labelCls}>Organisation <span className="text-red-400">*</span></label>
+                  <label className={labelCls}>Sponsor Organisation <span className="text-red-400">*</span></label>
                   <input className={inputCls} value={org} onChange={e => setOrg(e.target.value)} placeholder="e.g. Akanksha Foundation" />
                 </div>
                 <div>
@@ -277,7 +277,7 @@ function EditDetailsModal({ prog, onSave, onClose }: {
               <input className={inputCls} value={name} onChange={e => setName(e.target.value)} />
             </div>
             <div className="col-span-2">
-              <label className={labelCls}>Organisation</label>
+              <label className={labelCls}>Sponsor Organisation</label>
               <input className={inputCls} value={org} onChange={e => setOrg(e.target.value)} />
             </div>
             <div>
