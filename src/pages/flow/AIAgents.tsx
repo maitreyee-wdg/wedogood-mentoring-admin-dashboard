@@ -1258,23 +1258,21 @@ function AddWorkflowModal({ onClose, onAdd, agents, initial }: {
 // ─── Layer Panel (shared between Mentee and Volunteer) ───────────────────────
 
 function LayerPanel({
-  layerLabel,
   orchestratorId,
   orchestratorNote,
   allAgents,
   allWorkflows,
   allTools,
-  triggerOptions,
   defaultAgents,
   showWorkflows = true,
 }: {
-  layerLabel: string
+  layerLabel?: string
   orchestratorId: string
   orchestratorNote: string
   allAgents: Agent[]
   allWorkflows: Workflow[]
   allTools: AgentTool[]
-  triggerOptions: string[]
+  triggerOptions?: string[]
   defaultAgents: Agent[]
   showWorkflows?: boolean
 }) {

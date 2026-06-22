@@ -186,6 +186,8 @@ function AddVolunteerModal({ onSave, onClose }: { onSave: (v: Volunteer) => void
       pastExperience: [],
       skills: splitSemi(form.skills),
       volunteeringType: form.volunteeringType,
+      domain: "",
+      industry: "",
       preferredMenteeStage: [],
       mentoringRating: 0,
       projectsRating: 0,
