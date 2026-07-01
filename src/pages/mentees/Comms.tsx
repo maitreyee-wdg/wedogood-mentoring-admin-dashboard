@@ -90,7 +90,7 @@ function CreateTemplateModal({
           <Button variant="outline" className="flex-1" onClick={onClose}>Cancel</Button>
           <Button className="flex-1" onClick={() => {
             if (!label || !message) return
-            onSave({ id: `CT-${Date.now()}`, label, category, message, isCustom: true })
+            onSave({ id: `CT-${Date.now()}`, label, category, message, vars: [], isCustom: true })
           }}>Save Template</Button>
         </div>
       </div>

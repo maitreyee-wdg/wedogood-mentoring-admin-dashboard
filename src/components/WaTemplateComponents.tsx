@@ -2,9 +2,9 @@ import { useState, useEffect } from "react"
 import { Search, X, Check, Plus, LayoutTemplate } from "lucide-react"
 import { type CommTemplate } from "@/data/commsData"
 import {
-  WaTemplateEditor,
+  WaTemplateEditor, resolveMessage,
   type VarCategory, type VarMapping,
-  defaultMappings, getVarCount,
+  defaultMappings,
 } from "@/components/WaVariableMapper"
 
 function categoryLabel(cat: string) {
@@ -38,8 +38,6 @@ export function TemplatePickerModal({
     t.label.toLowerCase().includes(search.toLowerCase()) ||
     categoryLabel(t.category).toLowerCase().includes(search.toLowerCase())
   )
-
-  const varCount = selected ? getVarCount(selected.message) : 0
 
   function buildMessage() {
     if (!selected) return ""
