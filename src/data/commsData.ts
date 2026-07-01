@@ -3,6 +3,7 @@ export interface CommTemplate {
   label: string
   category: "generic" | "engagement"
   message: string
+  vars: string[]   // suggested system variable keys; index = {{n}}-1
   isCustom?: boolean
 }
 
@@ -39,16 +40,24 @@ export interface CommContact {
 }
 
 export const commsTemplates: CommTemplate[] = [
-  // Generic
-  { id: "T1", category: "generic", label: "Complete Profile", message: "Hi {name}! 👋 We noticed your WeDoGood volunteer profile is almost complete. Adding your skills and experience helps us match you with the right mentee. Can you take 2 minutes to finish it? 🙏" },
-  { id: "T2", category: "generic", label: "Complete Orientation", message: "Hi {name}! Your orientation session is pending. It's a quick 30-minute call that helps you get started with mentoring. Would you like to pick a slot? Reply with a preferred date and time. 😊" },
-  { id: "T3", category: "generic", label: "Recommend a Friend", message: "Hi {name}! We're looking for more skilled mentors to support youth from NGO partners. If you know someone who'd be a great mentor, do share this link: [wedogood.org/volunteer]. Thank you! 🌟" },
-  { id: "T4", category: "generic", label: "Generic Feedback", message: "Hi {name}! We'd love your feedback on your volunteering experience with WeDoGood so far. Could you share what's working well and what we can improve? Your input matters a lot to us. 🙌" },
-  // Engagement
-  { id: "T5", category: "engagement", label: "Confirm Interest in Engagement", message: "Hi {name}! We'd like to match you with a mentee for a {skill} engagement. The mentee is {menteeName} from {ngo}. Are you available and interested? Please reply Yes or No. 🤝" },
-  { id: "T6", category: "engagement", label: "Relevant Pre-Read", message: "Hi {name}! Before your upcoming call with {menteeName}, here's a quick read to help you prepare: [resource link]. Let us know if you have any questions. 📚" },
-  { id: "T7", category: "engagement", label: "Confirm If Call Happened", message: "Hi {name}! Just checking in — did your call with {menteeName} happen as planned? Please reply Yes or No so we can update the engagement log. Thanks! 📞" },
-  { id: "T8", category: "engagement", label: "Feedback for Request Call", message: "Hi {name}! How did your recent call with {menteeName} go? We'd love to hear your thoughts — any wins, challenges, or next steps? Your feedback helps us improve the program. 💬" },
+  // Generic (volunteer-facing)
+  { id: "T1", category: "generic",    label: "Complete Profile",              vars: ["volunteer_first_name"], message: "Hi {{1}}! 👋 We noticed your WeDoGood volunteer profile is almost complete. Adding your skills and experience helps us match you with the right mentee. Can you take 2 minutes to finish it? 🙏" },
+  { id: "T2", category: "generic",    label: "Complete Orientation",          vars: ["volunteer_first_name"], message: "Hi {{1}}! Your orientation session is pending. It's a quick 30-minute call that helps you get started with mentoring. Would you like to pick a slot? Reply with a preferred date and time. 😊" },
+  { id: "T3", category: "generic",    label: "Recommend a Friend",            vars: ["volunteer_first_name"], message: "Hi {{1}}! We're looking for more skilled mentors to support youth from NGO partners. If you know someone who'd be a great mentor, do share this link: [wedogood.org/volunteer]. Thank you! 🌟" },
+  { id: "T4", category: "generic",    label: "Generic Feedback",              vars: ["volunteer_first_name"], message: "Hi {{1}}! We'd love your feedback on your volunteering experience with WeDoGood so far. Could you share what's working well and what we can improve? Your input matters a lot to us. 🙌" },
+  // Engagement (volunteer-facing, references mentee + engagement context)
+  { id: "T5", category: "engagement", label: "Confirm Interest in Engagement", vars: ["volunteer_first_name", "engagement_theme", "mentee_first_name", "mentee_group_name"], message: "Hi {{1}}! We'd like to match you with a mentee for a {{2}} engagement. The mentee is {{3}} from {{4}}. Are you available and interested? Please reply Yes or No. 🤝" },
+  { id: "T6", category: "engagement", label: "Relevant Pre-Read",              vars: ["volunteer_first_name", "mentee_first_name"], message: "Hi {{1}}! Before your upcoming call with {{2}}, here's a quick read to help you prepare: [resource link]. Let us know if you have any questions. 📚" },
+  { id: "T7", category: "engagement", label: "Confirm If Call Happened",       vars: ["volunteer_first_name", "mentee_first_name"], message: "Hi {{1}}! Just checking in — did your call with {{2}} happen as planned? Please reply Yes or No so we can update the engagement log. Thanks! 📞" },
+  { id: "T8", category: "engagement", label: "Feedback for Request Call",      vars: ["volunteer_first_name", "mentee_first_name"], message: "Hi {{1}}! How did your recent call with {{2}} go? We'd love to hear your thoughts — any wins, challenges, or next steps? Your feedback helps us improve the program. 💬" },
+]
+
+export const menteeCommsTemplates: CommTemplate[] = [
+  { id: "MT1", category: "generic",    label: "Profile Nudge",       vars: ["mentee_first_name", "app_link"],           message: "Hi {{1}}! 👋 Your WeDoGood profile is almost set. Finish it to unlock your first mentor match 👉 {{2}}" },
+  { id: "MT2", category: "generic",    label: "Re-engagement Nudge", vars: ["mentee_first_name", "app_link"],           message: "Hi {{1}}! It's been a while 👋 Ready to connect with a mentor? Head back to WeDoGood anytime 👉 {{2}}" },
+  { id: "MT3", category: "engagement", label: "Mentor Matched",      vars: ["mentee_first_name", "volunteer_first_name", "volunteer_profile_link"], message: "Hi {{1}}! 🎉 Great news — {{2}} has been matched with you! View their profile and reach out 👉 {{3}}" },
+  { id: "MT4", category: "engagement", label: "Days Remaining",      vars: ["mentee_first_name", "days_remaining", "volunteer_first_name"], message: "Hi {{1}}! ⏰ You have {{2}} days left to connect with your mentor {{3}}. Don't miss out!" },
+  { id: "MT5", category: "engagement", label: "Feedback Request",    vars: ["mentee_first_name", "volunteer_first_name", "feedback_link"], message: "Hi {{1}}! How did your session with {{2}} go? Share your feedback here 👉 {{3}}" },
 ]
 
 export const mockVolunteerContacts: CommContact[] = [

@@ -9,6 +9,7 @@ import {
   type Volunteer, type VolunteeringType, type Location, type VolunteerStatus, type OrientationStatus, type PreferredMenteeStage,
 } from "@/data/volunteersData"
 import { commsTemplates, type CommTemplate } from "@/data/commsData"
+import { WaTemplateEditor, defaultMappings, type VarMapping } from "@/components/WaVariableMapper"
 import {
   Search, Plus, X, MoreVertical, ChevronUp, ChevronDown,
   Star, MessageSquare, Archive, Users, Pencil, Briefcase,
@@ -482,11 +483,6 @@ function ChangeOrientationModal({ names, current, onSave, onClose }: { names: st
 
 // ── Bulk Send Message Modal ──────────────────────────────────────────────────
 
-function extractVariables(message: string): string[] {
-  const matches = message.match(/\{(\w+)\}/g) ?? []
-  return [...new Set(matches.map((m) => m.slice(1, -1)))]
-}
-
 function BulkSendMessageModal({
   names,
   onClose,
@@ -495,25 +491,19 @@ function BulkSendMessageModal({
   onClose: () => void
 }) {
   const [selected, setSelected] = useState<CommTemplate | null>(null)
-  const [vars, setVars] = useState<Record<string, string>>({})
+  const [mappings, setMappings] = useState<Record<number, VarMapping>>({})
 
   const handleSelect = (t: CommTemplate) => {
     setSelected(t)
-    const v: Record<string, string> = {}
-    extractVariables(t.message).forEach((k) => { v[k] = "" })
-    setVars(v)
+    setMappings(defaultMappings(t.vars))
   }
-
-  const preview = selected
-    ? selected.message.replace(/\{(\w+)\}/g, (_, k) => vars[k] || `{${k}}`)
-    : ""
 
   const genericTemplates = commsTemplates.filter((t) => t.category === "generic")
   const engagementTemplates = commsTemplates.filter((t) => t.category === "engagement")
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-xl w-[640px] max-h-[85vh] flex flex-col">
+      <div className="bg-white rounded-xl shadow-xl w-[680px] max-h-[85vh] flex flex-col">
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
           <div>
             <h2 className="font-semibold text-gray-900 text-sm">Send WhatsApp Message</h2>
@@ -526,7 +516,7 @@ function BulkSendMessageModal({
 
         <div className="flex flex-1 overflow-hidden">
           {/* Template list */}
-          <div className="w-56 border-r border-gray-100 overflow-y-auto py-3 shrink-0">
+          <div className="w-52 border-r border-gray-100 overflow-y-auto py-3 shrink-0">
             {[{ label: "Generic", items: genericTemplates }, { label: "Engagement", items: engagementTemplates }].map(({ label, items }) => (
               <div key={label} className="mb-3">
                 <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest px-4 mb-1">{label}</p>
@@ -550,34 +540,13 @@ function BulkSendMessageModal({
                 Select a template to preview
               </div>
             ) : (
-              <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
-                {/* Variables */}
-                {Object.keys(vars).length > 0 && (
-                  <div>
-                    <p className="text-xs font-medium text-gray-500 mb-2">Fill in variables</p>
-                    <div className="space-y-2">
-                      {Object.keys(vars).map((k) => (
-                        <div key={k}>
-                          <label className="text-xs text-gray-500 block mb-0.5">{`{${k}}`}</label>
-                          <input
-                            className="w-full text-xs border border-gray-200 rounded px-2 py-1.5 outline-none focus:border-blue-400"
-                            placeholder={`Enter ${k}…`}
-                            value={vars[k]}
-                            onChange={(e) => setVars((v) => ({ ...v, [k]: e.target.value }))}
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Preview */}
-                <div>
-                  <p className="text-xs font-medium text-gray-500 mb-2">Message preview</p>
-                  <div className="bg-green-50 border border-green-100 rounded-lg px-4 py-3 text-xs text-gray-800 leading-relaxed whitespace-pre-wrap">
-                    {preview}
-                  </div>
-                </div>
+              <div className="flex-1 overflow-y-auto px-5 py-4">
+                <WaTemplateEditor
+                  content={selected.message}
+                  allowedCategories={["Volunteer"]}
+                  mappings={mappings}
+                  onChange={setMappings}
+                />
               </div>
             )}
 

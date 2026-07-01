@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import {
-  mockMenteeContacts, mockConversations, commsTemplates, mockMenteeLogs,
+  mockMenteeContacts, mockConversations, menteeCommsTemplates, mockMenteeLogs,
   type CommContact, type ChatMessage, type CommTemplate, type CommLog,
 } from "@/data/commsData"
 import { mockMentees } from "@/data/menteesData"
@@ -178,7 +178,7 @@ export default function MenteesComms() {
   const [message, setMessage] = useState("")
   const [showTemplatePicker, setShowTemplatePicker] = useState(false)
   const [showProfile, setShowProfile] = useState(false)
-  const [templates, setTemplates] = useState<CommTemplate[]>(commsTemplates)
+  const [templates, setTemplates] = useState<CommTemplate[]>(menteeCommsTemplates)
   const [showCreateTemplate, setShowCreateTemplate] = useState(false)
   const [view, setView] = useState<"chat" | "logs" | "templates">("chat")
   const [humanTakeover, setHumanTakeover] = useState<Record<string, boolean>>({})
@@ -410,6 +410,7 @@ export default function MenteesComms() {
       {showTemplatePicker && (
         <TemplatePickerModal
           templates={templates}
+          allowedCategories={["Mentee"]}
           onClose={() => setShowTemplatePicker(false)}
           onSend={(msg) => sendMessage(msg)}
         />

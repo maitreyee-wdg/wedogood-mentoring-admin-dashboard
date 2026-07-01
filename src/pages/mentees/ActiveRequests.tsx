@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -13,6 +13,7 @@ import {
   MessageSquare, Users, Clock, ArrowRight, AlertCircle, RefreshCw,
   UserPlus, Star, CheckCircle2,
 } from "lucide-react"
+import { WaTemplateEditor, defaultMappings, type VarMapping } from "@/components/WaVariableMapper"
 
 // ── Status config ─────────────────────────────────────────────────────────────
 
@@ -267,7 +268,13 @@ function RequestPane({ request: initial, onClose, onUpdate }: {
   const [tab, setTab] = useState<"overview" | "ai-chat" | "match">("overview")
   const [req, setReq] = useState<MentoringRequest>(initial)
   const [selectedTemplate, setSelectedTemplate] = useState(req.approvedTemplate ?? "")
+  const [inviteMappings, setInviteMappings] = useState<Record<number, VarMapping>>({})
   const [candidates, setCandidates] = useState<MatchCandidate[]>(req.matchCandidates)
+
+  useEffect(() => {
+    const tpl = matchingTemplates.find(t => t.id === selectedTemplate)
+    if (tpl) setInviteMappings(defaultMappings(tpl.vars))
+  }, [selectedTemplate])
   const [showAssignModal, setShowAssignModal] = useState(false)
   const [showUnmatchModal, setShowUnmatchModal] = useState(false)
   const [showRematchConfirm, setShowRematchConfirm] = useState(false)
@@ -548,13 +555,26 @@ function RequestPane({ request: initial, onClose, onUpdate }: {
 
                 <AddMentorButton label="Add another mentor" />
 
-                <div>
-                  <label className="text-xs font-medium text-gray-500 block mb-1">WhatsApp Invite Template</label>
-                  <select value={selectedTemplate} onChange={e => setSelectedTemplate(e.target.value)}
-                    className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 outline-none focus:border-blue-400 bg-white">
-                    <option value="">Select a template…</option>
-                    {matchingTemplates.map(t => <option key={t.id} value={t.id}>{t.name} — {t.description}</option>)}
-                  </select>
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-xs font-medium text-gray-500 block mb-1">WhatsApp Invite Template</label>
+                    <select value={selectedTemplate} onChange={e => setSelectedTemplate(e.target.value)}
+                      className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 outline-none focus:border-blue-400 bg-white">
+                      <option value="">Select a template…</option>
+                      {matchingTemplates.map(t => <option key={t.id} value={t.id}>{t.name} — {t.description}</option>)}
+                    </select>
+                  </div>
+                  {selectedTemplate && (() => {
+                    const tpl = matchingTemplates.find(t => t.id === selectedTemplate)
+                    return tpl ? (
+                      <WaTemplateEditor
+                        content={tpl.message}
+                        allowedCategories={["Mentee", "Volunteer", "Engagement"]}
+                        mappings={inviteMappings}
+                        onChange={setInviteMappings}
+                      />
+                    ) : null
+                  })()}
                 </div>
 
                 <Button className="w-full" disabled={!selectedTemplate} onClick={handleApprove}>
@@ -607,13 +627,26 @@ function RequestPane({ request: initial, onClose, onUpdate }: {
 
                 <AddMentorButton />
 
-                <div>
-                  <label className="text-xs font-medium text-gray-500 block mb-1">WhatsApp Invite Template</label>
-                  <select value={selectedTemplate} onChange={e => setSelectedTemplate(e.target.value)}
-                    className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 outline-none focus:border-blue-400 bg-white">
-                    <option value="">Select a template…</option>
-                    {matchingTemplates.map(t => <option key={t.id} value={t.id}>{t.name} — {t.description}</option>)}
-                  </select>
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-xs font-medium text-gray-500 block mb-1">WhatsApp Invite Template</label>
+                    <select value={selectedTemplate} onChange={e => setSelectedTemplate(e.target.value)}
+                      className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 outline-none focus:border-blue-400 bg-white">
+                      <option value="">Select a template…</option>
+                      {matchingTemplates.map(t => <option key={t.id} value={t.id}>{t.name} — {t.description}</option>)}
+                    </select>
+                  </div>
+                  {selectedTemplate && (() => {
+                    const tpl = matchingTemplates.find(t => t.id === selectedTemplate)
+                    return tpl ? (
+                      <WaTemplateEditor
+                        content={tpl.message}
+                        allowedCategories={["Mentee", "Volunteer", "Engagement"]}
+                        mappings={inviteMappings}
+                        onChange={setInviteMappings}
+                      />
+                    ) : null
+                  })()}
                 </div>
 
                 <Button className="w-full" disabled={!selectedTemplate || candidates.length === 0} onClick={handleApprove}>

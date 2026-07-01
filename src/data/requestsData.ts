@@ -101,9 +101,21 @@ export interface MentoringRequest {
 }
 
 export const matchingTemplates = [
-  { id: "T1", name: "Standard Match Request", description: "Friendly intro with mentee context" },
-  { id: "T2", name: "Urgent Match Request", description: "Shorter response window, time-sensitive" },
-  { id: "T3", name: "Domain Expert Request", description: "Highlights specific skills needed" },
+  {
+    id: "T1", name: "Standard Match Request", description: "Friendly intro with mentee context",
+    vars: ["volunteer_first_name", "mentee_first_name", "engagement_goal", "volunteer_fit_reason", "request_deep_link"],
+    message: "Hi {{1}}! 🙌 You have a new mentorship request on WeDoGood.\n\nWe think you'd be a great fit for {{2}} — they're looking for help with {{3}}.\n\nWhy you? {{4}}\n\nView the full request and respond here 👇\n🔗 {{5}}",
+  },
+  {
+    id: "T2", name: "Urgent Match Request", description: "Shorter response window, time-sensitive",
+    vars: ["volunteer_first_name", "mentee_first_name", "engagement_goal", "hours_remaining", "request_deep_link"],
+    message: "Hi {{1}}! ⏰ Urgent — {{2}} needs a mentor for {{3}} and you're a top match. Please respond within {{4}} hours.\n🔗 {{5}}",
+  },
+  {
+    id: "T3", name: "Domain Expert Request", description: "Highlights specific skills needed",
+    vars: ["volunteer_first_name", "engagement_theme", "mentee_first_name", "mentee_group_name", "request_deep_link"],
+    message: "Hi {{1}}! We have a mentee who specifically needs expertise in {{2}}. The mentee is {{3}} from {{4}}. Your background makes you a perfect fit — would you be open to this engagement?\n🔗 {{5}}",
+  },
 ]
 
 // ─── Mock Requests ─────────────────────────────────────────────────────────────

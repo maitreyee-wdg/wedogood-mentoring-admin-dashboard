@@ -387,6 +387,7 @@ export default function VolunteersComms() {
       {showTemplatePicker && (
         <TemplatePickerModal
           templates={templates}
+          allowedCategories={["Volunteer"]}
           onClose={() => setShowTemplatePicker(false)}
           onSend={(msg) => sendMessage(msg)}
         />
