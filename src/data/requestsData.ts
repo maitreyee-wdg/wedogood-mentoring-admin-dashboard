@@ -2,22 +2,22 @@ export type RequestStatus =
   | "Draft"
   | "New"
   | "Match Approval Pending"
-  | "Mentor Response Pending"
+  | "Mentor response pending"
   | "No Match Found"
   | "Matched"
   | "Accessed Contact"
-  | "Call Done — Feedback Pending"
-  | "Closed — Feedback Pending"
+  | "Call done - Feedback Pending"
+  | "Closed - Feedback Pending"
   | "Expired"
 
 export type RequestType = "New Mentor" | "Existing Mentor"
 
 export const ACTIVE_STATUSES: RequestStatus[] = [
-  "Draft", "New", "Match Approval Pending", "Mentor Response Pending", "No Match Found", "Matched", "Accessed Contact",
+  "Draft", "New", "Match Approval Pending", "Mentor response pending", "No Match Found", "Matched", "Accessed Contact",
 ]
 
 export const INACTIVE_STATUSES: RequestStatus[] = [
-  "Call Done — Feedback Pending", "Closed — Feedback Pending", "Expired",
+  "Call done - Feedback Pending", "Closed - Feedback Pending", "Expired",
 ]
 
 export interface MatchCandidate {
@@ -241,7 +241,7 @@ export const mockRequests: MentoringRequest[] = [
     targetRole: "Data Analyst",
     skillsNeeded: ["Data Analysis", "Advanced Excel", "SQL", "Python (basics)"],
     requestType: "New Mentor",
-    status: "Mentor Response Pending",
+    status: "Mentor response pending",
     matchedMentor: null,
     activeDays: 26,
     aiConversation: [
@@ -361,7 +361,7 @@ export const mockRequests: MentoringRequest[] = [
     targetRole: "Backend Developer",
     skillsNeeded: ["Backend Development", "REST APIs", "Java", "System Design basics"],
     requestType: "New Mentor",
-    status: "Closed — Feedback Pending",
+    status: "Closed - Feedback Pending",
     matchedMentor: "Rahul Mehta",
     activeDays: 92,
     aiConversation: [
@@ -442,7 +442,7 @@ export const mockRequests: MentoringRequest[] = [
     targetRole: "Entry-level Candidate",
     skillsNeeded: ["Mock Interviews", "Body Language", "Answering Behavioural Questions"],
     requestType: "Existing Mentor",
-    status: "Closed — Feedback Pending",
+    status: "Closed - Feedback Pending",
     matchedMentor: "Rahul Mehta",
     activeDays: 45,
     aiConversation: [

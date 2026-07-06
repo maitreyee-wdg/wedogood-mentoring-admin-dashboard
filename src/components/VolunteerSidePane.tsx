@@ -176,6 +176,7 @@ export function VolunteerPane({
               <Badge variant={orientationVariant[v.orientationStatus]}>
                 {v.orientationStatus}
                 {v.orientationDate && ` · ${v.orientationDate}`}
+                {v.orientationTime && ` ${v.orientationTime}`}
               </Badge>
             </DrawerSection>
             <DrawerSection label="Update Status">

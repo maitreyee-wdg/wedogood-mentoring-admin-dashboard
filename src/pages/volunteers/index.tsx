@@ -204,7 +204,7 @@ function AddVolunteerModal({ onSave, onClose }: { onSave: (v: Volunteer) => void
       email: form.email.trim(),
       officialEmail: form.officialEmail.trim(),
       linkedin: form.linkedin.trim() || "—",
-      status: "Orientation Pending",
+      status: "Orientation pending",
       orientationStatus: "Orientation Pending",
       signedUpDate: new Date().toISOString().split("T")[0],
       sessionAvailability: "Available",
@@ -363,9 +363,10 @@ const typeVariant: Record<VolunteeringType, "default" | "success" | "secondary">
 }
 
 const statusColors: Record<VolunteerStatus, string> = {
+  "Profile incomplete": "bg-orange-100 text-orange-700",
   "Active": "bg-green-100 text-green-700",
   "Occupied": "bg-blue-100 text-blue-700",
-  "Orientation Pending": "bg-yellow-100 text-yellow-700",
+  "Orientation pending": "bg-yellow-100 text-yellow-700",
   "Inactive": "bg-gray-100 text-gray-500",
   "Archived": "bg-red-50 text-red-500",
 }
@@ -429,7 +430,7 @@ function AssignGroupModal({ names, onAssign, onClose }: { names: string[]; onAss
 
 function ChangeStatusModal({ names, current, onSave, onClose }: { names: string[]; current: VolunteerStatus; onSave: (s: VolunteerStatus) => void; onClose: () => void }) {
   const [selected, setSelected] = useState<VolunteerStatus>(current)
-  const statuses: VolunteerStatus[] = ["Orientation Pending", "Active", "Occupied", "Inactive", "Archived"]
+  const statuses: VolunteerStatus[] = ["Profile incomplete", "Orientation pending", "Active", "Occupied", "Inactive", "Archived"]
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
       <div className="bg-white rounded-xl shadow-xl w-80 p-6">
@@ -751,7 +752,7 @@ function ProfilePane({
             <PaneSection label="Status">
               {mode === "edit" ? (
                 <Select value={data.status} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => set("status", e.target.value as VolunteerStatus)} className="w-full text-xs">
-                  <option>Orientation Pending</option><option>Active</option><option>Occupied</option><option>Inactive</option><option>Archived</option>
+                  <option>Profile incomplete</option><option>Orientation pending</option><option>Active</option><option>Occupied</option><option>Inactive</option><option>Archived</option>
                 </Select>
               ) : (
                 <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusColors[v.status]}`}>{v.status}</span>
@@ -776,14 +777,25 @@ function ProfilePane({
                           <option>Orientation Rescheduled</option>
                         </Select>
                         {data.orientationStatus !== "Orientation Pending" && (
-                          <div>
-                            <label className="text-xs text-gray-500 block mb-0.5">Orientation Date</label>
-                            <input
-                              type="date"
-                              className="w-full text-xs border border-gray-200 rounded px-2 py-1 outline-none focus:border-blue-400"
-                              value={data.orientationDate ?? ""}
-                              onChange={(e) => set("orientationDate", e.target.value)}
-                            />
+                          <div className="flex gap-2">
+                            <div className="flex-1">
+                              <label className="text-xs text-gray-500 block mb-0.5">Orientation Date</label>
+                              <input
+                                type="date"
+                                className="w-full text-xs border border-gray-200 rounded px-2 py-1 outline-none focus:border-blue-400"
+                                value={data.orientationDate ?? ""}
+                                onChange={(e) => set("orientationDate", e.target.value)}
+                              />
+                            </div>
+                            <div className="flex-1">
+                              <label className="text-xs text-gray-500 block mb-0.5">Orientation Time</label>
+                              <input
+                                type="time"
+                                className="w-full text-xs border border-gray-200 rounded px-2 py-1 outline-none focus:border-blue-400"
+                                value={data.orientationTime ?? ""}
+                                onChange={(e) => set("orientationTime", e.target.value)}
+                              />
+                            </div>
                           </div>
                         )}
                       </div>
@@ -791,7 +803,10 @@ function ProfilePane({
                       <div className="space-y-1">
                         <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${orientationColors[v.orientationStatus]}`}>{v.orientationStatus}</span>
                         {v.orientationStatus !== "Orientation Pending" && v.orientationDate && (
-                          <p className="text-xs text-gray-500">Date: {new Date(v.orientationDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</p>
+                          <p className="text-xs text-gray-500">
+                            {new Date(v.orientationDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                            {v.orientationTime && ` · ${v.orientationTime}`}
+                          </p>
                         )}
                       </div>
                     )}
@@ -1230,7 +1245,7 @@ export default function VolunteersList() {
           <div className="flex flex-col gap-1">
             <label className="text-xs font-medium text-gray-500">Status</label>
             <Select value={filterStatus} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFilterStatus(e.target.value)} className="w-44">
-              <option>All</option><option>Active</option><option>Occupied</option><option>Orientation Pending</option><option>Inactive</option><option>Archived</option>
+              <option>All</option><option>Profile incomplete</option><option>Orientation pending</option><option>Active</option><option>Occupied</option><option>Inactive</option><option>Archived</option>
             </Select>
           </div>
           <div className="flex flex-col gap-1">

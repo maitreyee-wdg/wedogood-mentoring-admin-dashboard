@@ -245,7 +245,7 @@ function AddMenteeModal({ onSave, onClose }: { onSave: (m: Mentee) => void; onCl
       currentLocation: { city: form.currentCity.trim(), state: form.currentState.trim(), country: form.currentCountry.trim() },
       scopedNeed: "Unsure — needs scoping",
       knowsTheirNeed: false,
-      engagementStatus: "Pending Match",
+      engagementStatus: "Sign-up completed",
       joinedAt: new Date().toISOString().split("T")[0],
       whatsapp: form.whatsapp.trim(),
       email: form.email.trim(),
@@ -535,8 +535,8 @@ export default function Mentees() {
 
   const stats = {
     total: mentees.length,
-    active: mentees.filter((m) => m.engagementStatus === "Active").length,
-    pending: mentees.filter((m) => m.engagementStatus === "Pending Match").length,
+    active: mentees.filter((m) => m.engagementStatus === "Engagement created").length,
+    pending: mentees.filter((m) => m.engagementStatus === "Sign-up completed").length,
     knowsNeed: mentees.filter((m) => m.knowsTheirNeed).length,
   }
 
@@ -563,8 +563,8 @@ export default function Mentees() {
         <div className="grid grid-cols-4 gap-4">
           {[
             { label: "Total Mentees", value: stats.total, color: "text-gray-900" },
-            { label: "Active", value: stats.active, color: "text-green-600" },
-            { label: "Pending Match", value: stats.pending, color: "text-yellow-600" },
+            { label: "Engagement Created", value: stats.active, color: "text-green-600" },
+            { label: "Sign-up Completed", value: stats.pending, color: "text-yellow-600" },
             { label: "Know Their Need", value: stats.knowsNeed, color: "text-blue-600" },
           ].map((s) => (
             <div key={s.label} className="bg-white rounded-lg border border-gray-200 p-4">
@@ -610,10 +610,11 @@ export default function Mentees() {
             <label className="text-xs font-medium text-gray-500">Status</label>
             <Select value={filterStatus} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFilterStatus(e.target.value)} className="w-40">
               <option>All</option>
-              <option>Active</option>
-              <option>Pending Match</option>
-              <option>On Hold</option>
-              <option>Closed</option>
+              <option>Sign-up completed</option>
+              <option>Engagement chat abandoned</option>
+              <option>Engagement created</option>
+              <option>Engagement completed</option>
+              <option>Engagement expired</option>
             </Select>
           </div>
           <div className="flex flex-col gap-1">

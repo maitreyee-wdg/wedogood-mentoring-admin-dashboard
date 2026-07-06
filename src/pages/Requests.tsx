@@ -18,12 +18,12 @@ const statusVariant: Record<RequestStatus, "default" | "success" | "warning" | "
   "Draft": "secondary",
   "New": "default",
   "Match Approval Pending": "warning",
-  "Mentor Response Pending": "warning",
+  "Mentor response pending": "warning",
   "No Match Found": "destructive",
   "Matched": "success",
   "Accessed Contact": "default",
-  "Call Done — Feedback Pending": "warning",
-  "Closed — Feedback Pending": "secondary",
+  "Call done - Feedback Pending": "warning",
+  "Closed - Feedback Pending": "secondary",
   "Expired": "secondary",
 }
 
@@ -61,7 +61,7 @@ function RequestPane({ request: initial, onClose, onUpdate }: {
   const handleApprove = () => {
     const updated: MentoringRequest = {
       ...req,
-      status: "Mentor Response Pending",
+      status: "Mentor response pending",
       approvedTemplate: selectedTemplate,
       matchCandidates: candidates.map((c) => ({ ...c, outreachStatus: "Sent", outreachSentAt: new Date().toISOString() })),
     }
@@ -136,7 +136,7 @@ function RequestPane({ request: initial, onClose, onUpdate }: {
             <PaneSection label="Matched Mentor">
               {req.matchedMentor ? <p className="text-gray-800 font-medium">{req.matchedMentor}</p> : <p className="text-gray-400 italic text-xs">No mentor matched yet</p>}
             </PaneSection>
-            {(req.status === "No Match Found" || req.status === "Mentor Response Pending" || req.status === "Matched" || req.status === "Match Approval Pending") && (
+            {(req.status === "No Match Found" || req.status === "Mentor response pending" || req.status === "Matched" || req.status === "Match Approval Pending") && (
               <button
                 onClick={() => alert("Rematch triggered for " + req.id)}
                 className="flex items-center gap-2 w-full px-4 py-2.5 rounded-lg bg-orange-50 border border-orange-200 text-orange-700 hover:bg-orange-100 transition-colors text-sm font-medium">
@@ -239,7 +239,7 @@ function RequestPane({ request: initial, onClose, onUpdate }: {
               </div>
             )}
 
-            {req.status === "Mentor Response Pending" && (
+            {req.status === "Mentor response pending" && (
               <div className="space-y-4">
                 <p className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Outreach Progress</p>
                 <div className="space-y-0">
@@ -321,7 +321,7 @@ function RequestPane({ request: initial, onClose, onUpdate }: {
               </div>
             )}
 
-            {(req.status === "Call Done — Feedback Pending" || req.status === "Closed — Feedback Pending" || req.status === "Expired") && (
+            {(req.status === "Call done - Feedback Pending" || req.status === "Closed - Feedback Pending" || req.status === "Expired") && (
               <div className="space-y-4">
                 <div className="border rounded-xl p-4 text-center space-y-2 bg-gray-50 border-gray-200">
                   <p className="text-sm font-medium text-gray-700">{req.status}</p>
@@ -362,9 +362,9 @@ function PaneSection({ label, children }: { label: string; children: React.React
 // ── All statuses for the filter dropdown ──────────────────────────────────────
 
 const ALL_STATUSES: RequestStatus[] = [
-  "Draft", "New", "Match Approval Pending", "Mentor Response Pending",
-  "No Match Found", "Matched", "Accessed Contact", "Call Done — Feedback Pending",
-  "Closed — Feedback Pending", "Expired",
+  "Draft", "New", "Match Approval Pending", "Mentor response pending",
+  "No Match Found", "Matched", "Accessed Contact", "Call done - Feedback Pending",
+  "Closed - Feedback Pending", "Expired",
 ]
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
@@ -408,7 +408,7 @@ export default function AllRequests() {
     total: requests.length,
     active: requests.filter((r) => ACTIVE_STATUSES.includes(r.status)).length,
     matched: requests.filter((r) => r.status === "Matched").length,
-    closed: requests.filter((r) => r.status === "Closed — Feedback Pending" || r.status === "Call Done — Feedback Pending").length,
+    closed: requests.filter((r) => r.status === "Closed - Feedback Pending" || r.status === "Call done - Feedback Pending").length,
   }
 
   const handleUpdate = (updated: MentoringRequest) => {

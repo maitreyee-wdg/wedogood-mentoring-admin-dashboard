@@ -21,12 +21,12 @@ const statusVariant: Record<RequestStatus, "default" | "success" | "warning" | "
   "Draft": "secondary",
   "New": "default",
   "Match Approval Pending": "warning",
-  "Mentor Response Pending": "warning",
+  "Mentor response pending": "warning",
   "No Match Found": "destructive",
   "Matched": "success",
   "Accessed Contact": "default",
-  "Call Done — Feedback Pending": "warning",
-  "Closed — Feedback Pending": "secondary",
+  "Call done - Feedback Pending": "warning",
+  "Closed - Feedback Pending": "secondary",
   "Expired": "secondary",
 }
 
@@ -344,7 +344,7 @@ function RequestPane({ request: initial, onClose, onUpdate }: {
 
   const handleApprove = () => {
     const updated: MentoringRequest = {
-      ...req, status: "Mentor Response Pending", approvedTemplate: selectedTemplate,
+      ...req, status: "Mentor response pending", approvedTemplate: selectedTemplate,
       matchCandidates: candidates.map((c, i) => ({
         ...c,
         outreachStatus: i === 0 ? "Sent" as const : "Pending" as const,
@@ -449,7 +449,7 @@ function RequestPane({ request: initial, onClose, onUpdate }: {
             </PaneSection>
 
             {/* Rematch — for Matched, ask reason first; otherwise direct */}
-            {(req.status === "No Match Found" || req.status === "Mentor Response Pending" || req.status === "Match Approval Pending") && (
+            {(req.status === "No Match Found" || req.status === "Mentor response pending" || req.status === "Match Approval Pending") && (
               <button onClick={() => setShowRematchConfirm(true)}
                 className="flex items-center gap-2 w-full px-4 py-2.5 rounded-lg bg-orange-50 border border-orange-200 text-orange-700 hover:bg-orange-100 transition-colors text-sm font-medium">
                 <RefreshCw className="w-4 h-4" /> Trigger Rematch
@@ -461,7 +461,7 @@ function RequestPane({ request: initial, onClose, onUpdate }: {
                 <RefreshCw className="w-4 h-4" /> Unmatch & Rematch
               </button>
             )}
-            {(req.status === "No Match Found" || req.status === "Mentor Response Pending") && (
+            {(req.status === "No Match Found" || req.status === "Mentor response pending") && (
               <button onClick={() => { setAssignMode("assign"); setShowAssignModal(true) }}
                 className="flex items-center gap-2 w-full px-4 py-2.5 rounded-lg bg-blue-50 border border-blue-200 text-blue-700 hover:bg-blue-100 transition-colors text-sm font-medium">
                 <UserPlus className="w-4 h-4" /> Assign Mentor Directly
@@ -659,7 +659,7 @@ function RequestPane({ request: initial, onClose, onUpdate }: {
             )}
 
             {/* MENTOR RESPONSE PENDING — sequential outreach timeline */}
-            {req.status === "Mentor Response Pending" && (
+            {req.status === "Mentor response pending" && (
               <div className="space-y-4">
                 {/* Context banner */}
                 <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5 text-xs text-amber-700 leading-relaxed">
@@ -780,7 +780,7 @@ function RequestPane({ request: initial, onClose, onUpdate }: {
             )}
 
             {/* CLOSED / EXPIRED */}
-            {(req.status === "Call Done — Feedback Pending" || req.status === "Closed — Feedback Pending" || req.status === "Expired") && (
+            {(req.status === "Call done - Feedback Pending" || req.status === "Closed - Feedback Pending" || req.status === "Expired") && (
               <div className="space-y-4">
                 <div className="border rounded-xl p-4 text-center space-y-2 bg-gray-50 border-gray-200">
                   <p className="text-sm font-medium text-gray-700">{req.status}</p>
@@ -866,7 +866,7 @@ export default function ActiveRequests() {
   const stats = {
     total: requests.length,
     approvalPending: requests.filter((r) => r.status === "Match Approval Pending").length,
-    responsePending: requests.filter((r) => r.status === "Mentor Response Pending").length,
+    responsePending: requests.filter((r) => r.status === "Mentor response pending").length,
     matched: requests.filter((r) => r.status === "Matched").length,
   }
 
@@ -891,7 +891,7 @@ export default function ActiveRequests() {
           {[
             { label: "Active Engagements", value: stats.total, color: "text-gray-900" },
             { label: "Approval Pending", value: stats.approvalPending, color: "text-amber-600" },
-            { label: "Mentor Response Pending", value: stats.responsePending, color: "text-yellow-600" },
+            { label: "Mentor response pending", value: stats.responsePending, color: "text-yellow-600" },
             { label: "Matched", value: stats.matched, color: "text-green-600" },
           ].map((s) => (
             <div key={s.label} className="bg-white rounded-lg border border-gray-200 p-4">

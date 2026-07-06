@@ -5,10 +5,11 @@ import { mockRequests, ACTIVE_STATUSES, type MentoringRequest } from "@/data/req
 import { X, MapPin, Globe, Target, Phone, Mail, Link, Star, Briefcase, GraduationCap, FileText } from "lucide-react"
 
 export const statusVariant: Record<EngagementStatus, "success" | "warning" | "secondary" | "outline"> = {
-  "Active": "success",
-  "Pending Match": "warning",
-  "Closed": "secondary",
-  "On Hold": "outline",
+  "Sign-up completed": "outline",
+  "Engagement chat abandoned": "warning",
+  "Engagement created": "success",
+  "Engagement completed": "secondary",
+  "Engagement expired": "warning",
 }
 
 export const ngoColor: Record<string, string> = {
@@ -48,12 +49,12 @@ export function RequestCard({ req }: { req: MentoringRequest }) {
     "Draft": "bg-gray-100 text-gray-600",
     "New": "bg-blue-100 text-blue-700",
     "Match Approval Pending": "bg-amber-100 text-amber-700",
-    "Mentor Response Pending": "bg-yellow-100 text-yellow-700",
+    "Mentor response pending": "bg-yellow-100 text-yellow-700",
     "No Match Found": "bg-red-100 text-red-600",
     "Matched": "bg-green-100 text-green-700",
     "Accessed Contact": "bg-teal-100 text-teal-700",
-    "Call Done — Feedback Pending": "bg-orange-100 text-orange-700",
-    "Closed — Feedback Pending": "bg-gray-100 text-gray-500",
+    "Call done - Feedback Pending": "bg-orange-100 text-orange-700",
+    "Closed - Feedback Pending": "bg-gray-100 text-gray-500",
     "Expired": "bg-gray-100 text-gray-400",
   }
   return (
