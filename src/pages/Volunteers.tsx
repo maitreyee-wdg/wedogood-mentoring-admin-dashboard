@@ -200,7 +200,7 @@ function AddVolunteerModal({ onSave, onClose }: { onSave: (v: Volunteer) => void
       email: form.email.trim(),
       officialEmail: form.officialEmail.trim(),
       linkedin: form.linkedin.trim() || "—",
-      status: "Orientation Pending",
+      status: "Orientation pending",
       orientationStatus: "Orientation Pending",
       signedUpDate: new Date().toISOString().split("T")[0],
       sessionAvailability: "Available",
