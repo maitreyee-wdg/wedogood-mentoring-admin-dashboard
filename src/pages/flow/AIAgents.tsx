@@ -65,14 +65,14 @@ const WORKFLOW_TRIGGER_OPTIONS = [
   "Mentor accepts a match request",
   "Session marked 'completed' in system",
   "Support keyword or chip detected in any message",
-  "Mentee status remains 'Sign-up completed' for 4 hours",
-  "Mentee status remains 'Engagement chat abandoned' for 4 hours",
+  "Mentee status remains 'Sign-up Completed' for 4 hours",
+  "Mentee status remains 'Engagement Chat Abandoned' for 4 hours",
   "Request status changes to 'Matched'",
   "Request status changes to 'Accessed Contact'",
   "Mentoring request has 4 days remaining",
-  "30 days since last mentee request created",
-  "Volunteer status remains 'Orientation pending' for 4 hours",
-  "Volunteer has orientation slot today",
+  "30 days since last mentee engagement created",
+  "Volunteer status remains 'Orientation call not booked' for 4 hours",
+  "Volunteer orientation slot is 1 hour away",
 ]
 
 // ─── Volunteer workflow triggers ──────────────────────────────────────────────
@@ -82,7 +82,7 @@ const VOLUNTEER_WORKFLOW_TRIGGER_OPTIONS = [
   "Volunteer orientation slot confirmed",
   "Session marked 'completed' in system",
   "Support keyword or chip detected in mentor message",
-  "Volunteer status remains 'Orientation pending' for 24 hours",
+  "Volunteer status remains 'Orientation call not booked' for 24 hours",
   "Mentor accepts a match request",
   "Mentor declines a match request",
   "Mentoring request has 4 days remaining",

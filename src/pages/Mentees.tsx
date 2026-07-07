@@ -245,7 +245,7 @@ function AddMenteeModal({ onSave, onClose }: { onSave: (m: Mentee) => void; onCl
       currentLocation: { city: form.currentCity.trim(), state: form.currentState.trim(), country: form.currentCountry.trim() },
       scopedNeed: "Unsure — needs scoping",
       knowsTheirNeed: false,
-      engagementStatus: "Sign-up completed",
+      engagementStatus: "Sign-up Completed",
       joinedAt: new Date().toISOString().split("T")[0],
       whatsapp: form.whatsapp.trim(),
       email: form.email.trim(),
@@ -535,8 +535,8 @@ export default function Mentees() {
 
   const stats = {
     total: mentees.length,
-    active: mentees.filter((m) => m.engagementStatus === "Engagement created").length,
-    pending: mentees.filter((m) => m.engagementStatus === "Sign-up completed").length,
+    active: mentees.filter((m) => m.engagementStatus === "Engagement Created").length,
+    pending: mentees.filter((m) => m.engagementStatus === "Sign-up Completed").length,
     knowsNeed: mentees.filter((m) => m.knowsTheirNeed).length,
   }
 
@@ -610,11 +610,11 @@ export default function Mentees() {
             <label className="text-xs font-medium text-gray-500">Status</label>
             <Select value={filterStatus} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFilterStatus(e.target.value)} className="w-40">
               <option>All</option>
-              <option>Sign-up completed</option>
-              <option>Engagement chat abandoned</option>
-              <option>Engagement created</option>
-              <option>Engagement completed</option>
-              <option>Engagement expired</option>
+              <option>Sign-up Completed</option>
+              <option>Engagement Chat Abandoned</option>
+              <option>Engagement Created</option>
+              <option>Engagement Completed</option>
+              <option>Engagement Expired</option>
             </Select>
           </div>
           <div className="flex flex-col gap-1">

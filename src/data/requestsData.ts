@@ -2,22 +2,22 @@ export type RequestStatus =
   | "Draft"
   | "New"
   | "Match Approval Pending"
-  | "Mentor response pending"
+  | "Mentor Response Pending"
   | "No Match Found"
   | "Matched"
   | "Accessed Contact"
-  | "Call done - Feedback Pending"
-  | "Closed - Feedback Pending"
+  | "Call Done — Feedback Pending"
+  | "Closed"
   | "Expired"
 
 export type RequestType = "New Mentor" | "Existing Mentor"
 
 export const ACTIVE_STATUSES: RequestStatus[] = [
-  "Draft", "New", "Match Approval Pending", "Mentor response pending", "No Match Found", "Matched", "Accessed Contact",
+  "Draft", "New", "Match Approval Pending", "Mentor Response Pending", "No Match Found", "Matched", "Accessed Contact",
 ]
 
 export const INACTIVE_STATUSES: RequestStatus[] = [
-  "Call done - Feedback Pending", "Closed - Feedback Pending", "Expired",
+  "Call Done — Feedback Pending", "Closed", "Expired",
 ]
 
 export interface MatchCandidate {
@@ -241,7 +241,7 @@ export const mockRequests: MentoringRequest[] = [
     targetRole: "Data Analyst",
     skillsNeeded: ["Data Analysis", "Advanced Excel", "SQL", "Python (basics)"],
     requestType: "New Mentor",
-    status: "Mentor response pending",
+    status: "Mentor Response Pending",
     matchedMentor: null,
     activeDays: 26,
     aiConversation: [
@@ -347,7 +347,7 @@ export const mockRequests: MentoringRequest[] = [
     matchCandidates: [],
   },
 
-  // ── REQ-008: Closed — Feedback Pending — Vikram Rao / Backend Dev ──────────
+  // ── REQ-008: Closed — Vikram Rao / Backend Dev ─────────────────────────────
   {
     id: "REQ-008",
     menteeId: "MTE-008",
@@ -361,7 +361,7 @@ export const mockRequests: MentoringRequest[] = [
     targetRole: "Backend Developer",
     skillsNeeded: ["Backend Development", "REST APIs", "Java", "System Design basics"],
     requestType: "New Mentor",
-    status: "Closed - Feedback Pending",
+    status: "Closed",
     matchedMentor: "Rahul Mehta",
     activeDays: 92,
     aiConversation: [
@@ -428,7 +428,7 @@ export const mockRequests: MentoringRequest[] = [
     ],
   },
 
-  // ── REQ-010: Closed — Feedback Pending — Priya Sharma / Interview Skills ───
+  // ── REQ-010: Call Done — Feedback Pending — Priya Sharma / Interview Skills ─
   {
     id: "REQ-010",
     menteeId: "MTE-001",
@@ -442,7 +442,7 @@ export const mockRequests: MentoringRequest[] = [
     targetRole: "Entry-level Candidate",
     skillsNeeded: ["Mock Interviews", "Body Language", "Answering Behavioural Questions"],
     requestType: "Existing Mentor",
-    status: "Closed - Feedback Pending",
+    status: "Call Done — Feedback Pending",
     matchedMentor: "Rahul Mehta",
     activeDays: 45,
     aiConversation: [

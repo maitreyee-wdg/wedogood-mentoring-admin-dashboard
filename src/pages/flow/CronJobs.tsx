@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Zap, Plus, Play, Pause, Pencil, Trash2, X, ChevronDown, ChevronRight, Lock, ClipboardList, Clock, Info } from "lucide-react"
+import { Zap, Plus, Play, Pause, Pencil, Trash2, X, ChevronDown, ChevronRight, Lock, ClipboardList, Moon } from "lucide-react"
 import {
   defaultMappings, WaTemplateEditor,
   type VarCategory, type VarMapping,
@@ -11,10 +11,9 @@ import {
 type TriggerCategory = "Mentee" | "Volunteer" | "Engagement"
 type TemplateCategory = "Mentee" | "Volunteer"
 type TriggerEntity = "mentee" | "volunteer" | "request"
-type TriggerType = "status_duration" | "days_remaining" | "days_since" | "time_of_day" | "orientation_status"
-type DurationUnit = "hours" | "days"
+type TriggerType = "status_duration" | "days_remaining" | "days_since" | "orientation_status"
+type DurationUnit = "mins" | "hours" | "days"
 type Recipient = "mentee" | "volunteer"
-type OffsetDirection = "before" | "after"
 
 interface SystemTrigger {
   id: string
@@ -28,10 +27,7 @@ interface SystemTrigger {
   triggerDuration?: number
   triggerDurationUnit?: DurationUnit
   triggerDaysValue?: number
-  triggerTime?: string
-  triggerOrientationStatus?: string
-  offsetDirection?: OffsetDirection
-  scheduledSendTime?: string
+  respectSleepHours?: boolean
   whatsappTemplate: string
   varMappings?: Record<number, VarMapping>
   status: "Active" | "Paused"
@@ -55,24 +51,25 @@ interface TriggerLog {
 // ─── Status options per entity ────────────────────────────────────────────────
 
 const STATUS_OPTIONS: Record<TriggerEntity, string[]> = {
-  mentee:    ["Sign-up completed", "Engagement chat abandoned", "Engagement created", "Engagement completed", "Engagement expired"],
-  volunteer: ["Profile incomplete", "Orientation pending", "Active", "Occupied", "Inactive", "Archived"],
-  request:   ["Draft", "New", "Match Approval Pending", "Mentor response pending", "No Match Found", "Matched", "Accessed Contact", "Call done - Feedback Pending", "Closed - Feedback Pending", "Expired"],
+  mentee:    ["Sign-up Completed", "Engagement Chat Abandoned", "Engagement Created", "Engagement Completed", "Engagement Expired"],
+  volunteer: ["Profile Incomplete", "Orientation call not booked", "Orientation booked", "Active", "Occupied", "Inactive", "Archived"],
+  request:   ["Draft", "New", "Match Approval Pending", "Mentor Response Pending", "No Match Found", "Matched", "Accessed Contact", "Call Done — Feedback Pending", "Closed", "Expired"],
 }
 
-// ─── Orientation status options (Volunteer — mirrors OrientationStatus in volunteersData.ts) ──
+// ─── Orientation trigger — applicability note (not admin-configurable) ────────
+// Only fires for volunteers whose OrientationStatus (the separate, granular field in
+// volunteersData.ts) is "Orientation Slot Booked" or "Orientation Rescheduled" — those
+// are the only 2 states with an upcoming date+time to count down to. Pending has no date
+// yet, Done has already happened. This is a fixed precondition, not a per-trigger choice.
 
-const ORIENTATION_STATUS_OPTIONS = ["Orientation Pending", "Orientation Slot Booked", "Orientation Done", "Orientation Rescheduled"]
-
-// Statuses that carry an associated orientation date + time (vs. Pending, which doesn't)
-const DATE_LINKED_ORIENTATION_STATUSES = new Set(["Orientation Slot Booked", "Orientation Done", "Orientation Rescheduled"])
+const ORIENTATION_TRIGGER_VALID_STATUSES = "Orientation Slot Booked or Orientation Rescheduled"
 
 // ─── Trigger types by category ────────────────────────────────────────────────
 
 const TRIGGER_TYPES_BY_CATEGORY: Record<TriggerCategory, { value: TriggerType; label: string }[]> = {
-  Mentee:     [{ value: "status_duration", label: "Status remains for duration" }, { value: "days_since", label: "Days since last request" }],
-  Volunteer:  [{ value: "status_duration", label: "Status remains for duration" }, { value: "time_of_day", label: "Scheduled time today" }, { value: "orientation_status", label: "Orientation status" }],
-  Engagement: [{ value: "status_duration", label: "Status remains for duration" }, { value: "days_remaining", label: "Days remaining in request" }],
+  Mentee:     [{ value: "status_duration", label: "Status trigger" }, { value: "days_since", label: "Engagement inactivity trigger" }],
+  Volunteer:  [{ value: "status_duration", label: "Status trigger" }, { value: "orientation_status", label: "Orientation trigger" }],
+  Engagement: [{ value: "status_duration", label: "Status trigger" }, { value: "days_remaining", label: "Remaining days in engagement" }],
 }
 
 // ─── Templates ────────────────────────────────────────────────────────────────
@@ -196,9 +193,9 @@ const MOCK_LOGS: TriggerLog[] = [
   { id: "L1", triggerId: "PT-E1", triggerName: "Mentor Matched — Notify Mentee",  firedAt: "2026-06-04 11:02 AM", template: "Mentor Matched — View Details",  recipients: ["Priya Sharma", "Rohan Das"],    sentCount: 2, deliveredCount: 2, readCount: 2 },
   { id: "L2", triggerId: "PT-M1", triggerName: "Mentee Profile Nudge",            firedAt: "2026-06-04 09:00 AM", template: "Complete Profile",               recipients: ["Kavya Nair", "Meena Iyer"],     sentCount: 2, deliveredCount: 2, readCount: 1 },
   { id: "L3", triggerId: "PT-E2", triggerName: "Mentor Matched — Notify Mentor",  firedAt: "2026-06-04 11:02 AM", template: "Mentee Matched — View Details",  recipients: ["Rahul Mehta", "Sneha Rao"],     sentCount: 2, deliveredCount: 2, readCount: 2 },
-  { id: "L4", triggerId: "PT-V4", triggerName: "Orientation Pending Reminder",    firedAt: "2026-06-03 09:00 AM", template: "Complete Orientation",            recipients: ["Amit Joshi"],                  sentCount: 1, deliveredCount: 1, readCount: 1 },
+  { id: "L4", triggerId: "PT-V4", triggerName: "Orientation Not Booked Reminder", firedAt: "2026-06-03 09:00 AM", template: "Complete Orientation",            recipients: ["Amit Joshi"],                  sentCount: 1, deliveredCount: 1, readCount: 1 },
   { id: "L5", triggerId: "PT-E3", triggerName: "Confirm Call Happened",           firedAt: "2026-06-03 02:15 PM", template: "Confirm If Call Happened",        recipients: ["Arjun Patel", "Priya Sharma"], sentCount: 2, deliveredCount: 2, readCount: 1 },
-  { id: "L6", triggerId: "PT-V5", triggerName: "Orientation Slot Today",          firedAt: "2026-06-03 09:00 AM", template: "Orientation Slot Reminder",       recipients: ["Divya Krishnan"],              sentCount: 1, deliveredCount: 1, readCount: 1 },
+  { id: "L6", triggerId: "PT-V5", triggerName: "Orientation Slot Reminder",       firedAt: "2026-06-03 09:00 AM", template: "Orientation Slot Reminder",       recipients: ["Divya Krishnan"],              sentCount: 1, deliveredCount: 1, readCount: 1 },
   { id: "L7", triggerId: "PT-M2", triggerName: "Request Chat Nudge",             firedAt: "2026-06-02 09:00 AM", template: "Request Chat Nudge",              recipients: ["Meena Iyer", "Kavya Nair"],    sentCount: 2, deliveredCount: 1, readCount: 0 },
   { id: "L8", triggerId: "PT-V1", triggerName: "Volunteer Profile Nudge",           firedAt: "2026-06-01 09:00 AM", template: "Complete Profile",                recipients: ["Kiran Bhat", "Pooja Verma"],   sentCount: 2, deliveredCount: 2, readCount: 2 },
 ]
@@ -206,20 +203,19 @@ const MOCK_LOGS: TriggerLog[] = [
 // ─── Predefined triggers ──────────────────────────────────────────────────────
 
 const PREDEFINED: SystemTrigger[] = [
-  { id: "PT-M1", name: "Mentee Profile Nudge", isPredefined: true, category: "Mentee", triggerType: "status_duration", triggerEntity: "mentee", triggerStatus: "Sign-up completed",         triggerDuration: 4, triggerDurationUnit: "hours", whatsappTemplate: "Complete Profile",            status: "Active", runCount: 34 },
-  { id: "PT-M2", name: "Request Chat Nudge",   isPredefined: true, category: "Mentee", triggerType: "status_duration", triggerEntity: "mentee", triggerStatus: "Engagement chat abandoned", triggerDuration: 4, triggerDurationUnit: "hours", whatsappTemplate: "Request Chat Nudge",          status: "Active", runCount: 21 },
+  { id: "PT-M1", name: "Mentee Profile Nudge", isPredefined: true, category: "Mentee", triggerType: "status_duration", triggerEntity: "mentee", triggerStatus: "Sign-up Completed",         triggerDuration: 4, triggerDurationUnit: "hours", whatsappTemplate: "Complete Profile",            status: "Active", runCount: 34 },
+  { id: "PT-M2", name: "Request Chat Nudge",   isPredefined: true, category: "Mentee", triggerType: "status_duration", triggerEntity: "mentee", triggerStatus: "Engagement Chat Abandoned", triggerDuration: 4, triggerDurationUnit: "hours", whatsappTemplate: "Request Chat Nudge",          status: "Active", runCount: 21 },
   { id: "PT-M3", name: "Re-engagement Nudge",  isPredefined: true, category: "Mentee", triggerType: "days_since",      triggerEntity: "mentee", triggerDaysValue: 30,                                                                         whatsappTemplate: "Re-engagement Nudge",         status: "Active", runCount: 9  },
 
-  { id: "PT-V1", name: "Volunteer Profile Nudge",      isPredefined: true, category: "Volunteer", triggerType: "status_duration", triggerEntity: "volunteer", triggerStatus: "Profile incomplete",  triggerDuration: 4, triggerDurationUnit: "hours", whatsappTemplate: "Complete Profile",         status: "Active", runCount: 18 },
-  { id: "PT-V4", name: "Orientation Pending Reminder", isPredefined: true, category: "Volunteer", triggerType: "status_duration", triggerEntity: "volunteer", triggerStatus: "Orientation pending", triggerDuration: 4, triggerDurationUnit: "hours", whatsappTemplate: "Complete Orientation",     status: "Active", runCount: 31 },
-  { id: "PT-V5", name: "Orientation Slot Today",       isPredefined: true, category: "Volunteer", triggerType: "time_of_day",     triggerEntity: "volunteer", triggerTime: "09:00",                                                               whatsappTemplate: "Orientation Slot Reminder", status: "Active", runCount: 14 },
-  { id: "CT-V1", name: "Orientation Slot Booked Reminder", isPredefined: false, category: "Volunteer", triggerType: "orientation_status", triggerEntity: "volunteer", triggerOrientationStatus: "Orientation Slot Booked", triggerDuration: 1, triggerDurationUnit: "days", offsetDirection: "before", whatsappTemplate: "Orientation Slot Reminder", status: "Active", runCount: 0 },
+  { id: "PT-V1", name: "Volunteer Profile Nudge",         isPredefined: true, category: "Volunteer", triggerType: "status_duration",   triggerEntity: "volunteer", triggerStatus: "Profile Incomplete",           triggerDuration: 4, triggerDurationUnit: "hours", whatsappTemplate: "Complete Profile",          status: "Active", runCount: 18 },
+  { id: "PT-V4", name: "Orientation Not Booked Reminder", isPredefined: true, category: "Volunteer", triggerType: "status_duration",   triggerEntity: "volunteer", triggerStatus: "Orientation call not booked", triggerDuration: 4, triggerDurationUnit: "hours", whatsappTemplate: "Complete Orientation",      status: "Active", runCount: 31 },
+  { id: "PT-V5", name: "Orientation Slot Reminder",       isPredefined: true, category: "Volunteer", triggerType: "orientation_status", triggerEntity: "volunteer", triggerDuration: 1, triggerDurationUnit: "hours", whatsappTemplate: "Orientation Slot Reminder", status: "Active", runCount: 14 },
 
   { id: "PT-E1", name: "Mentor Matched — Notify Mentee",    isPredefined: true, category: "Engagement", recipient: "mentee",    triggerType: "status_duration", triggerEntity: "request", triggerStatus: "Matched",  triggerDuration: 0, triggerDurationUnit: "hours", whatsappTemplate: "Mentor Matched — View Details",  status: "Active", runCount: 58 },
   { id: "PT-E2", name: "Mentor Matched — Notify Volunteer", isPredefined: true, category: "Engagement", recipient: "volunteer", triggerType: "status_duration", triggerEntity: "request", triggerStatus: "Matched",  triggerDuration: 0, triggerDurationUnit: "hours", whatsappTemplate: "Mentee Matched — View Details",  status: "Active", runCount: 58 },
   { id: "PT-E3", name: "Confirm Call Happened",              isPredefined: true, category: "Engagement", recipient: "mentee",    triggerType: "status_duration", triggerEntity: "request", triggerStatus: "Accessed Contact", triggerDuration: 1, triggerDurationUnit: "hours", whatsappTemplate: "Confirm If Call Happened",       status: "Active", runCount: 47 },
   { id: "PT-E4", name: "Days Left Reminder",                 isPredefined: true, category: "Engagement", recipient: "mentee",    triggerType: "days_remaining",  triggerEntity: "request", triggerDaysValue: 4,                                                                whatsappTemplate: "Days Remaining Reminder",        status: "Active", runCount: 12 },
-  { id: "PT-E5", name: "Confirmation Deadline Reminder",     isPredefined: true, category: "Engagement", recipient: "volunteer", triggerType: "status_duration", triggerEntity: "request", triggerStatus: "Mentor response pending",       triggerDuration: 1, triggerDurationUnit: "hours", whatsappTemplate: "Request Confirmation Reminder",  status: "Active", runCount: 26 },
+  { id: "PT-E5", name: "Confirmation Deadline Reminder",     isPredefined: true, category: "Engagement", recipient: "volunteer", triggerType: "status_duration", triggerEntity: "request", triggerStatus: "Mentor Response Pending",       triggerDuration: 1, triggerDurationUnit: "hours", whatsappTemplate: "Request Confirmation Reminder",  status: "Active", runCount: 26 },
   { id: "PT-E6", name: "Mid-Engagement Check-in",            isPredefined: true, category: "Engagement", recipient: "volunteer", triggerType: "days_remaining",  triggerEntity: "request", triggerDaysValue: 2,                                                                whatsappTemplate: "Mid-Engagement Check-in",        status: "Active", runCount: 8  },
 ]
 
@@ -231,14 +227,9 @@ function conditionSentence(t: SystemTrigger): string {
     return `Status of ${t.triggerEntity} remains "${t.triggerStatus}" ${dur}`
   }
   if (t.triggerType === "days_remaining") return `Days left in request = ${t.triggerDaysValue}`
-  if (t.triggerType === "days_since")    return `Days since last request > ${t.triggerDaysValue}`
-  if (t.triggerType === "time_of_day")   return `Orientation slot is today — fires at ${t.triggerTime}`
+  if (t.triggerType === "days_since")    return `Mentee hasn't created a new engagement for > ${t.triggerDaysValue} days`
   if (t.triggerType === "orientation_status") {
-    if (!DATE_LINKED_ORIENTATION_STATUSES.has(t.triggerOrientationStatus ?? "")) {
-      const dur = t.triggerDuration === 0 ? "immediately" : `for ${t.triggerDuration} ${t.triggerDurationUnit}`
-      return `Volunteer's orientation status remains "${t.triggerOrientationStatus}" ${dur}`
-    }
-    return `Volunteer's orientation status is "${t.triggerOrientationStatus}" — fires ${t.triggerDuration} ${t.triggerDurationUnit} ${t.offsetDirection} the orientation date & time`
+    return `${t.triggerDuration} ${t.triggerDurationUnit} remaining before the orientation booked time`
   }
   return ""
 }
@@ -279,15 +270,11 @@ function TriggerModal({ trigger, onSave, onClose }: {
   const [recipient, setRecipient]               = useState<Recipient>(trigger?.recipient ?? "mentee")
   const [triggerType, setTriggerType]           = useState<TriggerType>(trigger?.triggerType ?? "status_duration")
   const [triggerEntity, setTriggerEntity]       = useState<TriggerEntity>(trigger?.triggerEntity ?? "mentee")
-  const [triggerStatus, setTriggerStatus]       = useState(trigger?.triggerStatus ?? "Sign-up completed")
+  const [triggerStatus, setTriggerStatus]       = useState(trigger?.triggerStatus ?? "Sign-up Completed")
   const [triggerDuration, setTriggerDuration]   = useState(trigger?.triggerDuration ?? 4)
   const [triggerDurationUnit, setTriggerDurationUnit] = useState<DurationUnit>(trigger?.triggerDurationUnit ?? "hours")
   const [triggerDaysValue, setTriggerDaysValue] = useState(trigger?.triggerDaysValue ?? 4)
-  const [triggerTime, setTriggerTime]           = useState(trigger?.triggerTime ?? "09:00")
-  const [triggerOrientationStatus, setTriggerOrientationStatus] = useState(trigger?.triggerOrientationStatus ?? ORIENTATION_STATUS_OPTIONS[0])
-  const [offsetDirection, setOffsetDirection]   = useState<OffsetDirection>(trigger?.offsetDirection ?? "before")
-  const [scheduledSendEnabled, setScheduledSendEnabled] = useState(!!trigger?.scheduledSendTime)
-  const [scheduledSendTime, setScheduledSendTime] = useState(trigger?.scheduledSendTime ?? "09:00")
+  const [respectSleepHours, setRespectSleepHours] = useState(trigger?.respectSleepHours ?? false)
 
   const initTemplateCat = effectiveTemplateCategory(trigger?.category ?? "Mentee", trigger?.recipient)
   const initTemplate = trigger?.whatsappTemplate ?? TEMPLATES_BY_CATEGORY[initTemplateCat][0].name
@@ -383,6 +370,13 @@ function TriggerModal({ trigger, onSave, onClose }: {
                   ))}
                 </div>
               </div>
+              <div>
+                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1.5">Trigger Type</label>
+                <select className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 outline-none focus:border-blue-400 bg-white"
+                  value={triggerType} onChange={(e) => setTriggerType(e.target.value as TriggerType)}>
+                  {TRIGGER_TYPES_BY_CATEGORY[category].map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+                </select>
+              </div>
               {category === "Engagement" && (
                 <div>
                   <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-2">Send Message To</label>
@@ -396,13 +390,6 @@ function TriggerModal({ trigger, onSave, onClose }: {
                   </div>
                 </div>
               )}
-              <div>
-                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1.5">Trigger Type</label>
-                <select className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 outline-none focus:border-blue-400 bg-white"
-                  value={triggerType} onChange={(e) => setTriggerType(e.target.value as TriggerType)}>
-                  {TRIGGER_TYPES_BY_CATEGORY[category].map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
-                </select>
-              </div>
             </div>
           )}
 
@@ -431,54 +418,30 @@ function TriggerModal({ trigger, onSave, onClose }: {
                   }{" "}for{" "}
                   <input type="number" min={0} value={triggerDuration} onChange={(e) => setTriggerDuration(Number(e.target.value))} className={inlineNum} />{" "}
                   <select value={triggerDurationUnit} onChange={(e) => setTriggerDurationUnit(e.target.value as DurationUnit)} className={inlineSel}>
-                    <option value="hours">hours</option><option value="days">days</option>
+                    <option value="mins">mins</option><option value="hours">hours</option><option value="days">days</option>
                   </select>
                   {triggerDuration === 0 && <span className="ml-2 text-xs text-blue-500">(fires immediately)</span>}
                 </>
               )}
               {triggerType === "days_remaining" && (
-                <>When days left in the mentoring request equals{" "}
+                <>When days left in the engagement completion equals{" "}
                   <input type="number" min={1} value={triggerDaysValue} onChange={(e) => setTriggerDaysValue(Number(e.target.value))} className={inlineNum} />
                 </>
               )}
               {triggerType === "days_since" && (
-                <>When the last request was created more than{" "}
-                  <input type="number" min={1} value={triggerDaysValue} onChange={(e) => setTriggerDaysValue(Number(e.target.value))} className={inlineNum} /> days ago
-                </>
-              )}
-              {triggerType === "time_of_day" && (
-                <>When the orientation slot is scheduled for today, fire at{" "}
-                  <input type="time" value={triggerTime} onChange={(e) => setTriggerTime(e.target.value)} className={inlineSel + " w-28"} />
+                <>When the mentee hasn't created a new engagement for more than{" "}
+                  <input type="number" min={1} value={triggerDaysValue} onChange={(e) => setTriggerDaysValue(Number(e.target.value))} className={inlineNum} /> days
                 </>
               )}
               {triggerType === "orientation_status" && (
                 <>
-                  When the volunteer's orientation status is{" "}
-                  <select value={triggerOrientationStatus} onChange={(e) => setTriggerOrientationStatus(e.target.value)} className={inlineSel}>
-                    {ORIENTATION_STATUS_OPTIONS.map((s) => <option key={s}>{s}</option>)}
+                  When{" "}
+                  <input type="number" min={0} value={triggerDuration} onChange={(e) => setTriggerDuration(Number(e.target.value))} className={inlineNum} />{" "}
+                  <select value={triggerDurationUnit} onChange={(e) => setTriggerDurationUnit(e.target.value as DurationUnit)} className={inlineSel}>
+                    <option value="mins">mins</option><option value="hours">hours</option><option value="days">days</option>
                   </select>{" "}
-                  {DATE_LINKED_ORIENTATION_STATUSES.has(triggerOrientationStatus) ? (
-                    <>
-                      , fire{" "}
-                      <input type="number" min={0} value={triggerDuration} onChange={(e) => setTriggerDuration(Number(e.target.value))} className={inlineNum} />{" "}
-                      <select value={triggerDurationUnit} onChange={(e) => setTriggerDurationUnit(e.target.value as DurationUnit)} className={inlineSel}>
-                        <option value="hours">hours</option><option value="days">days</option>
-                      </select>{" "}
-                      <select value={offsetDirection} onChange={(e) => setOffsetDirection(e.target.value as OffsetDirection)} className={inlineSel}>
-                        <option value="before">before</option><option value="after">after</option>
-                      </select>{" "}
-                      the orientation date &amp; time
-                      <p className="text-xs text-gray-400 mt-1">Uses the orientation date + time set on the volunteer's profile</p>
-                    </>
-                  ) : (
-                    <>
-                      , fire after it remains this way for{" "}
-                      <input type="number" min={0} value={triggerDuration} onChange={(e) => setTriggerDuration(Number(e.target.value))} className={inlineNum} />{" "}
-                      <select value={triggerDurationUnit} onChange={(e) => setTriggerDurationUnit(e.target.value as DurationUnit)} className={inlineSel}>
-                        <option value="hours">hours</option><option value="days">days</option>
-                      </select>
-                    </>
-                  )}
+                  is remaining before the orientation booked time
+                  <p className="text-xs text-gray-400 mt-1">Only fires for volunteers whose orientation status is {ORIENTATION_TRIGGER_VALID_STATUSES}</p>
                 </>
               )}
             </div>
@@ -487,33 +450,23 @@ function TriggerModal({ trigger, onSave, onClose }: {
           {/* Delivery schedule */}
           <div>
             <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-2">Message Delivery</label>
-            <div className={`rounded-xl border p-4 space-y-3 ${scheduledSendEnabled ? "border-blue-200 bg-blue-50/30" : "border-gray-200 bg-white"}`}>
+            <div className={`rounded-xl border p-4 space-y-3 ${respectSleepHours ? "border-indigo-200 bg-indigo-50/30" : "border-gray-200 bg-white"}`}>
               <label className="flex items-center gap-3 cursor-pointer">
-                <div onClick={() => setScheduledSendEnabled((v) => !v)}
-                  className={`relative w-9 h-5 rounded-full transition-colors shrink-0 ${scheduledSendEnabled ? "bg-blue-600" : "bg-gray-200"}`}>
-                  <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${scheduledSendEnabled ? "translate-x-4" : "translate-x-0.5"}`} />
+                <div onClick={() => setRespectSleepHours((v) => !v)}
+                  className={`relative w-9 h-5 rounded-full transition-colors shrink-0 ${respectSleepHours ? "bg-indigo-600" : "bg-gray-200"}`}>
+                  <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${respectSleepHours ? "translate-x-4" : "translate-x-0.5"}`} />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-gray-800">Schedule message at a specific time</p>
+                  <p className="text-sm font-medium text-gray-800">Respect sleep hours (10:00 PM – 8:00 AM)</p>
                   <p className="text-xs text-gray-400">Otherwise, message is sent immediately when the condition fires</p>
                 </div>
               </label>
-              {scheduledSendEnabled && (
-                <div className="space-y-3 pt-1 border-t border-blue-100">
-                  <div className="flex items-center gap-3">
-                    <Clock className="w-4 h-4 text-blue-500 shrink-0" />
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-gray-700">Send at</span>
-                      <input type="time" value={scheduledSendTime} onChange={(e) => setScheduledSendTime(e.target.value)}
-                        className="border border-blue-300 rounded-lg px-2 py-1 text-sm text-blue-700 font-semibold bg-white outline-none focus:border-blue-500" />
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5">
-                    <Info className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
-                    <p className="text-xs text-amber-700 leading-relaxed">
-                      <span className="font-semibold">Condition re-validated at send time.</span> If it no longer holds, the message is not sent.
-                    </p>
-                  </div>
+              {respectSleepHours && (
+                <div className="flex items-start gap-2 bg-indigo-50 border border-indigo-200 rounded-lg px-3 py-2.5">
+                  <Moon className="w-3.5 h-3.5 text-indigo-500 shrink-0 mt-0.5" />
+                  <p className="text-xs text-indigo-700 leading-relaxed">
+                    <span className="font-semibold">Held during sleep hours.</span> If the condition fires between 10:00 PM and 8:00 AM, the message is queued and sent at 8:00 AM instead.
+                  </p>
                 </div>
               )}
             </div>
@@ -554,8 +507,8 @@ function TriggerModal({ trigger, onSave, onClose }: {
           <Button className="flex-1" onClick={() => onSave({
             name, category, recipient: category === "Engagement" ? recipient : undefined,
             triggerType, triggerEntity, triggerStatus, triggerDuration, triggerDurationUnit,
-            triggerDaysValue, triggerTime, triggerOrientationStatus, offsetDirection,
-            scheduledSendTime: scheduledSendEnabled ? scheduledSendTime : undefined,
+            triggerDaysValue,
+            respectSleepHours,
             whatsappTemplate, varMappings,
           })}>
             {isNew ? "Create Trigger" : "Save Changes"}
@@ -592,9 +545,9 @@ function TriggerRow({ trigger, onToggle, onEdit, onDelete }: {
         <span className="text-[11px] bg-blue-50 text-blue-700 border border-blue-100 px-2 py-0.5 rounded font-medium whitespace-nowrap">
           WA: {trigger.whatsappTemplate}
         </span>
-        {trigger.scheduledSendTime && (
-          <span className="flex items-center gap-1 text-[10px] bg-amber-50 text-amber-600 border border-amber-200 px-1.5 py-0.5 rounded font-medium whitespace-nowrap">
-            <Clock className="w-2.5 h-2.5" />{trigger.scheduledSendTime}
+        {trigger.respectSleepHours && (
+          <span className="flex items-center gap-1 text-[10px] bg-indigo-50 text-indigo-600 border border-indigo-200 px-1.5 py-0.5 rounded font-medium whitespace-nowrap">
+            <Moon className="w-2.5 h-2.5" />Sleep hours
           </span>
         )}
       </div>
@@ -729,8 +682,7 @@ export default function CronJobs() {
         triggerType: data.triggerType ?? "status_duration", triggerEntity: entity,
         triggerStatus: data.triggerStatus, triggerDuration: data.triggerDuration,
         triggerDurationUnit: data.triggerDurationUnit, triggerDaysValue: data.triggerDaysValue,
-        triggerTime: data.triggerTime, triggerOrientationStatus: data.triggerOrientationStatus,
-        offsetDirection: data.offsetDirection, scheduledSendTime: data.scheduledSendTime,
+        respectSleepHours: data.respectSleepHours,
         whatsappTemplate: data.whatsappTemplate ?? "", varMappings: data.varMappings,
         status: "Active", runCount: 0,
       }])

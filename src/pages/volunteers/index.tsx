@@ -204,7 +204,7 @@ function AddVolunteerModal({ onSave, onClose }: { onSave: (v: Volunteer) => void
       email: form.email.trim(),
       officialEmail: form.officialEmail.trim(),
       linkedin: form.linkedin.trim() || "—",
-      status: "Orientation pending",
+      status: "Orientation call not booked",
       orientationStatus: "Orientation Pending",
       signedUpDate: new Date().toISOString().split("T")[0],
       sessionAvailability: "Available",
@@ -363,10 +363,11 @@ const typeVariant: Record<VolunteeringType, "default" | "success" | "secondary">
 }
 
 const statusColors: Record<VolunteerStatus, string> = {
-  "Profile incomplete": "bg-orange-100 text-orange-700",
+  "Profile Incomplete": "bg-orange-100 text-orange-700",
   "Active": "bg-green-100 text-green-700",
   "Occupied": "bg-blue-100 text-blue-700",
-  "Orientation pending": "bg-yellow-100 text-yellow-700",
+  "Orientation call not booked": "bg-yellow-100 text-yellow-700",
+  "Orientation booked": "bg-teal-100 text-teal-700",
   "Inactive": "bg-gray-100 text-gray-500",
   "Archived": "bg-red-50 text-red-500",
 }
@@ -430,7 +431,7 @@ function AssignGroupModal({ names, onAssign, onClose }: { names: string[]; onAss
 
 function ChangeStatusModal({ names, current, onSave, onClose }: { names: string[]; current: VolunteerStatus; onSave: (s: VolunteerStatus) => void; onClose: () => void }) {
   const [selected, setSelected] = useState<VolunteerStatus>(current)
-  const statuses: VolunteerStatus[] = ["Profile incomplete", "Orientation pending", "Active", "Occupied", "Inactive", "Archived"]
+  const statuses: VolunteerStatus[] = ["Profile Incomplete", "Orientation call not booked", "Orientation booked", "Active", "Occupied", "Inactive", "Archived"]
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
       <div className="bg-white rounded-xl shadow-xl w-80 p-6">
@@ -752,7 +753,7 @@ function ProfilePane({
             <PaneSection label="Status">
               {mode === "edit" ? (
                 <Select value={data.status} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => set("status", e.target.value as VolunteerStatus)} className="w-full text-xs">
-                  <option>Profile incomplete</option><option>Orientation pending</option><option>Active</option><option>Occupied</option><option>Inactive</option><option>Archived</option>
+                  <option>Profile Incomplete</option><option>Orientation call not booked</option><option>Orientation booked</option><option>Active</option><option>Occupied</option><option>Inactive</option><option>Archived</option>
                 </Select>
               ) : (
                 <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusColors[v.status]}`}>{v.status}</span>
@@ -1245,7 +1246,7 @@ export default function VolunteersList() {
           <div className="flex flex-col gap-1">
             <label className="text-xs font-medium text-gray-500">Status</label>
             <Select value={filterStatus} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFilterStatus(e.target.value)} className="w-44">
-              <option>All</option><option>Profile incomplete</option><option>Orientation pending</option><option>Active</option><option>Occupied</option><option>Inactive</option><option>Archived</option>
+              <option>All</option><option>Profile Incomplete</option><option>Orientation call not booked</option><option>Orientation booked</option><option>Active</option><option>Occupied</option><option>Inactive</option><option>Archived</option>
             </Select>
           </div>
           <div className="flex flex-col gap-1">
