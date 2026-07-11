@@ -799,6 +799,17 @@ function ProfilePane({
                             </div>
                           </div>
                         )}
+                        {data.orientationStatus !== "Orientation Pending" && (
+                          <div>
+                            <label className="text-xs text-gray-500 block mb-0.5">Orientation Call Meeting Link</label>
+                            <input
+                              className="w-full text-xs border border-gray-200 rounded px-2 py-1 outline-none focus:border-blue-400"
+                              placeholder="e.g. meet.google.com/xyz"
+                              value={data.orientationCallMeetingLink ?? ""}
+                              onChange={(e) => set("orientationCallMeetingLink", e.target.value)}
+                            />
+                          </div>
+                        )}
                       </div>
                     ) : (
                       <div className="space-y-1">
@@ -808,6 +819,12 @@ function ProfilePane({
                             {new Date(v.orientationDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
                             {v.orientationTime && ` · ${v.orientationTime}`}
                           </p>
+                        )}
+                        {v.orientationCallMeetingLink && (
+                          <div className="flex items-center gap-1.5 text-xs text-blue-600">
+                            <Link className="w-3 h-3 shrink-0" />
+                            <a href={`https://${v.orientationCallMeetingLink}`} target="_blank" rel="noreferrer" className="hover:underline truncate">{v.orientationCallMeetingLink}</a>
+                          </div>
                         )}
                       </div>
                     )}

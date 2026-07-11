@@ -2,8 +2,9 @@ import { useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { mockMenteeGroups, type MenteeGroup, type GroupMeeting } from "@/data/groupsData"
-import { Search, Plus, X, Pencil, Check, CalendarPlus, Users, Phone, Mail } from "lucide-react"
+import { mockMenteeGroups, type MenteeGroup, type GroupMeeting, type OnboardingLink } from "@/data/groupsData"
+import { OnboardingLinkModal } from "@/components/OnboardingLinkModal"
+import { Search, Plus, X, Pencil, Check, CalendarPlus, Users, Phone, Mail, Copy, Pause, Play, Trash2 } from "lucide-react"
 
 const ngoColor: Record<string, string> = {
   "Akanksha Foundation": "bg-blue-100 text-blue-700",
@@ -48,7 +49,7 @@ function LogMeetingModal({ groupName, onSave, onClose }: {
   )
 }
 
-function AddGroupModal({ onSave, onClose }: { onSave: (g: Omit<MenteeGroup, "id" | "meetings">) => void; onClose: () => void }) {
+function AddGroupModal({ onSave, onClose }: { onSave: (g: Omit<MenteeGroup, "id" | "meetings" | "onboardingLinks">) => void; onClose: () => void }) {
   const [name, setName] = useState("")
   const [ngo, setNgo] = useState<MenteeGroup["ngo"]>("Akanksha Foundation")
   const [pocName, setPocName] = useState("")
@@ -97,8 +98,15 @@ function AddGroupModal({ onSave, onClose }: { onSave: (g: Omit<MenteeGroup, "id"
   )
 }
 
-function GroupPane({ group, onClose, onSave, onLogMeeting }: {
-  group: MenteeGroup; onClose: () => void; onSave: (g: MenteeGroup) => void; onLogMeeting: () => void
+function GroupPane({ group, onClose, onSave, onLogMeeting, onAddLink, onEditLink, onTogglePauseLink, onDeleteLink }: {
+  group: MenteeGroup
+  onClose: () => void
+  onSave: (g: MenteeGroup) => void
+  onLogMeeting: () => void
+  onAddLink: () => void
+  onEditLink: (link: OnboardingLink) => void
+  onTogglePauseLink: (link: OnboardingLink) => void
+  onDeleteLink: (link: OnboardingLink) => void
 }) {
   const [mode, setMode] = useState<"view" | "edit">("view")
   const [data, setData] = useState<MenteeGroup>({ ...group })
@@ -162,6 +170,39 @@ function GroupPane({ group, onClose, onSave, onLogMeeting }: {
         </div>
 
         <div>
+          <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1.5">Onboarding Links ({v.onboardingLinks.length})</p>
+          <button onClick={onAddLink} className="flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 font-medium mb-3">
+            <Plus className="w-3.5 h-3.5" />Add link
+          </button>
+          {v.onboardingLinks.length === 0 ? (
+            <p className="text-xs text-gray-400 italic">No onboarding links yet</p>
+          ) : (
+            <div className="space-y-2">
+              {v.onboardingLinks.map((link) => (
+                <div key={link.id} className="bg-gray-50 border border-gray-100 rounded-lg p-3">
+                  <div className="flex items-center justify-between mb-1">
+                    <p className="text-xs font-semibold text-gray-800">{link.name}</p>
+                    <Badge variant={link.status === "Active" ? "success" : "secondary"}>{link.status}</Badge>
+                  </div>
+                  {link.description && <p className="text-xs text-gray-500 mb-1.5">{link.description}</p>}
+                  <div className="flex items-center gap-2 bg-white border border-gray-200 rounded px-2 py-1 mb-1.5">
+                    <span className="text-xs text-gray-500 flex-1 truncate">{link.url}</span>
+                    <button onClick={() => navigator.clipboard?.writeText(link.url)} className="text-gray-400 hover:text-blue-600 shrink-0"><Copy className="w-3 h-3" /></button>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <button onClick={() => onEditLink(link)} className="text-xs text-gray-500 hover:text-blue-600 flex items-center gap-1"><Pencil className="w-3 h-3" />Edit</button>
+                    <button onClick={() => onTogglePauseLink(link)} className="text-xs text-gray-500 hover:text-blue-600 flex items-center gap-1">
+                      {link.status === "Active" ? <><Pause className="w-3 h-3" />Pause</> : <><Play className="w-3 h-3" />Resume</>}
+                    </button>
+                    <button onClick={() => onDeleteLink(link)} className="text-xs text-gray-500 hover:text-red-600 flex items-center gap-1"><Trash2 className="w-3 h-3" />Delete</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div>
           <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1.5">Meetings ({v.meetings.length})</p>
           <button onClick={onLogMeeting} className="flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 font-medium mb-3">
             <CalendarPlus className="w-3.5 h-3.5" />Log meeting
@@ -203,6 +244,8 @@ export default function MenteeGroups() {
   const [selectedGroup, setSelectedGroup] = useState<MenteeGroup | null>(null)
   const [showAddModal, setShowAddModal] = useState(false)
   const [logMeetingFor, setLogMeetingFor] = useState<MenteeGroup | null>(null)
+  const [linkModalFor, setLinkModalFor] = useState<{ group: MenteeGroup; link?: OnboardingLink } | null>(null)
+  const [deleteLinkTarget, setDeleteLinkTarget] = useState<{ group: MenteeGroup; link: OnboardingLink } | null>(null)
 
   const filtered = groups.filter((g) => {
     const q = search.toLowerCase()
@@ -219,6 +262,32 @@ export default function MenteeGroups() {
     setGroups((p) => p.map((g) => g.id === logMeetingFor.id ? { ...g, meetings: [...g.meetings, m] } : g))
     if (selectedGroup?.id === logMeetingFor.id) setSelectedGroup((g) => g ? { ...g, meetings: [...g.meetings, m] } : null)
     setLogMeetingFor(null)
+  }
+
+  const applyLinks = (groupId: string, newLinks: OnboardingLink[]) => {
+    setGroups((p) => p.map((g) => g.id === groupId ? { ...g, onboardingLinks: newLinks } : g))
+    setSelectedGroup((g) => g && g.id === groupId ? { ...g, onboardingLinks: newLinks } : g)
+  }
+
+  const handleSaveLink = (data: Omit<OnboardingLink, "id" | "createdAt" | "status">) => {
+    if (!linkModalFor) return
+    const { group, link } = linkModalFor
+    const newLinks = link
+      ? group.onboardingLinks.map((l) => l.id === link.id ? { ...l, ...data } : l)
+      : [...group.onboardingLinks, { ...data, id: `OL-${Date.now()}`, status: "Active" as const, createdAt: new Date().toISOString().slice(0, 10) }]
+    applyLinks(group.id, newLinks)
+    setLinkModalFor(null)
+  }
+
+  const handleTogglePauseLink = (group: MenteeGroup, link: OnboardingLink) => {
+    applyLinks(group.id, group.onboardingLinks.map((l) => l.id === link.id ? { ...l, status: l.status === "Active" ? "Paused" as const : "Active" as const } : l))
+  }
+
+  const confirmDeleteLink = () => {
+    if (!deleteLinkTarget) return
+    const { group, link } = deleteLinkTarget
+    applyLinks(group.id, group.onboardingLinks.filter((l) => l.id !== link.id))
+    setDeleteLinkTarget(null)
   }
 
   return (
@@ -315,18 +384,45 @@ export default function MenteeGroups() {
           onClose={() => setSelectedGroup(null)}
           onSave={(updated) => { setGroups((p) => p.map((g) => g.id === updated.id ? updated : g)); setSelectedGroup(updated) }}
           onLogMeeting={() => setLogMeetingFor(selectedGroup)}
+          onAddLink={() => setLinkModalFor({ group: selectedGroup })}
+          onEditLink={(link) => setLinkModalFor({ group: selectedGroup, link })}
+          onTogglePauseLink={(link) => handleTogglePauseLink(selectedGroup, link)}
+          onDeleteLink={(link) => setDeleteLinkTarget({ group: selectedGroup, link })}
         />
       )}
 
       {showAddModal && (
         <AddGroupModal
-          onSave={(data) => { setGroups((p) => [...p, { ...data, id: `MG-${Date.now()}`, meetings: [] }]); setShowAddModal(false) }}
+          onSave={(data) => { setGroups((p) => [...p, { ...data, id: `MG-${Date.now()}`, meetings: [], onboardingLinks: [] }]); setShowAddModal(false) }}
           onClose={() => setShowAddModal(false)}
         />
       )}
 
       {logMeetingFor && (
         <LogMeetingModal groupName={logMeetingFor.name} onSave={handleLogMeeting} onClose={() => setLogMeetingFor(null)} />
+      )}
+
+      {linkModalFor && (
+        <OnboardingLinkModal
+          link={linkModalFor.link}
+          entityType="mentee"
+          groupName={linkModalFor.group.name}
+          onSave={handleSaveLink}
+          onClose={() => setLinkModalFor(null)}
+        />
+      )}
+
+      {deleteLinkTarget && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-xl w-96 p-6">
+            <h2 className="font-semibold text-gray-900 text-sm mb-2">Delete Onboarding Link</h2>
+            <p className="text-sm text-gray-600 mb-5"><strong>{deleteLinkTarget.link.name}</strong> will be permanently deleted. This cannot be undone.</p>
+            <div className="flex gap-2">
+              <Button variant="outline" className="flex-1" onClick={() => setDeleteLinkTarget(null)}>Cancel</Button>
+              <Button className="flex-1 bg-red-500 hover:bg-red-600 text-white" onClick={confirmDeleteLink}>Yes, Delete Link</Button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

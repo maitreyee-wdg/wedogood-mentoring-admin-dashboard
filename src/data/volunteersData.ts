@@ -73,6 +73,7 @@ export interface Volunteer {
   orientationStatus: OrientationStatus
   orientationDate?: string
   orientationTime?: string
+  orientationCallMeetingLink?: string
   signedUpDate: string
   sessionAvailability: "Available" | "On Leave" | "Inactive"
   activeRequest?: ActiveRequest
@@ -187,8 +188,9 @@ export const mockVolunteers: Volunteer[] = [
     linkedin: "linkedin.com/in/amitjoshi",
     status: "Orientation booked",
     orientationStatus: "Orientation Slot Booked",
-    orientationDate: "2026-06-05",
+    orientationDate: "2026-07-13",
     orientationTime: "10:00",
+    orientationCallMeetingLink: "meet.google.com/orientation-jul13-10",
     signedUpDate: "2025-10-05",
     activeRequest: { id: "REQ-004", menteeName: "Rohan Das", skill: "Data Analysis", startedAt: "2026-05-08" },
     pastRequests: [],
@@ -224,8 +226,9 @@ export const mockVolunteers: Volunteer[] = [
     linkedin: "linkedin.com/in/poojaverma",
     status: "Orientation booked",
     orientationStatus: "Orientation Rescheduled",
-    orientationDate: "2026-06-10",
+    orientationDate: "2026-07-14",
     orientationTime: "15:30",
+    orientationCallMeetingLink: "meet.google.com/orientation-jul14-1530",
     signedUpDate: "2025-07-18",
     pastRequests: [
       { id: "REQ-P04", menteeName: "Siddharth Kumar", skill: "Finance", closedAt: "2026-04-01", feedback: "Good guidance but could be more proactive.", rating: 4 },

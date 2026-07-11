@@ -1,6 +1,6 @@
 import { NavLink } from "react-router-dom"
 import { cn } from "@/lib/utils"
-import { Heart, Users, UserCircle, MessageSquare, Layers, Building2, CalendarClock, UserCheck, FolderKanban, BrainCircuit, AlertTriangle, BookOpen, Bot } from "lucide-react"
+import { Heart, Users, UserCircle, MessageSquare, Layers, Building2, CalendarClock, CalendarCheck, UserCheck, FolderKanban, BrainCircuit, AlertTriangle, BookOpen, Bot } from "lucide-react"
 import { mockEscalations } from "@/data/escalationsData"
 
 const sections = [
@@ -9,6 +9,7 @@ const sections = [
     items: [
       { to: "/volunteers", label: "Volunteers", icon: Users, end: true },
       { to: "/groups/volunteer-groups", label: "Volunteer Groups", icon: Layers, end: false },
+      { to: "/volunteers/orientation-slots", label: "Orientation Slots", icon: CalendarCheck, end: false },
       { to: "/volunteers/comms", label: "Volunteer WA Comms", icon: MessageSquare, end: false },
     ],
   },

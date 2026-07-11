@@ -1,8 +1,35 @@
+import { DOMAINS, INDUSTRIES } from "@/data/volunteersData"
+
 export interface GroupMeeting {
   id: string
   date: string
   details: string
   poc: string
+}
+
+export interface FieldPreset {
+  field: string   // key from VOLUNTEER_PRESET_FIELDS / MENTEE_PRESET_FIELDS
+  value: string   // stored as string; "tags" type values are semicolon-joined
+}
+
+export interface OrientationSlot {
+  id: string
+  meetingName: string
+  date: string
+  time: string
+  meetingLink: string
+  wdgEmail: string   // WDG team member's email hosting/taking this orientation session
+}
+
+export interface OnboardingLink {
+  id: string
+  name: string
+  description?: string
+  url: string
+  status: "Active" | "Paused"
+  presetFields: FieldPreset[]
+  orientationSlots?: OrientationSlot[]   // volunteer links only
+  createdAt: string
 }
 
 export interface VolunteerGroup {
@@ -15,6 +42,7 @@ export interface VolunteerGroup {
   additionalDetails?: string
   memberCount: number
   meetings: GroupMeeting[]
+  onboardingLinks: OnboardingLink[]
 }
 
 export interface MenteeGroup {
@@ -26,7 +54,50 @@ export interface MenteeGroup {
   status: "Active" | "Inactive"
   description?: string
   meetings: GroupMeeting[]
+  onboardingLinks: OnboardingLink[]
 }
+
+export type PresetFieldType = "text" | "number" | "select" | "tags"
+
+export interface PresetFieldDef {
+  key: string
+  label: string
+  type: PresetFieldType
+  options?: string[]
+}
+
+export const VOLUNTEER_PRESET_FIELDS: PresetFieldDef[] = [
+  { key: "currentRole", label: "Current Role", type: "text" },
+  { key: "currentCompany", label: "Current Company", type: "text" },
+  { key: "totalYearsExp", label: "Total Years of Experience", type: "number" },
+  { key: "domain", label: "Domain", type: "select", options: DOMAINS },
+  { key: "industry", label: "Industry", type: "select", options: INDUSTRIES },
+  { key: "preferredMenteeStage", label: "Preferred Mentee Stage", type: "tags", options: ["College students", "Fresh graduates", "0–4 yrs", "4–8 yrs"] },
+  { key: "skills", label: "Skills", type: "tags" },
+  { key: "preferredLanguages", label: "Preferred Languages", type: "tags" },
+  { key: "hometown.city", label: "Hometown — City", type: "text" },
+  { key: "hometown.state", label: "Hometown — State", type: "text" },
+  { key: "hometown.country", label: "Hometown — Country", type: "text" },
+  { key: "currentLocation.city", label: "Current Location — City", type: "text" },
+  { key: "currentLocation.state", label: "Current Location — State", type: "text" },
+  { key: "currentLocation.country", label: "Current Location — Country", type: "text" },
+]
+
+export const MENTEE_PRESET_FIELDS: PresetFieldDef[] = [
+  { key: "currentRole", label: "Current Role", type: "text" },
+  { key: "currentCompany", label: "Current Company", type: "text" },
+  { key: "totalYearsExp", label: "Total Years of Experience", type: "number" },
+  { key: "domain", label: "Domain", type: "text" },
+  { key: "careerStage", label: "Career Stage", type: "select", options: ["Student", "Working", "Unemployed", "Fresh Graduate"] },
+  { key: "education.level", label: "Education — Level", type: "text" },
+  { key: "education.degree", label: "Education — Degree", type: "text" },
+  { key: "education.institute", label: "Education — Institute", type: "text" },
+  { key: "goals", label: "Goals", type: "tags" },
+  { key: "skills", label: "Skills", type: "tags" },
+  { key: "preferredLanguages", label: "Preferred Languages", type: "tags" },
+  { key: "gender", label: "Gender", type: "select", options: ["Male", "Female", "Other"] },
+  { key: "age", label: "Age", type: "number" },
+]
 
 export const mockVolunteerGroups: VolunteerGroup[] = [
   {
@@ -42,6 +113,7 @@ export const mockVolunteerGroups: VolunteerGroup[] = [
       { id: "M-001", date: "2026-04-15", details: "Quarterly review of mentoring engagement quality. Discussed feedback loop improvements.", poc: "Suresh Pillai" },
       { id: "M-002", date: "2026-01-20", details: "Onboarding session for 3 new volunteers joining the group.", poc: "Suresh Pillai" },
     ],
+    onboardingLinks: [],
   },
   {
     id: "VG-002",
@@ -56,6 +128,24 @@ export const mockVolunteerGroups: VolunteerGroup[] = [
       { id: "M-003", date: "2026-05-01", details: "Planning Code4Good bootcamp logistics for NavGurukul batch.", poc: "Neetha Iyer" },
       { id: "M-004", date: "2026-02-10", details: "Mid-year check-in. 2 new project leads assigned.", poc: "Neetha Iyer" },
     ],
+    onboardingLinks: [
+      {
+        id: "OL-001",
+        name: "Google DevFest 2026 Signup",
+        description: "Shared at the Google DevFest booth for engineers signing up on the spot.",
+        url: "app.wedogood.in/onboard/volunteer/technology/google-devfest-2026-signup",
+        status: "Active",
+        presetFields: [
+          { field: "currentCompany", value: "Google" },
+          { field: "domain", value: "Technology" },
+        ],
+        orientationSlots: [
+          { id: "OS-001", meetingName: "DevFest Volunteer Orientation", date: "2026-07-20", time: "11:00", meetingLink: "meet.google.com/devfest-orientation-1", wdgEmail: "priya@wedogood.in" },
+          { id: "OS-002", meetingName: "DevFest Volunteer Orientation", date: "2026-07-22", time: "16:00", meetingLink: "meet.google.com/devfest-orientation-2", wdgEmail: "priya@wedogood.in" },
+        ],
+        createdAt: "2026-06-15",
+      },
+    ],
   },
   {
     id: "VG-003",
@@ -68,6 +158,7 @@ export const mockVolunteerGroups: VolunteerGroup[] = [
     meetings: [
       { id: "M-005", date: "2026-03-18", details: "Discussed curriculum for data literacy workshops.", poc: "Rohan Malhotra" },
     ],
+    onboardingLinks: [],
   },
   {
     id: "VG-004",
@@ -81,6 +172,7 @@ export const mockVolunteerGroups: VolunteerGroup[] = [
     meetings: [
       { id: "M-006", date: "2026-04-28", details: "Review of Finwise program with Parivarthan team.", poc: "Meena Kapoor" },
     ],
+    onboardingLinks: [],
   },
   {
     id: "VG-005",
@@ -91,6 +183,7 @@ export const mockVolunteerGroups: VolunteerGroup[] = [
     status: "Active",
     memberCount: 5,
     meetings: [],
+    onboardingLinks: [],
   },
   {
     id: "VG-006",
@@ -105,6 +198,7 @@ export const mockVolunteerGroups: VolunteerGroup[] = [
       { id: "M-007", date: "2026-05-10", details: "Brand Workshop Series planning for Akanksha batch.", poc: "Shweta Rao" },
       { id: "M-008", date: "2025-12-05", details: "Year-end retrospective. Positive feedback from mentees.", poc: "Shweta Rao" },
     ],
+    onboardingLinks: [],
   },
   {
     id: "VG-007",
@@ -117,6 +211,21 @@ export const mockVolunteerGroups: VolunteerGroup[] = [
     meetings: [
       { id: "M-009", date: "2026-04-05", details: "Youth Employment Fair logistics and team briefing.", poc: "Vikash Kumar" },
     ],
+    onboardingLinks: [
+      {
+        id: "OL-002",
+        name: "Amazon Ops Volunteers — Projects Only",
+        description: "Amazon India CSR only permits Projects-based volunteering, not 1:1 mentoring.",
+        url: "app.wedogood.in/onboard/volunteer/operations/amazon-ops-volunteers-projects-only",
+        status: "Paused",
+        presetFields: [
+          { field: "currentCompany", value: "Amazon India" },
+          { field: "industry", value: "Consumer/E-commerce" },
+        ],
+        orientationSlots: [],
+        createdAt: "2026-05-02",
+      },
+    ],
   },
   {
     id: "VG-008",
@@ -127,6 +236,7 @@ export const mockVolunteerGroups: VolunteerGroup[] = [
     status: "Inactive",
     memberCount: 3,
     meetings: [],
+    onboardingLinks: [],
   },
 ]
 
@@ -143,6 +253,19 @@ export const mockMenteeGroups: MenteeGroup[] = [
       { id: "MM-001", date: "2026-05-12", details: "NGO check-in — reviewed 5 active engagements and flagged 2 at-risk cases.", poc: "Mait Sharma" },
       { id: "MM-002", date: "2026-03-01", details: "Onboarding meeting for new batch of 12 mentees.", poc: "Mait Sharma" },
     ],
+    onboardingLinks: [
+      {
+        id: "OL-101",
+        name: "Akanksha 2026 Intake Signup",
+        description: "Shared with the new Akanksha batch during their first campus visit.",
+        url: "app.wedogood.in/onboard/mentee/akanksha-batch-2025/akanksha-2026-intake-signup",
+        status: "Active",
+        presetFields: [
+          { field: "careerStage", value: "Student" },
+        ],
+        createdAt: "2026-06-01",
+      },
+    ],
   },
   {
     id: "MG-002",
@@ -155,6 +278,7 @@ export const mockMenteeGroups: MenteeGroup[] = [
     meetings: [
       { id: "MM-003", date: "2026-05-20", details: "Scaling discussion — NavGurukul wants to expand to 50 mentees next quarter.", poc: "Prerna Gupta" },
     ],
+    onboardingLinks: [],
   },
   {
     id: "MG-003",
@@ -167,6 +291,7 @@ export const mockMenteeGroups: MenteeGroup[] = [
     meetings: [
       { id: "MM-004", date: "2026-04-10", details: "Initial onboarding session. 14 mentees profiled via Mira bot.", poc: "Rekha Shetty" },
     ],
+    onboardingLinks: [],
   },
   {
     id: "MG-004",
@@ -177,5 +302,6 @@ export const mockMenteeGroups: MenteeGroup[] = [
     status: "Inactive",
     description: "Closed engagements from previous Akanksha batches. Archived for reference.",
     meetings: [],
+    onboardingLinks: [],
   },
 ]
