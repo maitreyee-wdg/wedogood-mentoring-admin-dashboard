@@ -2,6 +2,7 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { mockOrientationSlots, type OrientationSlot } from "@/data/orientationSlotsData"
+import { ClockTimeInput } from "@/components/ClockTimeInput"
 import { Plus, X, Copy, Trash2, CalendarClock, Users, Mail } from "lucide-react"
 
 function formatLocalDate(d: Date): string {
@@ -74,7 +75,7 @@ function AddSlotModal({ onSave, onClose }: { onSave: (slots: Omit<OrientationSlo
           </div>
           <div>
             <label className="text-xs font-medium text-gray-500 block mb-1">TIME *</label>
-            <input type="time" className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 outline-none focus:border-blue-400" value={time} onChange={(e) => setTime(e.target.value)} />
+            <ClockTimeInput value={time} onChange={setTime} />
           </div>
           <div>
             <label className="text-xs font-medium text-gray-500 block mb-1">MEETING LINK *</label>

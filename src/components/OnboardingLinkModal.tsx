@@ -5,6 +5,7 @@ import {
   type OnboardingLink, type FieldPreset, type OrientationSlot, type PresetFieldDef,
   VOLUNTEER_PRESET_FIELDS, MENTEE_PRESET_FIELDS,
 } from "@/data/groupsData"
+import { ClockTimeInput } from "@/components/ClockTimeInput"
 import { X, Plus, Copy, Check, CalendarPlus } from "lucide-react"
 
 function slugify(s: string) {
@@ -197,7 +198,11 @@ export function OnboardingLinkModal({ link, entityType, groupName, interestNote,
                       </div>
                       <div className="flex items-center gap-2">
                         <input type="date" value={s.date} onChange={(e) => setSlot(s.id, "date", e.target.value)} className="flex-1 text-xs border border-gray-200 rounded px-2 py-1 outline-none focus:border-blue-400" />
-                        <input type="time" value={s.time} onChange={(e) => setSlot(s.id, "time", e.target.value)} className="w-24 text-xs border border-gray-200 rounded px-2 py-1 outline-none focus:border-blue-400" />
+                        <ClockTimeInput
+                          value={s.time}
+                          onChange={(v) => setSlot(s.id, "time", v)}
+                          className="w-28 text-xs border border-gray-200 rounded px-2 py-1 outline-none focus:border-blue-400 bg-white flex items-center gap-1 hover:border-blue-300"
+                        />
                       </div>
                       <input value={s.meetingLink} onChange={(e) => setSlot(s.id, "meetingLink", e.target.value)} className="w-full text-xs border border-gray-200 rounded px-2 py-1 outline-none focus:border-blue-400" placeholder="Meeting link (e.g. meet.google.com/xyz)" />
                       <input type="email" value={s.wdgEmail} onChange={(e) => setSlot(s.id, "wdgEmail", e.target.value)} className="w-full text-xs border border-gray-200 rounded px-2 py-1 outline-none focus:border-blue-400" placeholder="WDG email (e.g. priya@wedogood.in)" />
