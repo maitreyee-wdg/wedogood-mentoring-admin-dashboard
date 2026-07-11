@@ -19,7 +19,7 @@ function to24Hour(hour: number, minute: number, period: Period): string {
   return `${String(h).padStart(2, "0")}:${String(minute).padStart(2, "0")}`
 }
 
-function formatDisplay(time24: string): string {
+export function formatTime12h(time24: string): string {
   if (!time24) return ""
   const { hour, minute, period } = to12Hour(time24)
   return `${hour}:${String(minute).padStart(2, "0")} ${period}`
@@ -107,7 +107,7 @@ export function ClockTimeInput({ value, onChange, className }: { value: string; 
         className={className ?? "w-full text-sm border border-gray-200 rounded-lg px-3 py-2 text-left flex items-center gap-2 outline-none focus:border-blue-400 bg-white hover:border-blue-300"}
       >
         <Clock className="w-3.5 h-3.5 text-gray-400 shrink-0" />
-        <span className={value ? "text-gray-900" : "text-gray-400"}>{value ? formatDisplay(value) : "Select time"}</span>
+        <span className={value ? "text-gray-900" : "text-gray-400"}>{value ? formatTime12h(value) : "Select time"}</span>
       </button>
       {open && (
         <ClockTimePickerModal

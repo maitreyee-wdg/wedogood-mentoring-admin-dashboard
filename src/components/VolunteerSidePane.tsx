@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Select } from "@/components/ui/select"
 import { type Volunteer, type OrientationStatus } from "@/data/volunteersData"
+import { formatTime12h } from "@/components/ClockTimeInput"
 
 // ── helpers (mirrored from Volunteers.tsx) ────────────────────────────────────
 
@@ -176,7 +177,7 @@ export function VolunteerPane({
               <Badge variant={orientationVariant[v.orientationStatus]}>
                 {v.orientationStatus}
                 {v.orientationDate && ` · ${v.orientationDate}`}
-                {v.orientationTime && ` ${v.orientationTime}`}
+                {v.orientationTime && ` ${formatTime12h(v.orientationTime)}`}
               </Badge>
             </DrawerSection>
             <DrawerSection label="Update Status">

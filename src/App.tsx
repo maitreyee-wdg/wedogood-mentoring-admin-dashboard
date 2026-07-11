@@ -5,6 +5,7 @@ import Layout from "@/components/Layout"
 import VolunteersList from "@/pages/volunteers/index"
 import VolunteersComms from "@/pages/volunteers/Comms"
 import OrientationSlots from "@/pages/volunteers/OrientationSlots"
+import OrientationSlotBookings from "@/pages/volunteers/OrientationSlotBookings"
 
 // Groups
 import VolunteerGroups from "@/pages/groups/VolunteerGroups"
@@ -36,6 +37,7 @@ export default function App() {
           {/* Volunteers */}
           <Route path="/volunteers" element={<VolunteersList />} />
           <Route path="/volunteers/orientation-slots" element={<OrientationSlots />} />
+          <Route path="/volunteers/orientation-slots/:slotId/bookings" element={<OrientationSlotBookings />} />
           <Route path="/volunteers/comms" element={<VolunteersComms />} />
 
           {/* Groups */}

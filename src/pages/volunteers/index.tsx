@@ -10,6 +10,7 @@ import {
 } from "@/data/volunteersData"
 import { commsTemplates, type CommTemplate } from "@/data/commsData"
 import { WaTemplateEditor, defaultMappings, type VarMapping } from "@/components/WaVariableMapper"
+import { formatTime12h } from "@/components/ClockTimeInput"
 import {
   Search, Plus, X, MoreVertical, ChevronUp, ChevronDown,
   Star, MessageSquare, Archive, Users, Pencil, Briefcase,
@@ -817,7 +818,7 @@ function ProfilePane({
                         {v.orientationStatus !== "Orientation Pending" && v.orientationDate && (
                           <p className="text-xs text-gray-500">
                             {new Date(v.orientationDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
-                            {v.orientationTime && ` · ${v.orientationTime}`}
+                            {v.orientationTime && ` · ${formatTime12h(v.orientationTime)}`}
                           </p>
                         )}
                         {v.orientationCallMeetingLink && (

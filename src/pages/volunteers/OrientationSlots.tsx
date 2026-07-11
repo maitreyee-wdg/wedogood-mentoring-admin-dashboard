@@ -1,8 +1,9 @@
 import { useState } from "react"
+import { useNavigate } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { mockOrientationSlots, type OrientationSlot } from "@/data/orientationSlotsData"
-import { ClockTimeInput } from "@/components/ClockTimeInput"
+import { ClockTimeInput, formatTime12h } from "@/components/ClockTimeInput"
 import { Plus, X, Copy, Trash2, CalendarClock, Users, Mail } from "lucide-react"
 
 function formatLocalDate(d: Date): string {
@@ -112,6 +113,7 @@ function AddSlotModal({ onSave, onClose }: { onSave: (slots: Omit<OrientationSlo
 }
 
 export default function OrientationSlots() {
+  const navigate = useNavigate()
   const [slots, setSlots] = useState<OrientationSlot[]>(mockOrientationSlots)
   const [showAddModal, setShowAddModal] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<OrientationSlot | null>(null)
@@ -179,7 +181,7 @@ export default function OrientationSlots() {
                     {new Date(s.date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
                   </div>
                 </td>
-                <td className="px-4 py-3 text-gray-600">{s.time}</td>
+                <td className="px-4 py-3 text-gray-600">{formatTime12h(s.time)}</td>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2 text-xs text-gray-600">
                     <span className="truncate max-w-[220px]">{s.meetingLink}</span>
@@ -195,9 +197,18 @@ export default function OrientationSlots() {
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${s.recurrence === "One-time" ? "bg-gray-100 text-gray-600" : "bg-indigo-50 text-indigo-700"}`}>{s.recurrence}</span>
                 </td>
                 <td className="px-4 py-3">
-                  <div className="flex items-center gap-1.5 text-xs text-gray-600">
-                    <Users className="w-3.5 h-3.5 text-gray-400" />{s.bookedBy.length}
-                  </div>
+                  {s.bookedBy.length > 0 ? (
+                    <button
+                      onClick={() => navigate(`/volunteers/orientation-slots/${s.id}/bookings`, { state: { slot: s } })}
+                      className="flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 hover:underline font-medium"
+                    >
+                      <Users className="w-3.5 h-3.5" />{s.bookedBy.length}
+                    </button>
+                  ) : (
+                    <div className="flex items-center gap-1.5 text-xs text-gray-400">
+                      <Users className="w-3.5 h-3.5 text-gray-300" />0
+                    </div>
+                  )}
                 </td>
                 <td className="px-4 py-3">
                   <button
@@ -224,7 +235,7 @@ export default function OrientationSlots() {
           <div className="bg-white rounded-xl shadow-xl w-96 p-6">
             <h2 className="font-semibold text-gray-900 text-sm mb-2">Delete Orientation Slot</h2>
             <p className="text-sm text-gray-600 mb-5">
-              <strong>{deleteTarget.meetingName}</strong> on <strong>{new Date(deleteTarget.date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })} at {deleteTarget.time}</strong> will be permanently deleted. This cannot be undone.
+              <strong>{deleteTarget.meetingName}</strong> on <strong>{new Date(deleteTarget.date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })} at {formatTime12h(deleteTarget.time)}</strong> will be permanently deleted. This cannot be undone.
             </p>
             <div className="flex gap-2">
               <Button variant="outline" className="flex-1" onClick={() => setDeleteTarget(null)}>Cancel</Button>
