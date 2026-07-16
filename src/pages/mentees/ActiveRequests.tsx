@@ -11,9 +11,10 @@ import { mockVolunteers, type Volunteer } from "@/data/volunteersData"
 import {
   Search, X, ChevronUp, ChevronDown, Plus, Check,
   MessageSquare, Users, Clock, ArrowRight, AlertCircle, RefreshCw,
-  UserPlus, Star, CheckCircle2,
+  UserPlus, Star, CheckCircle2, Pencil,
 } from "lucide-react"
 import { WaTemplateEditor, defaultMappings, type VarMapping } from "@/components/WaVariableMapper"
+import { EditEngagementModal } from "@/components/EditEngagementModal"
 
 // ── Status config ─────────────────────────────────────────────────────────────
 
@@ -278,6 +279,7 @@ function RequestPane({ request: initial, onClose, onUpdate }: {
   const [showAssignModal, setShowAssignModal] = useState(false)
   const [showUnmatchModal, setShowUnmatchModal] = useState(false)
   const [showRematchConfirm, setShowRematchConfirm] = useState(false)
+  const [showEditModal, setShowEditModal] = useState(false)
   // "add" = add to queue; "assign" = direct assign (bypasses queue)
   const [assignMode, setAssignMode] = useState<"add" | "assign">("add")
 
@@ -328,6 +330,12 @@ function RequestPane({ request: initial, onClose, onUpdate }: {
     console.info(`Unmatch reason for ${req.id}: ${reason}`)
     setReq(updated); setCandidates(updated.matchCandidates)
     onUpdate(updated); setShowUnmatchModal(false)
+  }
+
+  // Edit core details / status / matched mentor
+  const handleEditSave = (updates: Partial<MentoringRequest>) => {
+    const updated: MentoringRequest = { ...req, ...updates }
+    setReq(updated); onUpdate(updated); setShowEditModal(false)
   }
 
   // ── Match approval actions ────────────────────────────────────────────────
@@ -399,6 +407,9 @@ function RequestPane({ request: initial, onClose, onUpdate }: {
         </div>
         <div className="flex items-center gap-2">
           <Badge variant={statusVariant[req.status]}>{req.status}</Badge>
+          <button onClick={() => setShowEditModal(true)} className="text-gray-400 hover:text-gray-600" title="Edit engagement">
+            <Pencil className="w-4 h-4" />
+          </button>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X className="w-4 h-4" /></button>
         </div>
       </div>
@@ -826,6 +837,13 @@ function RequestPane({ request: initial, onClose, onUpdate }: {
           mentorName={req.matchedMentor}
           onConfirm={handleUnmatchConfirmed}
           onClose={() => setShowUnmatchModal(false)}
+        />
+      )}
+      {showEditModal && (
+        <EditEngagementModal
+          request={req}
+          onSave={handleEditSave}
+          onClose={() => setShowEditModal(false)}
         />
       )}
     </div>

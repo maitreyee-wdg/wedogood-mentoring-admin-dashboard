@@ -20,6 +20,8 @@ export const INACTIVE_STATUSES: RequestStatus[] = [
   "Call Done — Feedback Pending", "Closed", "Expired",
 ]
 
+export const ALL_STATUSES: RequestStatus[] = [...ACTIVE_STATUSES, ...INACTIVE_STATUSES]
+
 export interface MatchCandidate {
   id: string
   name: string

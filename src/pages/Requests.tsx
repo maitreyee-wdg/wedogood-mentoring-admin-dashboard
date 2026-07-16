@@ -4,13 +4,14 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select } from "@/components/ui/select"
 import {
-  mockRequests, matchingTemplates, ACTIVE_STATUSES,
+  mockRequests, matchingTemplates, ACTIVE_STATUSES, ALL_STATUSES,
   type MentoringRequest, type RequestStatus, type MatchCandidate,
 } from "@/data/requestsData"
 import {
   Search, X, ChevronUp, ChevronDown, Plus, Check,
-  MessageSquare, Users, Clock, ArrowRight, AlertCircle, RefreshCw,
+  MessageSquare, Users, Clock, ArrowRight, AlertCircle, RefreshCw, Pencil,
 } from "lucide-react"
+import { EditEngagementModal } from "@/components/EditEngagementModal"
 
 // ── Status config ─────────────────────────────────────────────────────────────
 
@@ -47,6 +48,12 @@ function RequestPane({ request: initial, onClose, onUpdate }: {
   const [req, setReq] = useState<MentoringRequest>(initial)
   const [selectedTemplate, setSelectedTemplate] = useState(req.approvedTemplate ?? "")
   const [candidates, setCandidates] = useState<MatchCandidate[]>(req.matchCandidates)
+  const [showEditModal, setShowEditModal] = useState(false)
+
+  const handleEditSave = (updates: Partial<MentoringRequest>) => {
+    const updated: MentoringRequest = { ...req, ...updates }
+    setReq(updated); onUpdate(updated); setShowEditModal(false)
+  }
 
   const moveUp = (i: number) => {
     if (i === 0) return
@@ -92,6 +99,9 @@ function RequestPane({ request: initial, onClose, onUpdate }: {
         </div>
         <div className="flex items-center gap-2">
           <Badge variant={statusVariant[req.status]}>{req.status}</Badge>
+          <button onClick={() => setShowEditModal(true)} className="text-gray-400 hover:text-gray-600" title="Edit engagement">
+            <Pencil className="w-4 h-4" />
+          </button>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X className="w-4 h-4" /></button>
         </div>
       </div>
@@ -346,6 +356,14 @@ function RequestPane({ request: initial, onClose, onUpdate }: {
           </div>
         )}
       </div>
+
+      {showEditModal && (
+        <EditEngagementModal
+          request={req}
+          onSave={handleEditSave}
+          onClose={() => setShowEditModal(false)}
+        />
+      )}
     </div>
   )
 }
@@ -358,14 +376,6 @@ function PaneSection({ label, children }: { label: string; children: React.React
     </div>
   )
 }
-
-// ── All statuses for the filter dropdown ──────────────────────────────────────
-
-const ALL_STATUSES: RequestStatus[] = [
-  "Draft", "New", "Match Approval Pending", "Mentor Response Pending",
-  "No Match Found", "Matched", "Accessed Contact", "Call Done — Feedback Pending",
-  "Closed", "Expired",
-]
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
