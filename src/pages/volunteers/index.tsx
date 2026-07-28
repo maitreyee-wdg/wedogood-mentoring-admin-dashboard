@@ -37,6 +37,10 @@ const VOL_CSV_EXAMPLE = [
   "+91 98765 11001", "rahul@gmail.com", "rahul@infosys.com", "linkedin.com/in/rahulmehta",
 ]
 
+function toCsvField(value: string) {
+  return /[",\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value
+}
+
 function downloadVolCSVTemplate() {
   const requiredRow = VOL_CSV_HEADERS.map(h => VOL_CSV_MANDATORY.has(h) ? "required" : "optional")
   const rows = [
@@ -393,18 +397,21 @@ function StarRating({ value }: { value: number }) {
 type SortKey = "name" | "signedUpDate" | "mentoringRating" | "projectsRating" | "totalYearsExp"
 type SortDir = "asc" | "desc"
 
-type ColKey = "name" | "signedUpDate" | "volunteeringType" | "status" | "projectsRating" | "mentoringRating" | "group" | "sessionAvailability"
+type ColKey = "name" | "signedUpDate" | "volunteeringType" | "status" | "orientationStatus" | "projectsRating" | "mentoringRating" | "group" | "sessionAvailability"
 
 const ALL_COLUMNS: { key: ColKey; label: string; always?: boolean }[] = [
   { key: "name", label: "Name", always: true },
   { key: "signedUpDate", label: "Signed Up" },
   { key: "volunteeringType", label: "Type" },
   { key: "status", label: "Status" },
+  { key: "orientationStatus", label: "Orientation Status" },
   { key: "mentoringRating", label: "Mentoring Rating" },
   { key: "projectsRating", label: "Projects Rating" },
   { key: "group", label: "Group" },
   { key: "sessionAvailability", label: "Session Availability" },
 ]
+
+const ORIENTATION_STATUSES: OrientationStatus[] = ["Orientation Pending", "Orientation Slot Booked", "Orientation Done", "Orientation Rescheduled"]
 
 // ── Modals ───────────────────────────────────────────────────────────────────
 
@@ -1111,6 +1118,10 @@ export default function VolunteersList() {
   const [filterType, setFilterType] = useState("All")
   const [filterGroup, setFilterGroup] = useState("All")
   const [filterStatus, setFilterStatus] = useState("All")
+  const [filterOrientationStatuses, setFilterOrientationStatuses] = useState<Set<OrientationStatus>>(new Set())
+  const [orientationFrom, setOrientationFrom] = useState("")
+  const [orientationTo, setOrientationTo] = useState("")
+  const [showOrientationFilter, setShowOrientationFilter] = useState(false)
   const [sortKey, setSortKey] = useState<SortKey>("name")
   const [sortDir, setSortDir] = useState<SortDir>("asc")
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
@@ -1119,7 +1130,7 @@ export default function VolunteersList() {
   const [bulkOpen, setBulkOpen] = useState(false)
   const [showColPicker, setShowColPicker] = useState(false)
   const [visibleCols, setVisibleCols] = useState<Set<ColKey>>(
-    new Set(["name", "signedUpDate", "volunteeringType", "status", "mentoringRating", "projectsRating", "group"])
+    new Set(["name", "signedUpDate", "volunteeringType", "status", "orientationStatus", "mentoringRating", "projectsRating", "group"])
   )
   const [assignGroupFor, setAssignGroupFor] = useState<string[] | null>(null)
   const [changeStatusFor, setChangeStatusFor] = useState<string[] | null>(null)
@@ -1135,7 +1146,10 @@ export default function VolunteersList() {
         (v.name.toLowerCase().includes(q) || v.currentRole.toLowerCase().includes(q) || v.currentCompany.toLowerCase().includes(q) || v.skills.some((s) => s.toLowerCase().includes(q))) &&
         (filterType === "All" || v.volunteeringType === filterType) &&
         (filterGroup === "All" || v.group === filterGroup) &&
-        (filterStatus === "All" || v.status === filterStatus)
+        (filterStatus === "All" || v.status === filterStatus) &&
+        (filterOrientationStatuses.size === 0 || filterOrientationStatuses.has(v.orientationStatus)) &&
+        (!orientationFrom || (!!v.orientationDate && v.orientationDate >= orientationFrom)) &&
+        (!orientationTo || (!!v.orientationDate && v.orientationDate <= orientationTo))
       )
     })
     list = [...list].sort((a, b) => {
@@ -1148,7 +1162,44 @@ export default function VolunteersList() {
       return sortDir === "asc" ? cmp : -cmp
     })
     return list
-  }, [volunteers, search, filterType, filterGroup, filterStatus, sortKey, sortDir])
+  }, [volunteers, search, filterType, filterGroup, filterStatus, filterOrientationStatuses, orientationFrom, orientationTo, sortKey, sortDir])
+
+  const toggleOrientationStatusFilter = (s: OrientationStatus) => {
+    setFilterOrientationStatuses((prev) => {
+      const next = new Set(prev)
+      next.has(s) ? next.delete(s) : next.add(s)
+      return next
+    })
+  }
+
+  const hasActiveFilters = search !== "" || filterType !== "All" || filterStatus !== "All" || filterGroup !== "All" ||
+    filterOrientationStatuses.size > 0 || orientationFrom !== "" || orientationTo !== ""
+
+  const clearAllFilters = () => {
+    setSearch(""); setFilterType("All"); setFilterStatus("All"); setFilterGroup("All")
+    setFilterOrientationStatuses(new Set()); setOrientationFrom(""); setOrientationTo("")
+  }
+
+  const handleExport = () => {
+    const headers = [
+      "Name", "Role", "Company", "Type", "Status", "Orientation Status",
+      "Orientation Date", "Orientation Time", "Group", "Session Availability",
+      "Mentoring Rating", "Projects Rating", "WhatsApp", "Email",
+    ]
+    const rows = filtered.map((v) => [
+      v.name, v.currentRole, v.currentCompany, v.volunteeringType, v.status, v.orientationStatus,
+      v.orientationDate ?? "", v.orientationTime ?? "", v.group, v.sessionAvailability,
+      String(v.mentoringRating), String(v.projectsRating), v.whatsapp, v.email,
+    ])
+    const csv = [headers, ...rows].map((row) => row.map(toCsvField).join(",")).join("\n")
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = `volunteers_export_${new Date().toISOString().split("T")[0]}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
 
   const allSelected = filtered.length > 0 && filtered.every((v) => selectedIds.has(v.id))
   const toggleAll = () => setSelectedIds(allSelected ? new Set() : new Set(filtered.map((v) => v.id)))
@@ -1213,7 +1264,7 @@ export default function VolunteersList() {
   const firstSelected = selectedVolunteers[0]
 
   return (
-    <div className="flex h-full" onClick={() => { setOpenMenuId(null); setBulkOpen(false); setShowColPicker(false) }}>
+    <div className="flex h-full" onClick={() => { setOpenMenuId(null); setBulkOpen(false); setShowColPicker(false); setShowOrientationFilter(false) }}>
       <div className="flex-1 p-6 space-y-5 overflow-auto min-w-0">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -1247,48 +1298,100 @@ export default function VolunteersList() {
         </div>
 
         {/* Filters */}
-        <div className="flex gap-3 flex-wrap items-end">
-          <div className="flex flex-col gap-1 flex-1 min-w-48">
-            <label className="text-xs font-medium text-gray-500">Search</label>
-            <div className="relative">
-              <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
-              <Input placeholder="Search name, role, company, skill…" className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
+        <div className="bg-white border border-gray-200 rounded-lg p-4 space-y-3">
+          <div className="flex gap-3 flex-wrap items-end">
+            <div className="flex flex-col gap-1 flex-1 min-w-48">
+              <label className="text-xs font-medium text-gray-500">Search</label>
+              <div className="relative">
+                <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+                <Input placeholder="Search name, role, company, skill…" className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
+              </div>
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-medium text-gray-500">Type</label>
+              <Select value={filterType} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFilterType(e.target.value)} className="w-36">
+                <option>All</option><option>Mentoring</option><option>Projects</option><option>Both</option>
+              </Select>
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-medium text-gray-500">Status</label>
+              <Select value={filterStatus} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFilterStatus(e.target.value)} className="w-44">
+                <option>All</option><option>Orientation booked</option><option>Active</option><option>Occupied</option><option>Inactive</option><option>Archived</option>
+              </Select>
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-medium text-gray-500">Group</label>
+              <Select value={filterGroup} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFilterGroup(e.target.value)} className="w-40">
+                <option>All</option>
+                {volunteerGroups.map((g) => <option key={g}>{g}</option>)}
+              </Select>
             </div>
           </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium text-gray-500">Type</label>
-            <Select value={filterType} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFilterType(e.target.value)} className="w-36">
-              <option>All</option><option>Mentoring</option><option>Projects</option><option>Both</option>
-            </Select>
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium text-gray-500">Status</label>
-            <Select value={filterStatus} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFilterStatus(e.target.value)} className="w-44">
-              <option>All</option><option>Profile Incomplete</option><option>Orientation call not booked</option><option>Orientation booked</option><option>Active</option><option>Occupied</option><option>Inactive</option><option>Archived</option>
-            </Select>
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium text-gray-500">Group</label>
-            <Select value={filterGroup} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFilterGroup(e.target.value)} className="w-40">
-              <option>All</option>
-              {volunteerGroups.map((g) => <option key={g}>{g}</option>)}
-            </Select>
-          </div>
-          <div className="relative" onClick={(e) => e.stopPropagation()}>
-            <Button variant="outline" size="sm" onClick={() => setShowColPicker((o) => !o)}>
-              <Eye className="w-3.5 h-3.5" />Columns
-            </Button>
-            {showColPicker && (
-              <div className="absolute right-0 top-10 z-20 bg-white border border-gray-200 rounded-lg shadow-lg p-3 w-48">
-                <p className="text-xs font-medium text-gray-500 mb-2">Show / hide columns</p>
-                {ALL_COLUMNS.filter((c) => !c.always).map((col) => (
-                  <label key={col.key} className="flex items-center gap-2 py-1 text-sm cursor-pointer">
-                    <input type="checkbox" checked={visibleCols.has(col.key)} onChange={() => toggleCol(col.key)} className="rounded border-gray-300" />
-                    {col.label}
-                  </label>
-                ))}
+
+          <div className="h-px bg-gray-100" />
+
+          <div className="flex gap-3 flex-wrap items-end justify-between">
+            <div className="flex gap-3 flex-wrap items-end">
+              <div className="flex flex-col gap-1 relative" onClick={(e) => e.stopPropagation()}>
+                <label className="text-xs font-medium text-gray-500">Orientation Status</label>
+                <Button variant="outline" size="sm" onClick={() => setShowOrientationFilter((o) => !o)} className="w-44 justify-between">
+                  {filterOrientationStatuses.size === 0 ? "All" : `${filterOrientationStatuses.size} selected`}
+                  <ChevronDown className="w-3.5 h-3.5" />
+                </Button>
+                {showOrientationFilter && (
+                  <div className="absolute left-0 top-16 z-20 bg-white border border-gray-200 rounded-lg shadow-lg p-3 w-56">
+                    {ORIENTATION_STATUSES.map((s) => (
+                      <label key={s} className="flex items-center gap-2 py-1 text-xs cursor-pointer">
+                        <input type="checkbox" checked={filterOrientationStatuses.has(s)} onChange={() => toggleOrientationStatusFilter(s)} className="rounded border-gray-300" />
+                        <span className={`px-1.5 py-0.5 rounded-full font-medium ${orientationColors[s]}`}>{s}</span>
+                      </label>
+                    ))}
+                    {filterOrientationStatuses.size > 0 && (
+                      <button onClick={() => setFilterOrientationStatuses(new Set())} className="text-xs text-blue-600 hover:text-blue-700 font-medium mt-2">
+                        Clear
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
-            )}
+
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-medium text-gray-500">Orientation Date Range</label>
+                <div className="flex items-center gap-1.5 h-9 px-2.5 rounded-md border border-gray-300 bg-white shadow-sm focus-within:ring-2 focus-within:ring-blue-500">
+                  <input type="date" className="text-sm outline-none bg-transparent w-[118px]" value={orientationFrom} onChange={(e) => setOrientationFrom(e.target.value)} />
+                  <span className="text-gray-300">–</span>
+                  <input type="date" className="text-sm outline-none bg-transparent w-[118px]" value={orientationTo} onChange={(e) => setOrientationTo(e.target.value)} />
+                </div>
+              </div>
+
+              {hasActiveFilters && (
+                <button onClick={clearAllFilters} className="h-9 flex items-center text-xs text-blue-600 hover:text-blue-700 font-medium">
+                  <X className="w-3.5 h-3.5 mr-1" />Clear all filters
+                </button>
+              )}
+            </div>
+
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={handleExport}>
+                <Download className="w-3.5 h-3.5" />Export
+              </Button>
+              <div className="relative" onClick={(e) => e.stopPropagation()}>
+                <Button variant="outline" size="sm" onClick={() => setShowColPicker((o) => !o)}>
+                  <Eye className="w-3.5 h-3.5" />Columns
+                </Button>
+                {showColPicker && (
+                  <div className="absolute right-0 top-10 z-20 bg-white border border-gray-200 rounded-lg shadow-lg p-3 w-48">
+                    <p className="text-xs font-medium text-gray-500 mb-2">Show / hide columns</p>
+                    {ALL_COLUMNS.filter((c) => !c.always).map((col) => (
+                      <label key={col.key} className="flex items-center gap-2 py-1 text-sm cursor-pointer">
+                        <input type="checkbox" checked={visibleCols.has(col.key)} onChange={() => toggleCol(col.key)} className="rounded border-gray-300" />
+                        {col.label}
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </div>
 
@@ -1339,6 +1442,7 @@ export default function VolunteersList() {
                 )}
                 {visibleCols.has("volunteeringType") && <th className="text-left px-4 py-3 font-medium text-gray-600">Type</th>}
                 {visibleCols.has("status") && <th className="text-left px-4 py-3 font-medium text-gray-600">Status</th>}
+                {visibleCols.has("orientationStatus") && <th className="text-left px-4 py-3 font-medium text-gray-600">Orientation Status</th>}
                 {visibleCols.has("mentoringRating") && (
                   <th className="text-left px-4 py-3 font-medium text-gray-600 cursor-pointer select-none" onClick={() => handleSort("mentoringRating")}>
                     Mentoring <SortIcon col="mentoringRating" />
@@ -1356,7 +1460,7 @@ export default function VolunteersList() {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {filtered.length === 0 ? (
-                <tr><td colSpan={10} className="px-4 py-8 text-center text-gray-400">No volunteers match your filters</td></tr>
+                <tr><td colSpan={11} className="px-4 py-8 text-center text-gray-400">No volunteers match your filters</td></tr>
               ) : filtered.map((v) => (
                 <tr key={v.id} className={`hover:bg-gray-50 transition-colors ${v.status === "Archived" ? "opacity-50" : ""}`}>
                   <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
@@ -1384,6 +1488,17 @@ export default function VolunteersList() {
                   {visibleCols.has("status") && (
                     <td className="px-4 py-3">
                       <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusColors[v.status]}`}>{v.status}</span>
+                    </td>
+                  )}
+                  {visibleCols.has("orientationStatus") && (
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${orientationColors[v.orientationStatus]}`}>{v.orientationStatus}</span>
+                      {v.orientationDate && (
+                        <p className="text-xs text-gray-500 mt-1">
+                          {new Date(v.orientationDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                          {v.orientationTime && ` · ${formatTime12h(v.orientationTime)}`}
+                        </p>
+                      )}
                     </td>
                   )}
                   {visibleCols.has("mentoringRating") && (
