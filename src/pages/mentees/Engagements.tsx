@@ -66,7 +66,7 @@ function MatchScopeControl({ programId, programName, taggedOrgNames, scopeMode, 
         This engagement is tagged to Program <span className="font-medium text-gray-700">{programName}</span>
         {taggedOrgNames.length > 0
           ? <> — volunteer org{taggedOrgNames.length !== 1 ? "s" : ""} part of it: <span className="font-medium text-gray-700">{taggedOrgNames.join(", ")}</span></>
-          : <> — no Volunteer Organizations are tagged to it yet, so no eligible volunteers.</>}
+          : <> — no Volunteer Organizations are tagged to it yet, so matching from all volunteers.</>}
       </p>
     )
   }

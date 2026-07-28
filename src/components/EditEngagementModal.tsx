@@ -148,7 +148,7 @@ export function EditEngagementModal({ request, onSave, onClose }: {
               <p className="text-xs text-gray-500 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 mb-2">
                 {taggedVolunteerOrgNames.length > 0
                   ? <>Tagged to Program <span className="font-medium text-gray-700">{mockPrograms.find(p => p.id === programId)?.name}</span> — matching from volunteers under: <span className="font-medium text-gray-700">{taggedVolunteerOrgNames.join(", ")}</span></>
-                  : <>Tagged to Program <span className="font-medium text-gray-700">{mockPrograms.find(p => p.id === programId)?.name}</span> — no eligible volunteers, no Volunteer Organizations are tagged to it yet.</>}
+                  : <>Tagged to Program <span className="font-medium text-gray-700">{mockPrograms.find(p => p.id === programId)?.name}</span> — no Volunteer Organizations are tagged to it yet, so matching from all volunteers.</>}
               </p>
             ) : (
               <div className="mb-2">

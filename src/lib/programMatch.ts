@@ -39,6 +39,9 @@ export function eligibleVolunteers(
 
   if (request.programId) {
     const orgNames = new Set(orgsTaggedToProgram(organizations, request.programId, "Volunteer").map((o) => o.name))
+    // No Volunteer Organizations tagged to the Program yet — fall back to all volunteers
+    // rather than showing an empty pool.
+    if (orgNames.size === 0) return base
     return base.filter((v) => orgNames.has(v.currentCompany))
   }
 
