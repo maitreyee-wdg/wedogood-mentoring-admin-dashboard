@@ -8,6 +8,10 @@ import {
   type MentoringRequest, type RequestStatus, type MatchCandidate,
 } from "@/data/requestsData"
 import { mockVolunteers, type Volunteer } from "@/data/volunteersData"
+import { mockPrograms } from "@/data/programsData"
+import { mockOrganizations } from "@/data/organizationsData"
+import { mockVolunteerGroups } from "@/data/groupsData"
+import { eligibleVolunteers, orgsTaggedToProgram, volunteerOrgProgramId, type ManualScope } from "@/lib/programMatch"
 import {
   Search, X, ChevronUp, ChevronDown, Plus, Check,
   MessageSquare, Users, Clock, ArrowRight, AlertCircle, RefreshCw,
@@ -44,8 +48,9 @@ function fmtDate(iso: string) {
 
 // ── Manual Assign Modal ───────────────────────────────────────────────────────
 
-function ManualAssignModal({ req, onAssign, onClose, mode = "assign" }: {
+function ManualAssignModal({ req, pool, onAssign, onClose, mode = "assign" }: {
   req: MentoringRequest
+  pool: Volunteer[]
   onAssign: (mentor: Volunteer) => void
   onClose: () => void
   mode?: "assign" | "add"
@@ -54,14 +59,13 @@ function ManualAssignModal({ req, onAssign, onClose, mode = "assign" }: {
 
   const mentors = useMemo(() => {
     const q = search.toLowerCase()
-    return mockVolunteers.filter(v =>
-      (v.volunteeringType === "Mentoring" || v.volunteeringType === "Both") &&
-      (v.name.toLowerCase().includes(q) ||
-       v.currentRole.toLowerCase().includes(q) ||
-       v.currentCompany.toLowerCase().includes(q) ||
-       v.skills.some(s => s.toLowerCase().includes(q)))
+    return pool.filter(v =>
+      v.name.toLowerCase().includes(q) ||
+      v.currentRole.toLowerCase().includes(q) ||
+      v.currentCompany.toLowerCase().includes(q) ||
+      v.skills.some(s => s.toLowerCase().includes(q))
     )
-  }, [search])
+  }, [pool, search])
 
   const availabilityBadge = (v: Volunteer) => {
     if (v.sessionAvailability === "Available" && !v.activeRequest)
@@ -159,11 +163,68 @@ function ManualAssignModal({ req, onAssign, onClose, mode = "assign" }: {
   )
 }
 
+// ── Match-from scope control — shown wherever matching is (re)triggered ───────
+
+function MatchScopeControl({ programId, taggedOrgNames, scopeMode, setScopeMode, scopeGroups, toggleScopeGroup, showScopeList, setShowScopeList }: {
+  programId?: string
+  taggedOrgNames: string[]
+  scopeMode: "all" | "specific"
+  setScopeMode: (m: "all" | "specific") => void
+  scopeGroups: string[]
+  toggleScopeGroup: (name: string) => void
+  showScopeList: boolean
+  setShowScopeList: (v: boolean | ((o: boolean) => boolean)) => void
+}) {
+  if (programId) {
+    return (
+      <p className="text-xs text-gray-500 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
+        {taggedOrgNames.length > 0
+          ? <>Matching from volunteers under: <span className="font-medium text-gray-700">{taggedOrgNames.join(", ")}</span></>
+          : "No eligible volunteers for this Program — no Volunteer Organizations are tagged to it yet."}
+      </p>
+    )
+  }
+  return (
+    <div>
+      <p className="text-xs font-medium text-gray-500 mb-1.5">Match from</p>
+      <div className="flex gap-2 mb-1.5">
+        <button type="button" onClick={() => { setScopeMode("all"); setShowScopeList(false) }}
+          className={`text-xs font-medium px-3 py-1.5 rounded-lg border ${scopeMode === "all" ? "bg-blue-600 text-white border-blue-600" : "bg-white text-gray-600 border-gray-200"}`}>
+          All Volunteers
+        </button>
+        <button type="button" onClick={() => setScopeMode("specific")}
+          className={`text-xs font-medium px-3 py-1.5 rounded-lg border ${scopeMode === "specific" ? "bg-blue-600 text-white border-blue-600" : "bg-white text-gray-600 border-gray-200"}`}>
+          Specific Groups
+        </button>
+      </div>
+      {scopeMode === "specific" && (
+        <div className="relative">
+          <button type="button" onClick={() => setShowScopeList(o => !o)}
+            className="w-full text-left text-xs border border-gray-200 rounded-lg px-3 py-2 bg-white flex items-center justify-between">
+            <span className="text-gray-600">{scopeGroups.length === 0 ? "Select volunteer groups…" : scopeGroups.join(", ")}</span>
+          </button>
+          {showScopeList && (
+            <div className="absolute z-10 mt-1 w-full border border-gray-200 rounded-lg bg-white shadow-md max-h-48 overflow-y-auto">
+              {mockVolunteerGroups.map(g => (
+                <label key={g.id} className="flex items-center gap-2 px-3 py-2 text-xs text-gray-700 hover:bg-gray-50 cursor-pointer">
+                  <input type="checkbox" checked={scopeGroups.includes(g.name)} onChange={() => toggleScopeGroup(g.name)} />
+                  {g.name}
+                </label>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Confirm Rematch modal ─────────────────────────────────────────────────────
 
-function ConfirmRematchModal({ onConfirm, onClose }: {
+function ConfirmRematchModal({ onConfirm, onClose, scope }: {
   onConfirm: () => void
   onClose: () => void
+  scope: React.ComponentProps<typeof MatchScopeControl>
 }) {
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
@@ -172,7 +233,7 @@ function ConfirmRematchModal({ onConfirm, onClose }: {
           <h2 className="font-semibold text-gray-900">Trigger Rematch?</h2>
           <button onClick={onClose}><X className="w-4 h-4 text-gray-400" /></button>
         </div>
-        <div className="px-6 py-5 space-y-3">
+        <div className="px-6 py-5 space-y-4">
           <div className="flex gap-3">
             <div className="w-9 h-9 rounded-full bg-orange-100 flex items-center justify-center shrink-0">
               <RefreshCw className="w-4 h-4 text-orange-500" />
@@ -184,6 +245,7 @@ function ConfirmRematchModal({ onConfirm, onClose }: {
               </p>
             </div>
           </div>
+          <MatchScopeControl {...scope} />
         </div>
         <div className="flex gap-2 px-6 py-4 border-t border-gray-100">
           <Button variant="outline" className="flex-1" onClick={onClose}>Cancel</Button>
@@ -207,10 +269,11 @@ const UNMATCH_REASONS = [
   "Other",
 ]
 
-function UnmatchReasonModal({ mentorName, onConfirm, onClose }: {
+function UnmatchReasonModal({ mentorName, onConfirm, onClose, scope }: {
   mentorName: string
   onConfirm: (reason: string) => void
   onClose: () => void
+  scope: React.ComponentProps<typeof MatchScopeControl>
 }) {
   const [selected, setSelected] = useState("")
   const [custom, setCustom] = useState("")
@@ -244,6 +307,7 @@ function UnmatchReasonModal({ mentorName, onConfirm, onClose }: {
               autoFocus
             />
           )}
+          <MatchScopeControl {...scope} />
         </div>
         <div className="flex gap-2 px-6 py-4 border-t border-gray-100">
           <Button variant="outline" className="flex-1" onClick={onClose}>Cancel</Button>
@@ -283,12 +347,34 @@ function RequestPane({ request: initial, onClose, onUpdate }: {
   // "add" = add to queue; "assign" = direct assign (bypasses queue)
   const [assignMode, setAssignMode] = useState<"add" | "assign">("add")
 
+  // Manual matching scope — only used when the engagement has no Program.
+  // Resets each time the pane is opened; not persisted on the request.
+  const [scopeMode, setScopeMode] = useState<"all" | "specific">("all")
+  const [scopeGroups, setScopeGroups] = useState<string[]>([])
+  const [showScopeList, setShowScopeList] = useState(false)
+  const manualScope: ManualScope = { mode: scopeMode, groupNames: scopeGroups }
+  const eligiblePool = eligibleVolunteers(req, mockVolunteers, mockOrganizations, manualScope)
+  const taggedVolunteerOrgNames = req.programId
+    ? orgsTaggedToProgram(mockOrganizations, req.programId, "Volunteer").map(o => o.name)
+    : []
+  const toggleScopeGroup = (name: string) => {
+    setScopeGroups(prev => prev.includes(name) ? prev.filter(g => g !== name) : [...prev, name])
+  }
+  const scopeControlProps = {
+    programId: req.programId, taggedOrgNames: taggedVolunteerOrgNames,
+    scopeMode, setScopeMode, scopeGroups, toggleScopeGroup, showScopeList, setShowScopeList,
+  }
+
   // Direct manual assign (bypasses outreach queue)
   const handleManualAssign = (mentor: Volunteer) => {
+    // Rule 2: if this engagement has no Program yet, inherit one from the
+    // assigned mentor's Volunteer Organization, if it's tagged to one.
+    const inferredProgramId = req.programId ? undefined : volunteerOrgProgramId(mentor, mockOrganizations, mockPrograms)
     const updated: MentoringRequest = {
       ...req,
       status: "Matched",
       matchedMentor: mentor.name,
+      programId: req.programId ?? inferredProgramId,
       matchCandidates: [
         ...candidates.map(c => ({
           ...c,
@@ -440,6 +526,9 @@ function RequestPane({ request: initial, onClose, onUpdate }: {
                 <div><span className="text-gray-400">NGO</span><p className="text-gray-800 mt-0.5">{req.ngo}</p></div>
                 <div><span className="text-gray-400">Type</span>
                   <p className="mt-0.5"><span className={`text-xs font-medium px-2 py-0.5 rounded-full ${typeVariant[req.requestType]}`}>{req.requestType}</span></p>
+                </div>
+                <div><span className="text-gray-400">Program</span>
+                  <p className="text-gray-800 mt-0.5">{mockPrograms.find(p => p.id === req.programId)?.name ?? "No Program"}</p>
                 </div>
               </div>
             </PaneSection>
@@ -821,6 +910,7 @@ function RequestPane({ request: initial, onClose, onUpdate }: {
       {showAssignModal && (
         <ManualAssignModal
           req={req}
+          pool={eligiblePool}
           onAssign={assignMode === "assign" ? handleManualAssign : handleAddToQueue}
           onClose={() => setShowAssignModal(false)}
           mode={assignMode}
@@ -830,6 +920,7 @@ function RequestPane({ request: initial, onClose, onUpdate }: {
         <ConfirmRematchModal
           onConfirm={handleRematchConfirmed}
           onClose={() => setShowRematchConfirm(false)}
+          scope={scopeControlProps}
         />
       )}
       {showUnmatchModal && req.matchedMentor && (
@@ -837,6 +928,7 @@ function RequestPane({ request: initial, onClose, onUpdate }: {
           mentorName={req.matchedMentor}
           onConfirm={handleUnmatchConfirmed}
           onClose={() => setShowUnmatchModal(false)}
+          scope={scopeControlProps}
         />
       )}
       {showEditModal && (

@@ -12,6 +12,8 @@ import {
   MessageSquare, Users, Clock, ArrowRight, AlertCircle, RefreshCw, Pencil,
 } from "lucide-react"
 import { EditEngagementModal } from "@/components/EditEngagementModal"
+import { mockPrograms } from "@/data/programsData"
+import { mockVolunteerGroups } from "@/data/groupsData"
 
 // ── Status config ─────────────────────────────────────────────────────────────
 
@@ -130,6 +132,9 @@ function RequestPane({ request: initial, onClose, onUpdate }: {
                 <div><span className="text-gray-400">NGO</span><p className="text-gray-800 mt-0.5">{req.ngo}</p></div>
                 <div><span className="text-gray-400">Type</span>
                   <p className="mt-0.5"><span className={`text-xs font-medium px-2 py-0.5 rounded-full ${typeVariant[req.requestType]}`}>{req.requestType}</span></p>
+                </div>
+                <div><span className="text-gray-400">Program</span>
+                  <p className="text-gray-800 mt-0.5">{mockPrograms.find(p => p.id === req.programId)?.name ?? "No Program"}</p>
                 </div>
               </div>
             </PaneSection>
@@ -377,6 +382,73 @@ function PaneSection({ label, children }: { label: string; children: React.React
   )
 }
 
+// ── Bulk Rematch modal — scope choice for engagements with no Program ────────
+
+function BulkRematchModal({ count, onConfirm, onClose }: {
+  count: number
+  onConfirm: (groupNames: string[]) => void
+  onClose: () => void
+}) {
+  const [scopeMode, setScopeMode] = useState<"all" | "specific">("all")
+  const [scopeGroups, setScopeGroups] = useState<string[]>([])
+  const [showList, setShowList] = useState(false)
+  const toggleGroup = (name: string) =>
+    setScopeGroups((prev) => prev.includes(name) ? prev.filter((g) => g !== name) : [...prev, name])
+
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl shadow-xl w-[440px]">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+          <h2 className="font-semibold text-gray-900">Trigger Rematch for {count} engagement{count !== 1 ? "s" : ""}?</h2>
+          <button onClick={onClose}><X className="w-4 h-4 text-gray-400" /></button>
+        </div>
+        <div className="px-6 py-5 space-y-4">
+          <p className="text-xs text-gray-500 leading-relaxed">
+            Candidate lists will be cleared and matching will restart for all selected engagements. Engagements already tagged to a Program keep matching from that Program's Volunteer Organizations — this choice only applies to the rest.
+          </p>
+          <div>
+            <p className="text-xs font-medium text-gray-500 mb-1.5">Match from (for engagements with no Program)</p>
+            <div className="flex gap-2 mb-1.5">
+              <button type="button" onClick={() => { setScopeMode("all"); setShowList(false) }}
+                className={`text-xs font-medium px-3 py-1.5 rounded-lg border ${scopeMode === "all" ? "bg-blue-600 text-white border-blue-600" : "bg-white text-gray-600 border-gray-200"}`}>
+                All Volunteers
+              </button>
+              <button type="button" onClick={() => setScopeMode("specific")}
+                className={`text-xs font-medium px-3 py-1.5 rounded-lg border ${scopeMode === "specific" ? "bg-blue-600 text-white border-blue-600" : "bg-white text-gray-600 border-gray-200"}`}>
+                Specific Groups
+              </button>
+            </div>
+            {scopeMode === "specific" && (
+              <div className="relative">
+                <button type="button" onClick={() => setShowList((o) => !o)}
+                  className="w-full text-left text-xs border border-gray-200 rounded-lg px-3 py-2 bg-white flex items-center justify-between">
+                  <span className="text-gray-600">{scopeGroups.length === 0 ? "Select volunteer groups…" : scopeGroups.join(", ")}</span>
+                </button>
+                {showList && (
+                  <div className="absolute z-10 mt-1 w-full border border-gray-200 rounded-lg bg-white shadow-md max-h-48 overflow-y-auto">
+                    {mockVolunteerGroups.map((g) => (
+                      <label key={g.id} className="flex items-center gap-2 px-3 py-2 text-xs text-gray-700 hover:bg-gray-50 cursor-pointer">
+                        <input type="checkbox" checked={scopeGroups.includes(g.name)} onChange={() => toggleGroup(g.name)} />
+                        {g.name}
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+        <div className="flex gap-2 px-6 py-4 border-t border-gray-100">
+          <Button variant="outline" className="flex-1" onClick={onClose}>Cancel</Button>
+          <Button className="flex-1 bg-orange-500 hover:bg-orange-600 text-white" onClick={() => onConfirm(scopeMode === "specific" ? scopeGroups : [])}>
+            <RefreshCw className="w-3.5 h-3.5 mr-1.5" /> Yes, Trigger Rematch
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function AllRequests() {
@@ -388,6 +460,9 @@ export default function AllRequests() {
   const [filterActive, setFilterActive] = useState<"all" | "active" | "inactive">("all")
   const [selectedReq, setSelectedReq] = useState<MentoringRequest | null>(null)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [showBulkRematch, setShowBulkRematch] = useState(false)
+  const [bulkProgramChoice, setBulkProgramChoice] = useState("")
+  const [pendingBulkProgramId, setPendingBulkProgramId] = useState<string | null>(null)
 
   const toggleSelect = (id: string, e: React.MouseEvent) => {
     e.stopPropagation()
@@ -424,6 +499,41 @@ export default function AllRequests() {
   const handleUpdate = (updated: MentoringRequest) => {
     setRequests((prev) => prev.map((r) => r.id === updated.id ? updated : r))
     setSelectedReq(updated)
+  }
+
+  const bulkAssignProgram = (programId: string) => {
+    if (!programId) return
+    const conflicts = requests.filter((r) => selectedIds.has(r.id) && r.programId && r.programId !== programId).length
+    if (conflicts > 0) {
+      setPendingBulkProgramId(programId)
+    } else {
+      setRequests((prev) => prev.map((r) => selectedIds.has(r.id) ? { ...r, programId } : r))
+      setBulkProgramChoice("")
+      clearSelection()
+    }
+  }
+
+  const confirmBulkProgram = () => {
+    if (!pendingBulkProgramId) return
+    setRequests((prev) => prev.map((r) => selectedIds.has(r.id) ? { ...r, programId: pendingBulkProgramId } : r))
+    setPendingBulkProgramId(null)
+    setBulkProgramChoice("")
+    clearSelection()
+  }
+
+  const cancelBulkProgram = () => {
+    setPendingBulkProgramId(null)
+    setBulkProgramChoice("")
+  }
+
+  // Note: the chosen groupNames scope is used for this rematch action only —
+  // like the individual rematch flow, it isn't persisted onto the engagement.
+  const bulkRematch = () => {
+    setRequests((prev) => prev.map((r) =>
+      selectedIds.has(r.id) ? { ...r, status: "New", matchedMentor: null, matchCandidates: [] } : r
+    ))
+    setShowBulkRematch(false)
+    clearSelection()
   }
 
   return (
@@ -503,7 +613,7 @@ export default function AllRequests() {
             <span className="text-sm font-medium">{selectedIds.size} engagement{selectedIds.size !== 1 ? "s" : ""} selected</span>
             <div className="w-px h-5 bg-gray-600" />
             <button
-              onClick={() => { alert("Rematch triggered for: " + Array.from(selectedIds).join(", ")); clearSelection() }}
+              onClick={() => setShowBulkRematch(true)}
               className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-500 hover:bg-orange-400 text-white text-xs font-semibold rounded-lg transition-colors">
               <RefreshCw className="w-3.5 h-3.5" /> Trigger Rematch
             </button>
@@ -512,6 +622,13 @@ export default function AllRequests() {
               className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-white text-xs font-semibold rounded-lg transition-colors">
               <X className="w-3.5 h-3.5" /> Close Engagements
             </button>
+            <select
+              value={bulkProgramChoice}
+              onChange={(e) => { setBulkProgramChoice(e.target.value); bulkAssignProgram(e.target.value) }}
+              className="text-xs font-semibold rounded-lg px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white border-none outline-none cursor-pointer">
+              <option value="" disabled>Assign to Program…</option>
+              {mockPrograms.map((p) => <option key={p.id} value={p.id} className="text-gray-900">{p.name}</option>)}
+            </select>
             <button onClick={clearSelection} className="text-gray-400 hover:text-white ml-1">
               <X className="w-4 h-4" />
             </button>
@@ -580,6 +697,36 @@ export default function AllRequests() {
       {selectedReq && (
         <RequestPane key={selectedReq.id} request={selectedReq} onClose={() => setSelectedReq(null)} onUpdate={handleUpdate} />
       )}
+      {showBulkRematch && (
+        <BulkRematchModal
+          count={selectedIds.size}
+          onConfirm={bulkRematch}
+          onClose={() => setShowBulkRematch(false)}
+        />
+      )}
+      {pendingBulkProgramId && (() => {
+        const conflicts = requests.filter((r) => selectedIds.has(r.id) && r.programId && r.programId !== pendingBulkProgramId).length
+        const newProgramName = mockPrograms.find((p) => p.id === pendingBulkProgramId)?.name
+        return (
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-xl shadow-xl w-[420px]">
+              <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+                <h2 className="font-semibold text-gray-900">Overwrite existing Program?</h2>
+                <button onClick={cancelBulkProgram}><X className="w-4 h-4 text-gray-400" /></button>
+              </div>
+              <div className="px-6 py-5">
+                <p className="text-sm text-gray-600 leading-relaxed">
+                  {conflicts} of the selected engagement{conflicts !== 1 ? "s" : ""} already {conflicts !== 1 ? "have" : "has"} a different Program tagged. Continuing will replace it with <span className="font-medium text-gray-800">{newProgramName}</span> for all selected engagements.
+                </p>
+              </div>
+              <div className="flex gap-2 px-6 py-4 border-t border-gray-100">
+                <Button variant="outline" className="flex-1" onClick={cancelBulkProgram}>Cancel</Button>
+                <Button className="flex-1" onClick={confirmBulkProgram}>Confirm Change</Button>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
     </div>
   )
 }

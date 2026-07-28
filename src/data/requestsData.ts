@@ -82,6 +82,7 @@ export interface MentoringRequest {
   menteeName: string
   menteeGroup: string
   ngo: string
+  programId?: string
   requestDate: string
   theme: string
   goal?: string

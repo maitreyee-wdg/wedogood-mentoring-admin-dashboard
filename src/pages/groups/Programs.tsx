@@ -5,6 +5,8 @@ import {
   mockPrograms, type Program, type ProgramPOC, type ProgramMeeting,
   type ProgramType, type ProgramStatus,
 } from "@/data/programsData"
+import { mockOrganizations } from "@/data/organizationsData"
+import { canTagOrgToProgram, orgsTaggedToProgram } from "@/lib/programMatch"
 import {
   Search, X, Pencil, Users, CalendarDays, Building2,
   Layers, CheckCircle2, XCircle, ChevronRight, Plus, Mail, Phone, Save,
@@ -621,6 +623,49 @@ function ProgramSlider({ prog, onClose, onEditDetails, onEditPOCs, onEditMeeting
             </div>
             <p className="text-xs text-gray-400 mt-1.5">All mentees in these groups — and their requests — inherit this program.</p>
           </div>
+        )}
+
+        {/* Tagged Organizations */}
+        {canTagOrgToProgram(prog) ? (
+          <div>
+            <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-3">Tagged Organizations</p>
+            <div className="space-y-3">
+              {(() => {
+                const beneficiaryOrgs = orgsTaggedToProgram(mockOrganizations, prog.id, "Beneficiary")
+                const volunteerOrgs = orgsTaggedToProgram(mockOrganizations, prog.id, "Volunteer")
+                return (
+                  <>
+                    <div>
+                      <p className="text-xs text-gray-400 font-medium mb-1.5">Beneficiary Organizations</p>
+                      {beneficiaryOrgs.length === 0 ? (
+                        <p className="text-xs text-gray-400 italic">None tagged</p>
+                      ) : (
+                        <div className="flex flex-wrap gap-1.5">
+                          {beneficiaryOrgs.map((o) => (
+                            <span key={o.id} className="text-xs bg-gray-100 text-gray-700 px-2 py-0.5 rounded-full">{o.name}</span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-400 font-medium mb-1.5">Volunteer Organizations</p>
+                      {volunteerOrgs.length === 0 ? (
+                        <p className="text-xs text-gray-400 italic">None tagged</p>
+                      ) : (
+                        <div className="flex flex-wrap gap-1.5">
+                          {volunteerOrgs.map((o) => (
+                            <span key={o.id} className="text-xs bg-gray-100 text-gray-700 px-2 py-0.5 rounded-full">{o.name}</span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )
+              })()}
+            </div>
+          </div>
+        ) : (
+          <p className="text-xs text-gray-400 italic">Organizations cannot be tagged to this program — it is {prog.status === "Closed" ? "closed" : "Projects-only"}.</p>
         )}
       </div>
     </div>

@@ -28,7 +28,7 @@ export interface Organization {
   dateAdded: string
   poc: OrgPOC[]
   units: string[]        // associated volunteer groups / NGO units
-  programs: string[]     // associated programs
+  programs: string[]     // tagged Program id — at most one entry, either org type
   status: "Active" | "Archived"
   meetings: OrgMeeting[]
 }
@@ -50,7 +50,7 @@ export const mockOrganizations: Organization[] = [
       { id: "P-002", name: "Anita Rao", role: "HR Volunteer Lead", email: "anita.rao@infosys.com", phone: "+91 98001 10011", isMain: false },
     ],
     units: ["HR & People"],
-    programs: ["Skilled Mentoring"],
+    programs: [],
     status: "Active",
     meetings: [
       { id: "OM-001", date: "2026-05-05", details: "Annual CSR review meeting. Discussed expansion of volunteer base and upcoming orientation.", poc: "Suresh Pillai" },
@@ -71,7 +71,7 @@ export const mockOrganizations: Organization[] = [
       { id: "P-003", name: "Neetha Iyer", role: "Developer Relations", email: "neetha@google.com", phone: "+91 98001 10002", isMain: true },
     ],
     units: ["Technology"],
-    programs: ["Skilled Mentoring", "Tech Skills Program"],
+    programs: [],
     status: "Active",
     meetings: [
       { id: "OM-003", date: "2026-04-20", details: "Planned Code4Good bootcamp. Confirmed 4 facilitators from Google team.", poc: "Neetha Iyer" },
@@ -91,7 +91,7 @@ export const mockOrganizations: Organization[] = [
       { id: "P-004", name: "Meena Kapoor", role: "Parivartan Lead", email: "meena.kapoor@hdfcbank.com", phone: "+91 98001 10004", isMain: true },
     ],
     units: ["Finance"],
-    programs: ["Skilled Mentoring", "Finwise"],
+    programs: [],
     status: "Active",
     meetings: [
       { id: "OM-004", date: "2026-04-28", details: "Finwise program review with Parivarthan NGO. Discussed curriculum gaps.", poc: "Meena Kapoor" },
@@ -111,7 +111,7 @@ export const mockOrganizations: Organization[] = [
       { id: "P-005", name: "Arun Desai", role: "People & Culture", email: "arun.desai@razorpay.com", phone: "+91 98001 10005", isMain: true },
     ],
     units: ["Product"],
-    programs: ["Skilled Mentoring"],
+    programs: [],
     status: "Active",
     meetings: [],
   },
@@ -129,7 +129,7 @@ export const mockOrganizations: Organization[] = [
       { id: "P-006", name: "Shweta Rao", role: "Social Impact Manager", email: "shweta@zomato.com", phone: "+91 98001 10006", isMain: true },
     ],
     units: ["Marketing"],
-    programs: ["Skilled Mentoring", "Creative Skills"],
+    programs: [],
     status: "Active",
     meetings: [
       { id: "OM-005", date: "2026-05-10", details: "Brand Workshop Series planning. 10 mentees to attend from Akanksha.", poc: "Shweta Rao" },
@@ -149,7 +149,7 @@ export const mockOrganizations: Organization[] = [
       { id: "P-007", name: "Vikash Kumar", role: "Operations CSR Lead", email: "vikash@amazon.com", phone: "+91 98001 10007", isMain: true },
     ],
     units: ["Operations"],
-    programs: ["Career Connect"],
+    programs: [],
     status: "Active",
     meetings: [
       { id: "OM-006", date: "2026-04-05", details: "Planned Youth Employment Fair logistics with NavGurukul.", poc: "Vikash Kumar" },
@@ -172,7 +172,7 @@ export const mockOrganizations: Organization[] = [
       { id: "P-009", name: "Deepa Nair", role: "Youth Programs Head", email: "deepa@akanksha.org", phone: "+91 99001 20009", isMain: false },
     ],
     units: ["Akanksha — Batch 2025", "Akanksha — Alumni Group"],
-    programs: ["Skilled Mentoring"],
+    programs: [],
     status: "Active",
     meetings: [
       { id: "OM-007", date: "2026-05-22", details: "Monthly check-in — 28 active mentees, 3 requests pending match.", poc: "Mait Sharma" },
@@ -193,7 +193,7 @@ export const mockOrganizations: Organization[] = [
       { id: "P-010", name: "Prerna Gupta", role: "Partnerships Manager", email: "prerna@navgurukul.org", phone: "+91 99001 20002", isMain: true },
     ],
     units: ["NavGurukul — Cohort A"],
-    programs: ["Skilled Mentoring", "Tech Skills Program"],
+    programs: [],
     status: "Active",
     meetings: [
       { id: "OM-009", date: "2026-05-20", details: "Scaling discussion — NavGurukul wants to expand mentee base to 50.", poc: "Prerna Gupta" },
@@ -213,7 +213,7 @@ export const mockOrganizations: Organization[] = [
       { id: "P-011", name: "Rekha Shetty", role: "Program Director", email: "rekha@parivarthan.org", phone: "+91 99001 20003", isMain: true },
     ],
     units: ["Parivarthan — Group 1"],
-    programs: ["Skilled Mentoring", "Finwise"],
+    programs: [],
     status: "Active",
     meetings: [
       { id: "OM-010", date: "2026-04-10", details: "Initial onboarding. 14 mentees profiled. 8 requests created.", poc: "Rekha Shetty" },

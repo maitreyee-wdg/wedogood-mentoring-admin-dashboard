@@ -3,6 +3,8 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { mockOrganizations, type Organization, type OrgType, type OrgPOC, type OrgMeeting } from "@/data/organizationsData"
+import { mockPrograms } from "@/data/programsData"
+import { taggableProgramOptions } from "@/lib/programMatch"
 import {
   Search, Plus, X, Pencil, Check, CalendarPlus,
   Globe, MapPin, Calendar, Mail, Phone, Archive,
@@ -115,6 +117,7 @@ function OrgPane({ org, onClose, onSave, onArchive }: {
   const [newPoc, setNewPoc] = useState<Partial<OrgPOC>>({})
   const [showBookMeeting, setShowBookMeeting] = useState(false)
   const [newMeeting, setNewMeeting] = useState<Partial<OrgMeeting>>({})
+  const [showProgramEditor, setShowProgramEditor] = useState(false)
 
   const set = (field: keyof Organization, val: unknown) => setData((d) => ({ ...d, [field]: val }))
 
@@ -138,6 +141,12 @@ function OrgPane({ org, onClose, onSave, onArchive }: {
     const m: OrgMeeting = { id: `OM-${Date.now()}`, date: newMeeting.date ?? "", details: newMeeting.details ?? "", poc: newMeeting.poc ?? "" }
     const updated = { ...data, meetings: [...data.meetings, m] }
     setData(updated); onSave(updated); setNewMeeting({}); setShowBookMeeting(false)
+  }
+
+  // Both org types are capped at one Program at a time.
+  const setOrgProgram = (programId: string) => {
+    const updated = { ...data, programs: programId ? [programId] : [] }
+    setData(updated); onSave(updated)
   }
 
   const v = org
@@ -236,14 +245,44 @@ function OrgPane({ org, onClose, onSave, onArchive }: {
 
         {/* Programs */}
         <div className="px-5 py-4 border-b border-gray-100">
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Associated Programs</p>
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Associated Programs</p>
+            <button onClick={() => setShowProgramEditor((o) => !o)} className="text-xs text-blue-600 font-medium flex items-center gap-1">
+              <Pencil className="w-3 h-3" />Manage
+            </button>
+          </div>
           {v.programs.length === 0 ? (
             <p className="text-xs text-gray-400 italic">No active programs</p>
           ) : (
             <div className="flex flex-wrap gap-1.5">
-              {v.programs.map((p) => (
-                <span key={p} className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">{p}</span>
-              ))}
+              {v.programs.map((id) => {
+                const p = mockPrograms.find((pr) => pr.id === id)
+                return p ? <span key={id} className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">{p.name}</span> : null
+              })}
+            </div>
+          )}
+          {showProgramEditor && (
+            <div className="mt-3 bg-blue-50 border border-blue-100 rounded-lg p-3">
+              {(() => {
+                const options = taggableProgramOptions(mockPrograms)
+                if (options.length === 0) {
+                  return <p className="text-xs text-gray-400 italic">No programs available to tag — all Programs are either Closed or Projects-only.</p>
+                }
+                return (
+                  <>
+                    <p className="text-xs font-medium text-blue-800 mb-2">Tag to a Program</p>
+                    <select
+                      className="w-full text-xs border border-gray-200 rounded px-2 py-1.5 outline-none focus:border-blue-400 bg-white"
+                      value={data.programs[0] ?? ""}
+                      onChange={(e) => setOrgProgram(e.target.value)}
+                    >
+                      <option value="">No Program</option>
+                      {options.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                    </select>
+                    <p className="text-[11px] text-blue-600 mt-1.5">A {v.type} Organization can be tagged to one Program at a time.</p>
+                  </>
+                )
+              })()}
             </div>
           )}
         </div>
@@ -399,6 +438,14 @@ export default function Organizations() {
     (o.name.toLowerCase().includes(search.toLowerCase()) || o.summary.toLowerCase().includes(search.toLowerCase()))
   )
 
+  // Mock data has no backend — write through to the shared mockOrganizations
+  // array too, so other pages (e.g. Program detail's tagged-orgs lookup) see
+  // the change on their next mount, not just this page's local state.
+  const syncShared = (next: Organization[]) => {
+    mockOrganizations.length = 0
+    mockOrganizations.push(...next)
+  }
+
   const handleAddOrg = (data: Omit<Organization, "id" | "meetings" | "poc" | "units" | "programs" | "social" | "dateAdded">) => {
     const newOrg: Organization = {
       ...data,
@@ -410,18 +457,18 @@ export default function Organizations() {
       social: {},
       meetings: [],
     }
-    setOrgs((p) => [...p, newOrg])
+    setOrgs((p) => { const next = [...p, newOrg]; syncShared(next); return next })
     setShowAddModal(false)
   }
 
   const handleSaveOrg = (updated: Organization) => {
-    setOrgs((p) => p.map((o) => o.id === updated.id ? updated : o))
+    setOrgs((p) => { const next = p.map((o) => o.id === updated.id ? updated : o); syncShared(next); return next })
     setSelectedOrg(updated)
   }
 
   const handleArchiveOrg = () => {
     if (!selectedOrg) return
-    setOrgs((p) => p.map((o) => o.id === selectedOrg.id ? { ...o, status: "Archived" } : o))
+    setOrgs((p) => { const next = p.map((o) => o.id === selectedOrg.id ? { ...o, status: "Archived" as const } : o); syncShared(next); return next })
     setSelectedOrg(null)
   }
 
