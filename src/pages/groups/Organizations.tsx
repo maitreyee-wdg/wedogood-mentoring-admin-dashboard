@@ -118,6 +118,7 @@ function OrgPane({ org, onClose, onSave, onArchive }: {
   const [showBookMeeting, setShowBookMeeting] = useState(false)
   const [newMeeting, setNewMeeting] = useState<Partial<OrgMeeting>>({})
   const [showProgramEditor, setShowProgramEditor] = useState(false)
+  const [pendingProgram, setPendingProgram] = useState("")
 
   const set = (field: keyof Organization, val: unknown) => setData((d) => ({ ...d, [field]: val }))
 
@@ -148,6 +149,10 @@ function OrgPane({ org, onClose, onSave, onArchive }: {
     const updated = { ...data, programs: programId ? [programId] : [] }
     setData(updated); onSave(updated)
   }
+
+  const openProgramEditor = () => { setPendingProgram(data.programs[0] ?? ""); setShowProgramEditor(true) }
+  const closeProgramEditor = () => setShowProgramEditor(false)
+  const saveProgram = () => { setOrgProgram(pendingProgram); setShowProgramEditor(false) }
 
   const v = org
 
@@ -247,7 +252,7 @@ function OrgPane({ org, onClose, onSave, onArchive }: {
         <div className="px-5 py-4 border-b border-gray-100">
           <div className="flex items-center justify-between mb-2">
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Associated Programs</p>
-            <button onClick={() => setShowProgramEditor((o) => !o)} className="text-xs text-blue-600 font-medium flex items-center gap-1">
+            <button onClick={() => showProgramEditor ? closeProgramEditor() : openProgramEditor()} className="text-xs text-blue-600 font-medium flex items-center gap-1">
               <Pencil className="w-3 h-3" />Manage
             </button>
           </div>
@@ -273,13 +278,17 @@ function OrgPane({ org, onClose, onSave, onArchive }: {
                     <p className="text-xs font-medium text-blue-800 mb-2">Tag to a Program</p>
                     <select
                       className="w-full text-xs border border-gray-200 rounded px-2 py-1.5 outline-none focus:border-blue-400 bg-white"
-                      value={data.programs[0] ?? ""}
-                      onChange={(e) => setOrgProgram(e.target.value)}
+                      value={pendingProgram}
+                      onChange={(e) => setPendingProgram(e.target.value)}
                     >
                       <option value="">No Program</option>
                       {options.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
                     </select>
-                    <p className="text-[11px] text-blue-600 mt-1.5">A {v.type} Organization can be tagged to one Program at a time.</p>
+                    <p className="text-[11px] text-blue-600 mt-1.5 mb-2">A {v.type} Organization can be tagged to one Program at a time.</p>
+                    <div className="flex gap-2">
+                      <Button size="sm" className="flex-1" onClick={saveProgram}>Save</Button>
+                      <Button size="sm" variant="outline" onClick={closeProgramEditor}>Cancel</Button>
+                    </div>
                   </>
                 )
               })()}

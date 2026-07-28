@@ -15,8 +15,7 @@ import ProgramsPage from "@/pages/groups/Programs"
 
 // Mentees
 import MenteesList from "@/pages/mentees/index"
-import ActiveRequests from "@/pages/mentees/ActiveRequests"
-import AllRequests from "@/pages/mentees/AllRequests"
+import Engagements from "@/pages/mentees/Engagements"
 import MenteesComms from "@/pages/mentees/Comms"
 import AIChatPage from "@/pages/mentees/AIChat"
 
@@ -48,8 +47,7 @@ export default function App() {
 
           {/* Mentees */}
           <Route path="/mentees" element={<MenteesList />} />
-          <Route path="/mentees/active-requests" element={<ActiveRequests />} />
-          <Route path="/mentees/all-requests" element={<AllRequests />} />
+          <Route path="/mentees/engagements" element={<Engagements />} />
           <Route path="/mentees/comms" element={<MenteesComms />} />
           <Route path="/mentees/ai-chat" element={<AIChatPage />} />
 

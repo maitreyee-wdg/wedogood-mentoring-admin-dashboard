@@ -25,8 +25,7 @@ const sections = [
     items: [
       { to: "/mentees", label: "Mentees", icon: UserCircle, end: true },
       { to: "/groups/mentee-groups", label: "Mentee Groups", icon: FolderKanban, end: false },
-      { to: "/mentees/active-requests", label: "Active Engagements", icon: UserCheck, end: false },
-      { to: "/mentees/all-requests", label: "All Engagements", icon: Layers, end: false },
+      { to: "/mentees/engagements", label: "Engagements", icon: UserCheck, end: false },
       { to: "/mentees/comms", label: "Mentee WA Comms", icon: MessageSquare, end: false },
       { to: "/mentees/ai-chat", label: "AI Chat", icon: Bot, end: false },
     ],

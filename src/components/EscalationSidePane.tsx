@@ -203,7 +203,7 @@ export function TicketPane({ esc, onClose, onStatusChange }: {
                     <span><span className="text-gray-400">Active: </span>{lr.activeDays}d</span>
                     {lr.matchedMentor && <span className="col-span-2"><span className="text-gray-400">Mentor: </span>{lr.matchedMentor}</span>}
                   </div>
-                  <Button size="sm" variant="outline" className="text-xs h-7 w-full" onClick={() => navigate("/mentees/all-requests")}><ExternalLink className="w-3 h-3 mr-1" />View Mentoring Engagement</Button>
+                  <Button size="sm" variant="outline" className="text-xs h-7 w-full" onClick={() => navigate("/mentees/engagements")}><ExternalLink className="w-3 h-3 mr-1" />View Mentoring Engagement</Button>
                 </div>
               </div>
             )}
@@ -358,7 +358,7 @@ export function TicketPane({ esc, onClose, onStatusChange }: {
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Quick Actions</p>
               <div className="grid grid-cols-2 gap-2">
                 <Button variant="outline" size="sm" className="text-xs h-9 justify-start gap-2" onClick={() => navigate(esc.personType === "Mentee" ? "/mentees/comms" : "/volunteers/comms")}><MessageSquare className="w-3.5 h-3.5 text-green-600" />Reply on WhatsApp</Button>
-                {esc.linkedEngagementId && <Button variant="outline" size="sm" className="text-xs h-9 justify-start gap-2" onClick={() => navigate("/mentees/all-requests")}><ExternalLink className="w-3.5 h-3.5 text-blue-600" />View Engagement</Button>}
+                {esc.linkedEngagementId && <Button variant="outline" size="sm" className="text-xs h-9 justify-start gap-2" onClick={() => navigate("/mentees/engagements")}><ExternalLink className="w-3.5 h-3.5 text-blue-600" />View Engagement</Button>}
                 {esc.linkedEngagementId && <Button variant="outline" size="sm" className="text-xs h-9 justify-start gap-2"><Zap className="w-3.5 h-3.5 text-yellow-600" />Trigger Rematch</Button>}
                 <Button variant="outline" size="sm" className="text-xs h-9 justify-start gap-2 text-gray-600"><ShieldAlert className="w-3.5 h-3.5 text-gray-400" />Flag Profile</Button>
                 {esc.linkedEngagementId && <Button variant="outline" size="sm" className="text-xs h-9 justify-start gap-2 col-span-2 text-gray-600"><X className="w-3.5 h-3.5" />Close Engagement</Button>}
