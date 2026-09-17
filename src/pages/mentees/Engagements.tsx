@@ -4,8 +4,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select } from "@/components/ui/select"
 import {
-  mockRequests, matchingTemplates, ACTIVE_STATUSES, ALL_STATUSES,
-  type MentoringRequest, type RequestStatus, type MatchCandidate,
+  mockRequests, matchingTemplates, ACTIVE_STATUSES, ALL_STATUSES, candidateActionTime,
+  type MentoringRequest, type RequestStatus, type MatchCandidate, type InterestedVolunteer,
 } from "@/data/requestsData"
 import { mockVolunteers, type Volunteer } from "@/data/volunteersData"
 import { mockPrograms } from "@/data/programsData"
@@ -15,7 +15,7 @@ import { eligibleVolunteers, orgsTaggedToProgram, volunteerOrgProgramId, type Ma
 import {
   Search, X, ChevronUp, ChevronDown, Plus, Check,
   MessageSquare, Users, Clock, ArrowRight, AlertCircle, RefreshCw,
-  UserPlus, Star, CheckCircle2, Pencil, Tag,
+  Star, CheckCircle2, Pencil, Tag, Link2, FlaskConical,
 } from "lucide-react"
 import { WaTemplateEditor, defaultMappings, type VarMapping } from "@/components/WaVariableMapper"
 import { EditEngagementModal } from "@/components/EditEngagementModal"
@@ -45,6 +45,24 @@ const typeVariant: Record<string, string> = {
 
 function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
+}
+
+// Date + time — used wherever we show exactly when an action (decline, no-response, accept) happened.
+function fmtDateTime(iso: string) {
+  const d = new Date(iso)
+  return `${d.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}, ${d.toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" })}`
+}
+
+// "3 hours ago" / "2 days ago" — used for "how long ago they expressed interest"
+function fmtRelative(iso: string) {
+  const ms = Date.now() - new Date(iso).getTime()
+  const mins = Math.floor(ms / 60000)
+  if (mins < 1) return "just now"
+  if (mins < 60) return `${mins} min${mins !== 1 ? "s" : ""} ago`
+  const hours = Math.floor(mins / 60)
+  if (hours < 24) return `${hours} hour${hours !== 1 ? "s" : ""} ago`
+  const days = Math.floor(hours / 24)
+  return `${days} day${days !== 1 ? "s" : ""} ago`
 }
 
 // ── Match-from scope control — shown wherever matching is (re)triggered ───────
@@ -332,6 +350,98 @@ function UnmatchReasonModal({ mentorName, onConfirm, onClose, scope }: {
   )
 }
 
+// ── Decline Interested Volunteer reason modal ────────────────────────────────
+
+const DECLINE_INTERESTED_REASONS = [
+  "Not the right skill match for this mentee",
+  "Mentee already matched with someone else",
+  "Volunteer's availability doesn't fit the timeline",
+  "Prefer a different volunteer from the list",
+  "Other",
+]
+
+function DeclineInterestedModal({ volunteerName, onConfirm, onClose }: {
+  volunteerName: string
+  onConfirm: (reason: string) => void
+  onClose: () => void
+}) {
+  const [selected, setSelected] = useState("")
+  const [custom, setCustom] = useState("")
+  const finalReason = selected === "Other" ? custom.trim() : selected
+
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl shadow-xl w-[460px]">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+          <h2 className="font-semibold text-gray-900">Decline Interested Volunteer</h2>
+          <button onClick={onClose}><X className="w-4 h-4 text-gray-400" /></button>
+        </div>
+        <div className="px-6 py-5 space-y-4">
+          <p className="text-sm text-gray-600">
+            This declines <span className="font-semibold text-gray-900">{volunteerName}</span>'s interest in this engagement. Please select a reason — <span className="font-medium">{volunteerName} will be notified via WhatsApp</span>, and this has no effect on their standing.
+          </p>
+          <div className="space-y-2">
+            {DECLINE_INTERESTED_REASONS.map(r => (
+              <label key={r} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg border cursor-pointer transition-colors ${selected === r ? "border-red-300 bg-red-50" : "border-gray-200 hover:border-gray-300"}`}>
+                <input type="radio" name="decline-reason" value={r} checked={selected === r}
+                  onChange={() => setSelected(r)} className="text-red-500" />
+                <span className="text-sm text-gray-700">{r}</span>
+              </label>
+            ))}
+          </div>
+          {selected === "Other" && (
+            <textarea
+              className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 outline-none focus:border-red-400 resize-none h-20"
+              placeholder="Describe the reason…"
+              value={custom} onChange={e => setCustom(e.target.value)}
+              autoFocus
+            />
+          )}
+        </div>
+        <div className="flex gap-2 px-6 py-4 border-t border-gray-100">
+          <Button variant="outline" className="flex-1" onClick={onClose}>Cancel</Button>
+          <Button
+            className="flex-1 bg-red-500 hover:bg-red-600 text-white"
+            disabled={!finalReason}
+            onClick={() => onConfirm(finalReason)}>
+            <X className="w-3.5 h-3.5 mr-1.5" /> Decline & Notify
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Confirm Accept Directly modal ────────────────────────────────────────────
+
+function ConfirmAcceptModal({ volunteerName, onConfirm, onClose }: {
+  volunteerName: string
+  onConfirm: () => void
+  onClose: () => void
+}) {
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl shadow-xl w-[420px]">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+          <h2 className="font-semibold text-gray-900">Accept Directly?</h2>
+          <button onClick={onClose}><X className="w-4 h-4 text-gray-400" /></button>
+        </div>
+        <div className="px-6 py-5">
+          <p className="text-sm text-gray-600">
+            This matches <span className="font-semibold text-gray-900">{volunteerName}</span> to this engagement immediately and skips outreach. Every other candidate, interested or already reached out, will be declined.
+          </p>
+        </div>
+        <div className="flex gap-2 px-6 py-4 border-t border-gray-100">
+          <Button variant="outline" className="flex-1" onClick={onClose}>Cancel</Button>
+          <Button className="flex-1 bg-green-600 hover:bg-green-700 text-white" onClick={onConfirm}>
+            <Check className="w-3.5 h-3.5 mr-1.5" /> Confirm Match
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Bulk Rematch modal — scope choice for engagements with no Program ────────
 
 function BulkRematchModal({ count, onConfirm, onClose }: {
@@ -411,6 +521,15 @@ function RequestPane({ request: initial, onClose, onUpdate }: {
   const [selectedTemplate, setSelectedTemplate] = useState(req.approvedTemplate ?? "")
   const [inviteMappings, setInviteMappings] = useState<Record<number, VarMapping>>({})
   const [candidates, setCandidates] = useState<MatchCandidate[]>(req.matchCandidates)
+  // Priority Order — admin-curated outreach queue. Starts empty even when AI
+  // Recommendations already exist; candidates only enter it via "Add mentor to
+  // list" (manual) or "Move to Priority" (promoted from AI Recommendations).
+  const [priorityOrder, setPriorityOrder] = useState<MatchCandidate[]>([])
+  // Volunteers who expressed interest in this engagement themselves, via the
+  // Volunteer Portal's open-requests pool — independent of AI Recommendations.
+  const [interested, setInterested] = useState<InterestedVolunteer[]>(req.interestedVolunteers ?? [])
+  const [showInterested, setShowInterested] = useState(true)
+  const [showAiRecs, setShowAiRecs] = useState(true)
 
   useEffect(() => {
     const tpl = matchingTemplates.find(t => t.id === selectedTemplate)
@@ -420,6 +539,8 @@ function RequestPane({ request: initial, onClose, onUpdate }: {
   const [showUnmatchModal, setShowUnmatchModal] = useState(false)
   const [showRematchConfirm, setShowRematchConfirm] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
+  const [declineTarget, setDeclineTarget] = useState<InterestedVolunteer | null>(null)
+  const [acceptTarget, setAcceptTarget] = useState<InterestedVolunteer | null>(null)
   // "add" = add to queue; "assign" = direct assign (bypasses queue)
   const [assignMode, setAssignMode] = useState<"add" | "assign">("add")
 
@@ -429,7 +550,12 @@ function RequestPane({ request: initial, onClose, onUpdate }: {
   const [scopeGroups, setScopeGroups] = useState<string[]>([])
   const [showScopeList, setShowScopeList] = useState(false)
   const manualScope: ManualScope = { mode: scopeMode, groupNames: scopeGroups }
+  // Exclude anyone already in the queue (AI-recommended, manually added, or promoted from
+  // Interested Volunteers) so the same person can't be added twice — that made reordering
+  // look broken, since swapping two identically-named rows shows no visible change.
+  const alreadyInSequence = new Set([...candidates, ...priorityOrder].map(c => c.name))
   const eligiblePool = eligibleVolunteers(req, mockVolunteers, mockOrganizations, manualScope)
+    .filter(v => !alreadyInSequence.has(v.name))
   const taggedVolunteerOrgNames = req.programId
     ? orgsTaggedToProgram(mockOrganizations, req.programId, "Volunteer").map(o => o.name)
     : []
@@ -465,15 +591,99 @@ function RequestPane({ request: initial, onClose, onUpdate }: {
     onUpdate(updated); setShowAssignModal(false); setTab("match")
   }
 
-  // Add mentor to the outreach queue
+  // Add mentor to the outreach queue. Before approval (New / Match Approval
+  // Pending) that's the Priority Order; after a failed round (No Match Found)
+  // it goes straight back into the visible candidate/outreach-history list.
   const handleAddToQueue = (mentor: Volunteer) => {
     const newCandidate: MatchCandidate = {
       id: `manual-${Date.now()}`, name: mentor.name, role: mentor.currentRole,
       company: mentor.currentCompany, matchPercent: 0,
-      matchReason: "Manually added by admin", outreachStatus: "Pending",
+      matchReason: "Manually added by admin", outreachStatus: "Pending", source: "manual",
     }
-    setCandidates(prev => [...prev, newCandidate])
+    if (req.status === "New" || req.status === "Match Approval Pending") {
+      setPriorityOrder(prev => [...prev, newCandidate])
+    } else {
+      setCandidates(prev => [...prev, newCandidate])
+    }
     setShowAssignModal(false)
+  }
+
+  // Promote an AI-recommended candidate into the Priority Order
+  const moveToPriority = (candidate: MatchCandidate) => {
+    setCandidates(prev => prev.filter(c => c.id !== candidate.id))
+    setPriorityOrder(prev => [...prev, { ...candidate, source: "ai" as const }])
+  }
+
+  // Interested Volunteers (self-expressed via the Volunteer Portal) — admin
+  // can add them to the outreach queue, same as an AI recommendation. Once
+  // outreach has actually started (Mentor Response Pending), there's no
+  // Priority Order builder anymore — they join the live sequence instead,
+  // queued after whoever's already been contacted.
+  const addInterestedToPriority = (iv: InterestedVolunteer) => {
+    setInterested(prev => prev.filter(v => v.volunteerId !== iv.volunteerId))
+    const newCandidate: MatchCandidate = {
+      id: `interested-${iv.volunteerId}`, name: iv.name, role: iv.role, company: iv.company,
+      matchPercent: iv.matchPercent, matchReason: "Expressed interest via the Volunteer Portal",
+      outreachStatus: "Pending", source: "interested",
+    }
+    if (req.status === "Mentor Response Pending") {
+      setCandidates(prev => [...prev, newCandidate])
+    } else {
+      setPriorityOrder(prev => [...prev, newCandidate])
+    }
+  }
+
+  // ... or skip the queue and match them immediately. Every other candidate —
+  // whether still being reached out to, or a volunteer who'd expressed interest —
+  // is declined on the spot and notified via WhatsApp. Someone mid-outreach
+  // (already sent an invite) gets a softer message than someone never contacted.
+  const acceptInterestedDirectly = (iv: InterestedVolunteer) => {
+    const now = new Date().toISOString()
+    const alreadyContactedReason = "Another mentor has shown interest in the mentee. We'll reach out if another relevant request comes up."
+    const notYetContactedReason = "Engagement matched with another volunteer"
+
+    const declineIfOpen = (c: MatchCandidate): MatchCandidate => {
+      if (c.outreachStatus === "Sent") {
+        return { ...c, outreachStatus: "Declined" as const, declineReason: alreadyContactedReason, respondedAt: now }
+      }
+      if (c.outreachStatus === "Pending") {
+        return { ...c, outreachStatus: "Declined" as const, declineReason: notYetContactedReason, respondedAt: now }
+      }
+      return c
+    }
+
+    const declinedInterested: MatchCandidate[] = interested
+      .filter(v => v.volunteerId !== iv.volunteerId)
+      .map(v => ({
+        id: `interested-${v.volunteerId}`, name: v.name, role: v.role, company: v.company,
+        matchPercent: v.matchPercent, matchReason: "Expressed interest via the Volunteer Portal",
+        outreachStatus: "Declined" as const, declineReason: notYetContactedReason, respondedAt: now,
+      }))
+
+    const updated: MentoringRequest = {
+      ...req, status: "Matched", matchedMentor: iv.name,
+      matchCandidates: [
+        ...candidates.map(declineIfOpen),
+        ...priorityOrder.map(declineIfOpen),
+        ...declinedInterested,
+        {
+          id: `interested-${iv.volunteerId}`, name: iv.name, role: iv.role, company: iv.company,
+          matchPercent: iv.matchPercent, matchReason: "Expressed interest via the Volunteer Portal; accepted directly by admin",
+          outreachStatus: "Accepted" as const,
+        },
+      ],
+    }
+    setInterested([])
+    setReq(updated); setCandidates(updated.matchCandidates); setPriorityOrder([])
+    onUpdate(updated)
+  }
+
+  // Decline an interested volunteer with a reason — they're notified via WhatsApp.
+  // No effect on their standing or visibility elsewhere, same as declining a direct request.
+  const handleDeclineInterested = (iv: InterestedVolunteer, reason: string) => {
+    console.info(`Declined interested volunteer ${iv.name} for ${req.id}: "${reason}". Notified via WhatsApp.`)
+    setInterested(prev => prev.filter(v => v.volunteerId !== iv.volunteerId))
+    setDeclineTarget(null)
   }
 
   // Rematch confirmed — clear candidates, reset to New, re-run algorithm
@@ -481,7 +691,7 @@ function RequestPane({ request: initial, onClose, onUpdate }: {
     const updated: MentoringRequest = {
       ...req, status: "New", matchedMentor: null, matchCandidates: [],
     }
-    setReq(updated); setCandidates([])
+    setReq(updated); setCandidates([]); setPriorityOrder([])
     onUpdate(updated); setShowRematchConfirm(false)
   }
 
@@ -502,28 +712,41 @@ function RequestPane({ request: initial, onClose, onUpdate }: {
     setReq(updated); onUpdate(updated); setShowEditModal(false)
   }
 
-  // ── Match approval actions ────────────────────────────────────────────────
+  // ── Match approval actions — these operate on the Priority Order ───────────
 
   const moveUp = (i: number) => {
     if (i === 0) return
-    const next = [...candidates]; [next[i - 1], next[i]] = [next[i], next[i - 1]]; setCandidates(next)
+    const next = [...priorityOrder]; [next[i - 1], next[i]] = [next[i], next[i - 1]]; setPriorityOrder(next)
   }
   const moveDown = (i: number) => {
-    if (i === candidates.length - 1) return
+    if (i === priorityOrder.length - 1) return
+    const next = [...priorityOrder]; [next[i], next[i + 1]] = [next[i + 1], next[i]]; setPriorityOrder(next)
+  }
+  const removeCandidate = (id: string) => setPriorityOrder(priorityOrder.filter(c => c.id !== id))
+
+  // Reordering the live outreach sequence (Mentor Response Pending) — only the
+  // not-yet-contacted tail is movable. Whoever's already Sent/Declined/etc. is
+  // history and stays put; swapping only happens between adjacent Pending pairs.
+  const moveSequenceUp = (i: number) => {
+    if (i === 0 || candidates[i - 1].outreachStatus !== "Pending" || candidates[i].outreachStatus !== "Pending") return
+    const next = [...candidates]; [next[i - 1], next[i]] = [next[i], next[i - 1]]; setCandidates(next)
+  }
+  const moveSequenceDown = (i: number) => {
+    if (i === candidates.length - 1 || candidates[i + 1].outreachStatus !== "Pending" || candidates[i].outreachStatus !== "Pending") return
     const next = [...candidates]; [next[i], next[i + 1]] = [next[i + 1], next[i]]; setCandidates(next)
   }
-  const removeCandidate = (id: string) => setCandidates(candidates.filter(c => c.id !== id))
 
   const handleApprove = () => {
+    const finalCandidates = priorityOrder.map((c, i) => ({
+      ...c,
+      outreachStatus: i === 0 ? "Sent" as const : "Pending" as const,
+      outreachSentAt: i === 0 ? new Date().toISOString() : undefined,
+    }))
     const updated: MentoringRequest = {
       ...req, status: "Mentor Response Pending", approvedTemplate: selectedTemplate,
-      matchCandidates: candidates.map((c, i) => ({
-        ...c,
-        outreachStatus: i === 0 ? "Sent" as const : "Pending" as const,
-        outreachSentAt: i === 0 ? new Date().toISOString() : undefined,
-      })),
+      matchCandidates: finalCandidates,
     }
-    setReq(updated); setCandidates(updated.matchCandidates); onUpdate(updated)
+    setReq(updated); setCandidates(finalCandidates); setPriorityOrder([]); onUpdate(updated)
   }
 
   // ── Outreach status helpers ───────────────────────────────────────────────
@@ -550,6 +773,38 @@ function RequestPane({ request: initial, onClose, onUpdate }: {
     "No Response": "text-red-500",
     "Declined":    "text-red-500",
     "Accepted":    "text-green-600",
+  }
+
+  // Priority Order badge showing where a candidate entered the queue from.
+  // A plain function call (not a JSX component) — avoids re-creating a component on every render.
+  const sourceTag = (source: MatchCandidate["source"]) => {
+    if (source === "interested") return <span className="text-[10px] font-semibold text-indigo-600 bg-indigo-100 px-1.5 py-0.5 rounded-full">Interested</span>
+    if (source === "manual") return <span className="text-[10px] text-gray-400 border border-gray-200 px-1.5 py-0.5 rounded">Manual</span>
+    return (
+      <span className="flex items-center gap-1 text-[10px] font-semibold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded-full">
+        <FlaskConical className="w-2.5 h-2.5" /> AI Recommended
+      </span>
+    )
+  }
+
+  // Small icon button with a custom hover tooltip explaining what it does.
+  // A plain function call (not a JSX component) — avoids re-creating a component on every render.
+  const iconAction = (opts: { onClick: () => void; label: string; icon: React.ReactNode; theme: "green" | "blue" | "red" }) => {
+    const theme = {
+      green: "bg-green-50 border-green-200 text-green-600 hover:bg-green-100",
+      blue: "bg-blue-50 border-blue-200 text-blue-600 hover:bg-blue-100",
+      red: "bg-red-50 border-red-200 text-red-600 hover:bg-red-100",
+    }[opts.theme]
+    return (
+      <div className="relative group/tip">
+        <button onClick={opts.onClick} className={`w-7 h-7 flex items-center justify-center rounded-lg border transition-colors ${theme}`}>
+          {opts.icon}
+        </button>
+        <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 whitespace-nowrap rounded bg-gray-900 px-2 py-1 text-[10px] text-white opacity-0 group-hover/tip:opacity-100 transition-opacity z-20">
+          {opts.label}
+        </span>
+      </div>
+    )
   }
 
   // Shared "Add mentor" button shown in all match stages
@@ -626,6 +881,26 @@ function RequestPane({ request: initial, onClose, onUpdate }: {
                 : <p className="text-gray-400 italic text-xs">No mentor matched yet</p>}
             </PaneSection>
 
+            <PaneSection label="WhatsApp Group Link *">
+              <div className="flex items-center gap-1.5 mb-1.5 text-[11px] text-gray-400">
+                <Link2 className="w-3 h-3" />
+                Shared with the mentee/mentor when either requests the other's contact details
+              </div>
+              <input
+                type="url"
+                value={req.whatsappGroupLink ?? ""}
+                onChange={e => {
+                  const updated = { ...req, whatsappGroupLink: e.target.value }
+                  setReq(updated); onUpdate(updated)
+                }}
+                placeholder="https://chat.whatsapp.com/…"
+                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 outline-none focus:border-blue-400"
+              />
+              {!req.whatsappGroupLink && (
+                <p className="text-[11px] text-amber-600 mt-1">Required before outreach can start</p>
+              )}
+            </PaneSection>
+
             {/* Rematch — for Matched, ask reason first; otherwise direct */}
             {(req.status === "No Match Found" || req.status === "Mentor Response Pending" || req.status === "Match Approval Pending") && (
               <button onClick={() => setShowRematchConfirm(true)}
@@ -637,12 +912,6 @@ function RequestPane({ request: initial, onClose, onUpdate }: {
               <button onClick={() => setShowUnmatchModal(true)}
                 className="flex items-center gap-2 w-full px-4 py-2.5 rounded-lg bg-orange-50 border border-orange-200 text-orange-700 hover:bg-orange-100 transition-colors text-sm font-medium">
                 <RefreshCw className="w-4 h-4" /> Unmatch & Rematch
-              </button>
-            )}
-            {(req.status === "No Match Found" || req.status === "Mentor Response Pending") && (
-              <button onClick={() => { setAssignMode("assign"); setShowAssignModal(true) }}
-                className="flex items-center gap-2 w-full px-4 py-2.5 rounded-lg bg-blue-50 border border-blue-200 text-blue-700 hover:bg-blue-100 transition-colors text-sm font-medium">
-                <UserPlus className="w-4 h-4" /> Assign Mentor Directly
               </button>
             )}
           </div>
@@ -682,7 +951,7 @@ function RequestPane({ request: initial, onClose, onUpdate }: {
           <div className="px-5 py-4 space-y-5 text-sm">
 
             {/* NEW — empty state OR manually-built candidate list */}
-            {req.status === "New" && candidates.length === 0 && (
+            {req.status === "New" && candidates.length === 0 && priorityOrder.length === 0 && interested.length === 0 && (
               <div className="text-center py-8 space-y-3">
                 <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center mx-auto">
                   <Users className="w-6 h-6 text-blue-500" />
@@ -696,102 +965,33 @@ function RequestPane({ request: initial, onClose, onUpdate }: {
               </div>
             )}
 
-            {req.status === "New" && candidates.length > 0 && (
+            {(req.status === "New" || req.status === "Match Approval Pending") && (candidates.length > 0 || priorityOrder.length > 0 || interested.length > 0) && (
               <div className="space-y-4">
                 <div className="bg-blue-50 border border-blue-200 rounded-lg px-3 py-2.5 text-xs text-blue-700 leading-relaxed">
                   <span className="font-semibold">How outreach works:</span> Mentors are contacted one at a time in priority order. #1 gets a WhatsApp invite first. If they don't accept within <span className="font-semibold">4 hours</span>, their window expires and #2 is contacted — and so on.
                 </div>
 
+                {/* ── Priority Order ── */}
                 <div className="flex items-center justify-between">
-                  <p className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Priority List ({candidates.length})</p>
-                  <span className="text-xs text-gray-400">Reorder before approving</span>
+                  <p className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Priority Order ({priorityOrder.length})</p>
+                  {priorityOrder.length > 0 && <span className="text-xs text-gray-400">Drag to reorder</span>}
                 </div>
 
                 <div className="space-y-2">
-                  {candidates.map((c, i) => (
+                  {priorityOrder.map((c, i) => (
                     <div key={c.id} className="border border-gray-200 rounded-lg p-3 bg-white">
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex items-start gap-2 flex-1 min-w-0">
                           <div className="flex flex-col items-center gap-0.5">
                             <button onClick={() => moveUp(i)} disabled={i === 0} className="text-gray-300 hover:text-gray-600 disabled:opacity-30"><ChevronUp className="w-3.5 h-3.5" /></button>
                             <span className="text-xs font-bold text-gray-500 w-4 text-center">{i + 1}</span>
-                            <button onClick={() => moveDown(i)} disabled={i === candidates.length - 1} className="text-gray-300 hover:text-gray-600 disabled:opacity-30"><ChevronDown className="w-3.5 h-3.5" /></button>
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                              <p className="text-xs font-semibold text-gray-900">{c.name}</p>
-                              <span className="text-[10px] text-gray-400 border border-gray-200 px-1.5 py-0.5 rounded">Manually added</span>
-                            </div>
-                            <p className="text-xs text-gray-500">{c.role} · {c.company}</p>
-                          </div>
-                        </div>
-                        <button onClick={() => removeCandidate(c.id)} className="text-gray-300 hover:text-red-400 shrink-0"><X className="w-3.5 h-3.5" /></button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <AddMentorButton label="Add another mentor" />
-
-                <div className="space-y-3">
-                  <div>
-                    <label className="text-xs font-medium text-gray-500 block mb-1">WhatsApp Invite Template</label>
-                    <select value={selectedTemplate} onChange={e => setSelectedTemplate(e.target.value)}
-                      className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 outline-none focus:border-blue-400 bg-white">
-                      <option value="">Select a template…</option>
-                      {matchingTemplates.map(t => <option key={t.id} value={t.id}>{t.name} — {t.description}</option>)}
-                    </select>
-                  </div>
-                  {selectedTemplate && (() => {
-                    const tpl = matchingTemplates.find(t => t.id === selectedTemplate)
-                    return tpl ? (
-                      <WaTemplateEditor
-                        content={tpl.message}
-                        allowedCategories={["Mentee", "Volunteer", "Engagement"]}
-                        mappings={inviteMappings}
-                        onChange={setInviteMappings}
-                      />
-                    ) : null
-                  })()}
-                </div>
-
-                <Button className="w-full" disabled={!selectedTemplate} onClick={handleApprove}>
-                  Start Outreach — Contact Mentor #1
-                </Button>
-                <p className="text-xs text-gray-400 text-center">
-                  Only mentor #1 will be contacted first. The next mentor is only contacted if #1 doesn't respond within 4 hours.
-                </p>
-              </div>
-            )}
-
-            {/* MATCH APPROVAL PENDING */}
-            {req.status === "Match Approval Pending" && (
-              <div className="space-y-4">
-                {/* How outreach works — explain once */}
-                <div className="bg-blue-50 border border-blue-200 rounded-lg px-3 py-2.5 text-xs text-blue-700 leading-relaxed">
-                  <span className="font-semibold">How outreach works:</span> Mentors are contacted one at a time in priority order. #1 gets a WhatsApp invite first. If they don't accept within <span className="font-semibold">4 hours</span>, their window expires and #2 is contacted — and so on. Only one mentor is active at a time.
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <p className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Priority List ({candidates.length})</p>
-                  <span className="text-xs text-gray-400">Drag to reorder</span>
-                </div>
-
-                <div className="space-y-2">
-                  {candidates.map((c, i) => (
-                    <div key={c.id} className="border border-gray-200 rounded-lg p-3 bg-white">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex items-start gap-2 flex-1 min-w-0">
-                          <div className="flex flex-col items-center gap-0.5">
-                            <button onClick={() => moveUp(i)} disabled={i === 0} className="text-gray-300 hover:text-gray-600 disabled:opacity-30"><ChevronUp className="w-3.5 h-3.5" /></button>
-                            <span className="text-xs font-bold text-gray-500 w-4 text-center">{i + 1}</span>
-                            <button onClick={() => moveDown(i)} disabled={i === candidates.length - 1} className="text-gray-300 hover:text-gray-600 disabled:opacity-30"><ChevronDown className="w-3.5 h-3.5" /></button>
+                            <button onClick={() => moveDown(i)} disabled={i === priorityOrder.length - 1} className="text-gray-300 hover:text-gray-600 disabled:opacity-30"><ChevronDown className="w-3.5 h-3.5" /></button>
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
                               <p className="text-xs font-semibold text-gray-900">{c.name}</p>
                               {c.matchPercent > 0 && <span className="text-xs font-bold text-blue-600">{c.matchPercent}% match</span>}
-                              {c.matchPercent === 0 && <span className="text-[10px] text-gray-400 border border-gray-200 px-1.5 py-0.5 rounded">Manually added</span>}
+                              {sourceTag(c.source)}
                             </div>
                             <p className="text-xs text-gray-500">{c.role} · {c.company}</p>
                             {c.matchPercent > 0 && <p className="text-xs text-gray-400 mt-0.5 italic">"{c.matchReason}"</p>}
@@ -803,7 +1003,83 @@ function RequestPane({ request: initial, onClose, onUpdate }: {
                   ))}
                 </div>
 
-                <AddMentorButton />
+                <AddMentorButton label="Add mentor to list" />
+
+                {/* ── Interested Volunteers (collapsible) ── */}
+                {interested.length > 0 && (
+                  <div className="pt-2 border-t border-gray-100">
+                    <button onClick={() => setShowInterested(o => !o)} className="w-full flex items-center justify-between py-1">
+                      <p className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Interested Volunteers ({interested.length})</p>
+                      <span className="flex items-center gap-1.5 text-xs text-gray-400">
+                        Expressed interest on the Volunteer Portal
+                        {showInterested ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                      </span>
+                    </button>
+                    {showInterested && (
+                      <div className="space-y-2 mt-2">
+                        {interested.map(iv => (
+                          <div key={iv.volunteerId} className="border border-indigo-200 bg-indigo-50/40 rounded-lg p-3">
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <p className="text-xs font-semibold text-gray-900">{iv.name}</p>
+                                  <span className="text-xs font-bold text-indigo-600">{iv.matchPercent}% match</span>
+                                  <span className="text-[10px] text-gray-500 border border-gray-200 bg-white px-1.5 py-0.5 rounded-full">{iv.group}</span>
+                                </div>
+                                <p className="text-xs text-gray-500">{iv.role} · {iv.company}</p>
+                                <p className="text-xs text-gray-400 mt-0.5 italic">"{iv.matchReason}"</p>
+                                <p className="text-[11px] text-gray-400 mt-0.5 flex items-center gap-1">
+                                  <Clock className="w-3 h-3" /> Expressed interest {fmtRelative(iv.expressedAt)}
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                {iconAction({ onClick: () => setAcceptTarget(iv), label: "Accept directly — match immediately", icon: <Check className="w-3.5 h-3.5" />, theme: "green" })}
+                                {iconAction({ onClick: () => addInterestedToPriority(iv), label: "Add to Priority Order", icon: <Plus className="w-3.5 h-3.5" />, theme: "blue" })}
+                                {iconAction({ onClick: () => setDeclineTarget(iv), label: "Decline — notifies the volunteer via WhatsApp", icon: <X className="w-3.5 h-3.5" />, theme: "red" })}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* ── AI Recommendations (collapsible) ── */}
+                <div className="pt-2 border-t border-gray-100">
+                  <button onClick={() => setShowAiRecs(o => !o)} className="w-full flex items-center justify-between py-1">
+                    <p className="text-xs font-semibold text-gray-700 uppercase tracking-wide">AI Recommendations ({candidates.length})</p>
+                    {showAiRecs ? <ChevronUp className="w-3.5 h-3.5 text-gray-400" /> : <ChevronDown className="w-3.5 h-3.5 text-gray-400" />}
+                  </button>
+                  {showAiRecs && (
+                    candidates.length === 0 ? (
+                      <p className="text-xs text-gray-400 italic mt-2">No AI-recommended candidates left to review.</p>
+                    ) : (
+                      <div className="space-y-2 mt-2">
+                        {candidates.map(c => (
+                          <div key={c.id} className="border border-gray-200 rounded-lg p-3 bg-white">
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <p className="text-xs font-semibold text-gray-900">{c.name}</p>
+                                  <span className="text-xs font-bold text-blue-600">{c.matchPercent}%</span>
+                                  <span className="flex items-center gap-1 text-[10px] font-semibold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded-full">
+                                    <FlaskConical className="w-2.5 h-2.5" /> SCORE
+                                  </span>
+                                </div>
+                                <p className="text-xs text-gray-500">{c.role} · {c.company}</p>
+                                <p className="text-xs text-gray-400 mt-0.5 italic">"{c.matchReason}"</p>
+                              </div>
+                              <Button variant="outline" className="text-xs shrink-0" onClick={() => moveToPriority(c)}>
+                                Move to Priority
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )
+                  )}
+                </div>
 
                 <div className="space-y-3">
                   <div>
@@ -826,13 +1102,6 @@ function RequestPane({ request: initial, onClose, onUpdate }: {
                     ) : null
                   })()}
                 </div>
-
-                <Button className="w-full" disabled={!selectedTemplate || candidates.length === 0} onClick={handleApprove}>
-                  Start Outreach — Contact Mentor #1
-                </Button>
-                <p className="text-xs text-gray-400 text-center">
-                  Only mentor #1 will be contacted first. The next mentor is only contacted if #1 doesn't respond within 4 hours.
-                </p>
               </div>
             )}
 
@@ -844,12 +1113,55 @@ function RequestPane({ request: initial, onClose, onUpdate }: {
                   Mentors are contacted <span className="font-semibold">one at a time</span>. The active mentor has a <span className="font-semibold">4-hour window</span> to accept. If they don't respond, their window expires and the next mentor is contacted automatically.
                 </div>
 
+                {/* ── Interested Volunteers (collapsible) — outreach is already live, but a
+                     volunteer can still self-express interest at any point ── */}
+                {interested.length > 0 && (
+                  <div>
+                    <button onClick={() => setShowInterested(o => !o)} className="w-full flex items-center justify-between py-1">
+                      <p className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Interested Volunteers ({interested.length})</p>
+                      <span className="flex items-center gap-1.5 text-xs text-gray-400">
+                        Expressed interest on the Volunteer Portal
+                        {showInterested ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                      </span>
+                    </button>
+                    {showInterested && (
+                      <div className="space-y-2 mt-2">
+                        {interested.map(iv => (
+                          <div key={iv.volunteerId} className="border border-indigo-200 bg-indigo-50/40 rounded-lg p-3">
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <p className="text-xs font-semibold text-gray-900">{iv.name}</p>
+                                  <span className="text-xs font-bold text-indigo-600">{iv.matchPercent}% match</span>
+                                  <span className="text-[10px] text-gray-500 border border-gray-200 bg-white px-1.5 py-0.5 rounded-full">{iv.group}</span>
+                                </div>
+                                <p className="text-xs text-gray-500">{iv.role} · {iv.company}</p>
+                                <p className="text-xs text-gray-400 mt-0.5 italic">"{iv.matchReason}"</p>
+                                <p className="text-[11px] text-gray-400 mt-0.5 flex items-center gap-1">
+                                  <Clock className="w-3 h-3" /> Expressed interest {fmtRelative(iv.expressedAt)}
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                {iconAction({ onClick: () => setAcceptTarget(iv), label: "Accept directly — match immediately", icon: <Check className="w-3.5 h-3.5" />, theme: "green" })}
+                                {iconAction({ onClick: () => addInterestedToPriority(iv), label: "Add to the outreach sequence, after those already contacted", icon: <Plus className="w-3.5 h-3.5" />, theme: "blue" })}
+                                {iconAction({ onClick: () => setDeclineTarget(iv), label: "Decline — notifies the volunteer via WhatsApp", icon: <X className="w-3.5 h-3.5" />, theme: "red" })}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 <p className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Outreach Sequence</p>
                 <div className="space-y-0">
                   {candidates.map((c, i) => {
                     const isCurrent = c.outreachStatus === "Sent"
                     const isDone    = ["Accepted", "No Response", "Declined"].includes(c.outreachStatus)
                     const isPending = c.outreachStatus === "Pending"
+                    const canMoveUp = isPending && i > 0 && candidates[i - 1].outreachStatus === "Pending"
+                    const canMoveDown = isPending && i < candidates.length - 1 && candidates[i + 1].outreachStatus === "Pending"
                     return (
                       <div key={c.id} className="relative flex gap-3">
                         {i < candidates.length - 1 && <div className="absolute left-[13px] top-8 w-0.5 h-full bg-gray-200" />}
@@ -866,12 +1178,22 @@ function RequestPane({ request: initial, onClose, onUpdate }: {
                             <span className="text-[10px] text-gray-400 font-medium">#{i + 1} in queue</span>
                             {isCurrent && <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-semibold">Waiting for response</span>}
                             {isPending && <span className="text-[10px] bg-gray-100 text-gray-400 px-1.5 py-0.5 rounded-full font-medium">Not yet contacted</span>}
+                            {isPending && (canMoveUp || canMoveDown) && (
+                              <span className="flex items-center gap-0.5 ml-auto">
+                                <button onClick={() => moveSequenceUp(i)} disabled={!canMoveUp} className="text-gray-300 hover:text-gray-600 disabled:opacity-30"><ChevronUp className="w-3.5 h-3.5" /></button>
+                                <button onClick={() => moveSequenceDown(i)} disabled={!canMoveDown} className="text-gray-300 hover:text-gray-600 disabled:opacity-30"><ChevronDown className="w-3.5 h-3.5" /></button>
+                              </span>
+                            )}
                           </div>
                           <p className="text-xs text-gray-500">{c.role} · {c.company}</p>
                           <p className={`text-xs mt-0.5 ${outreachStatusColor[c.outreachStatus]}`}>
                             {outreachStatusLabel[c.outreachStatus]}
-                            {c.outreachSentAt && !isPending && <span className="text-gray-400 ml-1">· {fmtDate(c.outreachSentAt)}</span>}
+                            {isCurrent && c.outreachSentAt && <span className="text-gray-400 ml-1">· sent {fmtDateTime(c.outreachSentAt)}</span>}
+                            {!isCurrent && !isPending && candidateActionTime(c) && <span className="text-gray-400 ml-1">· {fmtDateTime(candidateActionTime(c)!)}</span>}
                           </p>
+                          {c.outreachStatus === "Declined" && c.declineReason && (
+                            <p className="text-xs text-gray-500 mt-0.5 italic">"{c.declineReason}"</p>
+                          )}
                         </div>
                       </div>
                     )
@@ -895,15 +1217,23 @@ function RequestPane({ request: initial, onClose, onUpdate }: {
 
                 <p className="text-xs font-semibold text-gray-700 uppercase tracking-wide">All Outreach Attempts</p>
                 {candidates.map(c => (
-                  <div key={c.id} className="flex items-center gap-3 text-xs py-1.5 border-b border-gray-100 last:border-0">
-                    <div className={`w-2 h-2 rounded-full shrink-0 ${c.outreachStatus === "Accepted" ? "bg-green-500" : c.outreachStatus === "Pending" ? "bg-gray-200" : "bg-red-300"}`} />
-                    <div className="flex-1">
-                      <span className="font-medium text-gray-800">{c.name}</span>
-                      <span className="text-gray-400 ml-1">· {c.company}</span>
+                  <div key={c.id} className="text-xs py-1.5 border-b border-gray-100 last:border-0">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-2 h-2 rounded-full shrink-0 ${c.outreachStatus === "Accepted" ? "bg-green-500" : c.outreachStatus === "Pending" ? "bg-gray-200" : "bg-red-300"}`} />
+                      <div className="flex-1">
+                        <span className="font-medium text-gray-800">{c.name}</span>
+                        <span className="text-gray-400 ml-1">· {c.company}</span>
+                      </div>
+                      <span className={outreachStatusColor[c.outreachStatus]}>
+                        {c.outreachStatus === "Pending" ? "Not contacted" : c.outreachStatus}
+                      </span>
                     </div>
-                    <span className={outreachStatusColor[c.outreachStatus]}>
-                      {c.outreachStatus === "Pending" ? "Not contacted" : c.outreachStatus}
-                    </span>
+                    {(candidateActionTime(c) || c.declineReason) && (
+                      <div className="pl-5 mt-0.5 space-y-0.5">
+                        {candidateActionTime(c) && <p className="text-[11px] text-gray-400">{fmtDateTime(candidateActionTime(c)!)}</p>}
+                        {c.declineReason && <p className="text-[11px] text-gray-500 italic">"{c.declineReason}"</p>}
+                      </div>
+                    )}
                   </div>
                 ))}
 
@@ -925,14 +1255,22 @@ function RequestPane({ request: initial, onClose, onUpdate }: {
 
                 <p className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Outreach History</p>
                 {candidates.map(c => (
-                  <div key={c.id} className="flex items-center gap-3 text-xs py-1.5 border-b border-gray-100 last:border-0">
-                    <div className="flex-1">
-                      <p className="font-medium text-gray-800">{c.name}</p>
-                      <p className="text-gray-400">{c.role} · {c.company}</p>
+                  <div key={c.id} className="text-xs py-1.5 border-b border-gray-100 last:border-0">
+                    <div className="flex items-center gap-3">
+                      <div className="flex-1">
+                        <p className="font-medium text-gray-800">{c.name}</p>
+                        <p className="text-gray-400">{c.role} · {c.company}</p>
+                      </div>
+                      <span className={outreachStatusColor[c.outreachStatus]}>
+                        {c.outreachStatus === "No Response" ? "No response (4hr window expired)" : c.outreachStatus}
+                      </span>
                     </div>
-                    <span className={outreachStatusColor[c.outreachStatus]}>
-                      {c.outreachStatus === "No Response" ? "No response (4hr window expired)" : c.outreachStatus}
-                    </span>
+                    {(candidateActionTime(c) || c.declineReason) && (
+                      <div className="mt-0.5 space-y-0.5">
+                        {candidateActionTime(c) && <p className="text-[11px] text-gray-400">{fmtDateTime(candidateActionTime(c)!)}</p>}
+                        {c.declineReason && <p className="text-[11px] text-gray-500 italic">"{c.declineReason}"</p>}
+                      </div>
+                    )}
                   </div>
                 ))}
 
@@ -941,10 +1279,6 @@ function RequestPane({ request: initial, onClose, onUpdate }: {
                 <Button variant="outline" className="w-full flex items-center gap-2 justify-center text-orange-700 border-orange-200 hover:bg-orange-50"
                   onClick={() => setShowRematchConfirm(true)}>
                   <RefreshCw className="w-3.5 h-3.5 mr-1.5" /> Trigger AI Rematch
-                </Button>
-                <Button variant="outline" className="w-full flex items-center gap-2 justify-center text-blue-700 border-blue-200 hover:bg-blue-50"
-                  onClick={() => { setAssignMode("assign"); setShowAssignModal(true) }}>
-                  <UserPlus className="w-3.5 h-3.5 mr-1.5" /> Assign Mentor Directly
                 </Button>
               </div>
             )}
@@ -968,12 +1302,20 @@ function RequestPane({ request: initial, onClose, onUpdate }: {
                   <>
                     <p className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Outreach History</p>
                     {candidates.map(c => (
-                      <div key={c.id} className="flex items-center gap-3 text-xs py-1">
-                        <div className={`w-2 h-2 rounded-full shrink-0 ${c.outreachStatus === "Accepted" ? "bg-green-500" : "bg-gray-300"}`} />
-                        <span className="font-medium text-gray-700">{c.name}</span>
-                        <span className="text-gray-400 flex-1">{c.company}</span>
-                        {c.matchPercent > 0 && <span className="text-blue-600">{c.matchPercent}%</span>}
-                        <span className={outreachStatusColor[c.outreachStatus]}>{c.outreachStatus}</span>
+                      <div key={c.id} className="text-xs py-1">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-2 h-2 rounded-full shrink-0 ${c.outreachStatus === "Accepted" ? "bg-green-500" : "bg-gray-300"}`} />
+                          <span className="font-medium text-gray-700">{c.name}</span>
+                          <span className="text-gray-400 flex-1">{c.company}</span>
+                          {c.matchPercent > 0 && <span className="text-blue-600">{c.matchPercent}%</span>}
+                          <span className={outreachStatusColor[c.outreachStatus]}>{c.outreachStatus}</span>
+                        </div>
+                        {(candidateActionTime(c) || c.declineReason) && (
+                          <div className="pl-5 mt-0.5 space-y-0.5">
+                            {candidateActionTime(c) && <p className="text-[11px] text-gray-400">{fmtDateTime(candidateActionTime(c)!)}</p>}
+                            {c.declineReason && <p className="text-[11px] text-gray-500 italic">"{c.declineReason}"</p>}
+                          </div>
+                        )}
                       </div>
                     ))}
                   </>
@@ -984,6 +1326,22 @@ function RequestPane({ request: initial, onClose, onUpdate }: {
           </div>
         )}
       </div>
+
+      {/* Fixed footer — Start Outreach stays put while everything above scrolls */}
+      {tab === "match" && (req.status === "New" || req.status === "Match Approval Pending")
+        && (candidates.length > 0 || priorityOrder.length > 0 || interested.length > 0) && (
+        <div className="shrink-0 border-t border-gray-200 px-5 py-3 space-y-1.5 bg-white">
+          <Button className="w-full" disabled={!selectedTemplate || priorityOrder.length === 0 || !req.whatsappGroupLink} onClick={handleApprove}>
+            Start Outreach — Contact Mentor #1
+          </Button>
+          {!req.whatsappGroupLink && (
+            <p className="text-xs text-amber-600 text-center">Save a WhatsApp Group Link in Overview before starting outreach.</p>
+          )}
+          <p className="text-xs text-gray-400 text-center">
+            Only mentor #1 will be contacted first. The next mentor is only contacted if #1 doesn't respond within 4 hours.
+          </p>
+        </div>
+      )}
 
       {showAssignModal && (
         <ManualAssignModal
@@ -1015,6 +1373,20 @@ function RequestPane({ request: initial, onClose, onUpdate }: {
           request={req}
           onSave={handleEditSave}
           onClose={() => setShowEditModal(false)}
+        />
+      )}
+      {declineTarget && (
+        <DeclineInterestedModal
+          volunteerName={declineTarget.name}
+          onConfirm={reason => handleDeclineInterested(declineTarget, reason)}
+          onClose={() => setDeclineTarget(null)}
+        />
+      )}
+      {acceptTarget && (
+        <ConfirmAcceptModal
+          volunteerName={acceptTarget.name}
+          onConfirm={() => { acceptInterestedDirectly(acceptTarget); setAcceptTarget(null) }}
+          onClose={() => setAcceptTarget(null)}
         />
       )}
     </div>

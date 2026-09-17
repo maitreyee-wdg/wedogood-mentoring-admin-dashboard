@@ -9,6 +9,7 @@ import {
   type Volunteer, type VolunteeringType, type Location, type VolunteerStatus, type OrientationStatus, type PreferredMenteeStage,
 } from "@/data/volunteersData"
 import { commsTemplates, type CommTemplate } from "@/data/commsData"
+import { mockRequests, candidateActionTime } from "@/data/requestsData"
 import { WaTemplateEditor, defaultMappings, type VarMapping } from "@/components/WaVariableMapper"
 import { formatTime12h } from "@/components/ClockTimeInput"
 import {
@@ -626,6 +627,17 @@ function ProfilePane({
   const hasMentoring = v.volunteeringType === "Mentoring" || v.volunteeringType === "Both"
   const hasProjects = v.volunteeringType === "Projects" || v.volunteeringType === "Both"
 
+  // Requests this volunteer was contacted about but didn't end up mentoring —
+  // Declined (with reason, captured on the Volunteer Portal) or Did Not Accept.
+  // Excludes "Accepted": an accepted candidate is the same request already shown
+  // under Active/Past Mentoring above, so listing it again here would be redundant.
+  // Cross-referenced from matchCandidates rather than duplicated onto the Volunteer record.
+  const responseHistory = mockRequests
+    .flatMap(r => r.matchCandidates
+      .filter(c => c.id === v.id && (c.outreachStatus === "Declined" || c.outreachStatus === "No Response"))
+      .map(c => ({ request: r, candidate: c })))
+    .sort((a, b) => (candidateActionTime(b.candidate) ?? "").localeCompare(candidateActionTime(a.candidate) ?? ""))
+
   return (
     <div className="w-[420px] border-l border-gray-200 bg-white flex flex-col overflow-hidden shrink-0">
       {/* Header */}
@@ -1026,6 +1038,27 @@ function ProfilePane({
                         </div>
                       )}
                       {r.feedback && <p className="text-xs text-gray-600 italic">"{r.feedback}"</p>}
+                    </div>
+                  ))}
+                </PaneSection>
+
+                <PaneSection label={`Request Responses (${responseHistory.length})`}>
+                  {responseHistory.length === 0 ? (
+                    <p className="text-xs text-gray-400 italic">No request responses recorded</p>
+                  ) : responseHistory.map(({ request, candidate }) => (
+                    <div key={`${request.id}-${candidate.id}`} className="bg-gray-50 border border-gray-100 rounded-lg p-3 space-y-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-xs font-semibold text-gray-700">{request.id} · {request.menteeName}</p>
+                        {candidate.outreachStatus === "Declined" && <span className="text-[10px] font-semibold text-red-700 bg-red-100 px-1.5 py-0.5 rounded-full shrink-0">Declined</span>}
+                        {candidate.outreachStatus === "No Response" && <span className="text-[10px] font-semibold text-gray-600 bg-gray-200 px-1.5 py-0.5 rounded-full shrink-0">Did Not Accept</span>}
+                      </div>
+                      <p className="text-xs text-gray-500">{request.theme}</p>
+                      {candidate.declineReason && <p className="text-xs text-gray-600 italic">"{candidate.declineReason}"</p>}
+                      {candidateActionTime(candidate) && (
+                        <p className="text-[11px] text-gray-400">
+                          {new Date(candidateActionTime(candidate)!).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}, {new Date(candidateActionTime(candidate)!).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" })}
+                        </p>
+                      )}
                     </div>
                   ))}
                 </PaneSection>

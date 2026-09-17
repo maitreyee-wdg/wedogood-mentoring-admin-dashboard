@@ -22,6 +22,17 @@ export const INACTIVE_STATUSES: RequestStatus[] = [
 
 export const ALL_STATUSES: RequestStatus[] = [...ACTIVE_STATUSES, ...INACTIVE_STATUSES]
 
+export interface InterestedVolunteer {
+  volunteerId: string
+  name: string
+  role: string
+  company: string
+  group: string        // volunteer's org/group, e.g. a partner org or "Direct sign-up"
+  matchPercent: number // reuses the same matching algorithm's score as MatchCandidate
+  matchReason: string  // why the algorithm scored them this way, same as MatchCandidate.matchReason
+  expressedAt: string  // ISO string — when the volunteer expressed interest on the Volunteer Portal
+}
+
 export interface MatchCandidate {
   id: string
   name: string
@@ -30,7 +41,22 @@ export interface MatchCandidate {
   matchPercent: number
   matchReason: string
   outreachStatus: "Pending" | "Sent" | "No Response" | "Declined" | "Accepted"
-  outreachSentAt?: string   // ISO string
+  outreachSentAt?: string   // ISO string — when the invite was sent
+  respondedAt?: string      // ISO string — when the volunteer actually responded (Declined/Accepted). Not set for "No Response", see candidateActionTime below.
+  source?: "interested" | "ai" | "manual"   // where this entered the Priority Order from; undefined = still in AI Recommendations
+  declineReason?: string    // only set when outreachStatus is "Declined" — captured on the Volunteer Portal when the volunteer declines. No Response / Accepted carry no reason, just the status itself.
+}
+
+// The timestamp a candidate's outcome actually happened at, not when they were contacted.
+// Declined/Accepted use their own recorded response time; "No Response" has no response by
+// definition, so its action time is fixed at exactly 4 hours after the invite was sent —
+// the response-window business rule already shown elsewhere in the outreach UI.
+export function candidateActionTime(c: MatchCandidate): string | undefined {
+  if (c.respondedAt) return c.respondedAt
+  if (c.outreachStatus === "No Response" && c.outreachSentAt) {
+    return new Date(new Date(c.outreachSentAt).getTime() + 4 * 60 * 60 * 1000).toISOString()
+  }
+  return undefined
 }
 
 export interface AiMessage {
@@ -99,6 +125,8 @@ export interface MentoringRequest {
   matchScore?: number
   matchScoreBreakdown?: MatchScoreBreakdown
   approvedTemplate?: string
+  whatsappGroupLink?: string
+  interestedVolunteers?: InterestedVolunteer[]
   menteeFeedback?: MenteeFeedback
   mentorFeedback?: MentorFeedback
 }
@@ -228,6 +256,10 @@ export const mockRequests: MentoringRequest[] = [
       { id: "VOL-009", name: "Vikram Singh", role: "Sales Director", company: "Salesforce India", matchPercent: 65, matchReason: "Senior leadership background; stakeholder management skills", outreachStatus: "Pending" },
       { id: "VOL-010", name: "Ananya Roy", role: "Content Strategist", company: "Byju's", matchPercent: 52, matchReason: "Adjacent skills in content strategy; limited direct product experience", outreachStatus: "Pending" },
     ],
+    interestedVolunteers: [
+      { volunteerId: "VOL-011", name: "Aditi Rao", role: "Product Lead", company: "Flipkart", group: "Direct sign-up", matchPercent: 81, matchReason: "Direct product leadership background; has coached ops-to-PM transitions before", expressedAt: "2026-09-13T09:00:00" },
+      { volunteerId: "VOL-012", name: "Manish Kulkarni", role: "Senior PM", company: "Ola", group: "TechCorp Volunteers", matchPercent: 74, matchReason: "Senior PM with cross-functional consumer app experience; strong on roadmapping", expressedAt: "2026-09-14T18:30:00" },
+    ],
   },
 
   // ── REQ-004: Mentor Response Pending — Rohan Das / Data Analysis ───────────
@@ -263,6 +295,9 @@ export const mockRequests: MentoringRequest[] = [
       { mentorId: "VOL-003", mentorName: "Amit Joshi", notifiedAt: "2026-05-08T10:00:00", response: "no_response" },
       { mentorId: "VOL-002", mentorName: "Sneha Rao", notifiedAt: "2026-05-08T22:30:00", response: "no_response" },
     ],
+    interestedVolunteers: [
+      { volunteerId: "VOL-014", name: "Priya Desai", role: "Data Scientist", company: "Myntra", group: "Direct sign-up", matchPercent: 88, matchReason: "Strong SQL and Python background; has mentored junior analysts before", expressedAt: "2026-09-15T11:00:00" },
+    ],
   },
 
   // ── REQ-005: New — Meena Iyer / Public Speaking ────────────────────────────
@@ -290,6 +325,9 @@ export const mockRequests: MentoringRequest[] = [
       { sender: "mira", text: "Got it. I'll find a mentor who can help you build confidence in presentations and group communication. Request created! 🎤", timestamp: "2026-06-02T11:02:50" },
     ],
     matchCandidates: [],
+    interestedVolunteers: [
+      { volunteerId: "VOL-013", name: "Neha Bansal", role: "Corporate Trainer", company: "Reliance Retail", group: "Direct sign-up", matchPercent: 69, matchReason: "Runs corporate confidence-building workshops; direct overlap with the mentee's goal", expressedAt: "2026-09-15T06:00:00" },
+    ],
   },
 
   // ── REQ-006: Matched — Siddharth Kumar / Finance ──────────────────────────
@@ -422,7 +460,7 @@ export const mockRequests: MentoringRequest[] = [
     matchCandidates: [
       { id: "VOL-002", name: "Sneha Rao", role: "Senior Software Engineer", company: "Google", matchPercent: 82, matchReason: "Strong system design & distributed systems experience at Google", outreachStatus: "No Response", outreachSentAt: "2026-04-10T09:00:00" },
       { id: "VOL-007", name: "Arjun Sharma", role: "Operations Manager", company: "Amazon India", matchPercent: 68, matchReason: "System thinking at scale (ops); limited software design depth", outreachStatus: "No Response", outreachSentAt: "2026-04-10T21:30:00" },
-      { id: "VOL-005", name: "Kiran Bhat", role: "Product Manager", company: "Razorpay", matchPercent: 61, matchReason: "Product-system understanding; non-technical mentor", outreachStatus: "Declined", outreachSentAt: "2026-04-11T10:00:00" },
+      { id: "VOL-005", name: "Kiran Bhat", role: "Product Manager", company: "Razorpay", matchPercent: 61, matchReason: "Product-system understanding; non-technical mentor", outreachStatus: "Declined", outreachSentAt: "2026-04-11T10:00:00", respondedAt: "2026-04-11T13:45:00", declineReason: "Outside my area of expertise" },
     ],
     cascadeLog: [
       { mentorId: "VOL-002", mentorName: "Sneha Rao", notifiedAt: "2026-04-10T09:00:00", response: "no_response" },
