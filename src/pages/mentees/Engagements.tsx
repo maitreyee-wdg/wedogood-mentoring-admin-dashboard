@@ -360,10 +360,57 @@ const DECLINE_INTERESTED_REASONS = [
   "Other",
 ]
 
-function DeclineInterestedModal({ volunteerName, onConfirm, onClose }: {
+// Shared "which message goes out" picker — defaults to whatever template and
+// variable values were last used anywhere in this pane, and updates that same
+// shared state so the next place that reads it (this modal, another modal, or
+// the main outreach picker) sees it as the new default.
+function MessageTemplatePicker({ selectedTemplate, setSelectedTemplate, mappings, setMappings }: {
+  selectedTemplate: string
+  setSelectedTemplate: (id: string) => void
+  mappings: Record<number, VarMapping>
+  setMappings: (m: Record<number, VarMapping>) => void
+}) {
+  const [open, setOpen] = useState(!selectedTemplate)
+  const tpl = matchingTemplates.find(t => t.id === selectedTemplate)
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-medium text-gray-500">
+          Message template: <span className="text-gray-700">{tpl ? tpl.name : "None selected"}</span>
+        </p>
+        <button onClick={() => setOpen(o => !o)} className="text-xs font-medium text-blue-600 hover:text-blue-700">
+          {open ? "Hide" : tpl ? "Change" : "Set template"}
+        </button>
+      </div>
+      {open && (
+        <div className="space-y-3">
+          <select value={selectedTemplate} onChange={e => setSelectedTemplate(e.target.value)}
+            className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 outline-none focus:border-blue-400 bg-white">
+            <option value="">Select a template…</option>
+            {matchingTemplates.map(t => <option key={t.id} value={t.id}>{t.name} — {t.description}</option>)}
+          </select>
+          {tpl && (
+            <WaTemplateEditor
+              content={tpl.message}
+              allowedCategories={["Mentee", "Volunteer", "Engagement"]}
+              mappings={mappings}
+              onChange={setMappings}
+            />
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function DeclineInterestedModal({ volunteerName, onConfirm, onClose, selectedTemplate, setSelectedTemplate, mappings, setMappings }: {
   volunteerName: string
   onConfirm: (reason: string) => void
   onClose: () => void
+  selectedTemplate: string
+  setSelectedTemplate: (id: string) => void
+  mappings: Record<number, VarMapping>
+  setMappings: (m: Record<number, VarMapping>) => void
 }) {
   const [selected, setSelected] = useState("")
   const [custom, setCustom] = useState("")
@@ -371,12 +418,12 @@ function DeclineInterestedModal({ volunteerName, onConfirm, onClose }: {
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-xl w-[460px]">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+      <div className="bg-white rounded-xl shadow-xl w-[460px] max-h-[85vh] flex flex-col">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0">
           <h2 className="font-semibold text-gray-900">Decline Interested Volunteer</h2>
           <button onClick={onClose}><X className="w-4 h-4 text-gray-400" /></button>
         </div>
-        <div className="px-6 py-5 space-y-4">
+        <div className="px-6 py-5 space-y-4 overflow-y-auto">
           <p className="text-sm text-gray-600">
             This declines <span className="font-semibold text-gray-900">{volunteerName}</span>'s interest in this engagement. Please select a reason — <span className="font-medium">{volunteerName} will be notified via WhatsApp</span>, and this has no effect on their standing.
           </p>
@@ -397,12 +444,15 @@ function DeclineInterestedModal({ volunteerName, onConfirm, onClose }: {
               autoFocus
             />
           )}
+          <div className="pt-2 border-t border-gray-100">
+            <MessageTemplatePicker selectedTemplate={selectedTemplate} setSelectedTemplate={setSelectedTemplate} mappings={mappings} setMappings={setMappings} />
+          </div>
         </div>
-        <div className="flex gap-2 px-6 py-4 border-t border-gray-100">
+        <div className="flex gap-2 px-6 py-4 border-t border-gray-100 shrink-0">
           <Button variant="outline" className="flex-1" onClick={onClose}>Cancel</Button>
           <Button
             className="flex-1 bg-red-500 hover:bg-red-600 text-white"
-            disabled={!finalReason}
+            disabled={!finalReason || !selectedTemplate}
             onClick={() => onConfirm(finalReason)}>
             <X className="w-3.5 h-3.5 mr-1.5" /> Decline & Notify
           </Button>
@@ -414,26 +464,34 @@ function DeclineInterestedModal({ volunteerName, onConfirm, onClose }: {
 
 // ── Confirm Accept Directly modal ────────────────────────────────────────────
 
-function ConfirmAcceptModal({ volunteerName, onConfirm, onClose }: {
+function ConfirmAcceptModal({ volunteerName, onConfirm, onClose, selectedTemplate, setSelectedTemplate, mappings, setMappings }: {
   volunteerName: string
   onConfirm: () => void
   onClose: () => void
+  selectedTemplate: string
+  setSelectedTemplate: (id: string) => void
+  mappings: Record<number, VarMapping>
+  setMappings: (m: Record<number, VarMapping>) => void
 }) {
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-xl w-[420px]">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+      <div className="bg-white rounded-xl shadow-xl w-[420px] max-h-[85vh] flex flex-col">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0">
           <h2 className="font-semibold text-gray-900">Accept Directly?</h2>
           <button onClick={onClose}><X className="w-4 h-4 text-gray-400" /></button>
         </div>
-        <div className="px-6 py-5">
+        <div className="px-6 py-5 space-y-4 overflow-y-auto">
           <p className="text-sm text-gray-600">
             This matches <span className="font-semibold text-gray-900">{volunteerName}</span> to this engagement immediately and skips outreach. Every other candidate, interested or already reached out, will be declined.
           </p>
+          <p className="text-xs text-gray-500">
+            Candidates already contacted are notified that another mentor has been matched. This is the message they'll get.
+          </p>
+          <MessageTemplatePicker selectedTemplate={selectedTemplate} setSelectedTemplate={setSelectedTemplate} mappings={mappings} setMappings={setMappings} />
         </div>
-        <div className="flex gap-2 px-6 py-4 border-t border-gray-100">
+        <div className="flex gap-2 px-6 py-4 border-t border-gray-100 shrink-0">
           <Button variant="outline" className="flex-1" onClick={onClose}>Cancel</Button>
-          <Button className="flex-1 bg-green-600 hover:bg-green-700 text-white" onClick={onConfirm}>
+          <Button className="flex-1 bg-green-600 hover:bg-green-700 text-white" disabled={!selectedTemplate} onClick={onConfirm}>
             <Check className="w-3.5 h-3.5 mr-1.5" /> Confirm Match
           </Button>
         </div>
@@ -1380,6 +1438,8 @@ function RequestPane({ request: initial, onClose, onUpdate }: {
           volunteerName={declineTarget.name}
           onConfirm={reason => handleDeclineInterested(declineTarget, reason)}
           onClose={() => setDeclineTarget(null)}
+          selectedTemplate={selectedTemplate} setSelectedTemplate={setSelectedTemplate}
+          mappings={inviteMappings} setMappings={setInviteMappings}
         />
       )}
       {acceptTarget && (
@@ -1387,6 +1447,8 @@ function RequestPane({ request: initial, onClose, onUpdate }: {
           volunteerName={acceptTarget.name}
           onConfirm={() => { acceptInterestedDirectly(acceptTarget); setAcceptTarget(null) }}
           onClose={() => setAcceptTarget(null)}
+          selectedTemplate={selectedTemplate} setSelectedTemplate={setSelectedTemplate}
+          mappings={inviteMappings} setMappings={setInviteMappings}
         />
       )}
     </div>
