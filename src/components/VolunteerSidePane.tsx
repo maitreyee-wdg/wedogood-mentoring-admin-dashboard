@@ -195,13 +195,17 @@ export function VolunteerPane({
         {/* ── REQUESTS ── */}
         {drawerTab === "requests" && (
           <>
-            <DrawerSection label="Active Request">
-              {v.activeRequest ? (
-                <div className="bg-green-50 border border-green-200 rounded-lg p-3 space-y-1">
-                  <p className="text-xs font-semibold text-green-800">{v.activeRequest.id}</p>
-                  <p className="text-xs text-green-700">Mentee: <strong>{v.activeRequest.menteeName}</strong></p>
-                  <p className="text-xs text-green-700">Skill: {v.activeRequest.skill}</p>
-                  <p className="text-xs text-gray-500">Since {v.activeRequest.startedAt}</p>
+            <DrawerSection label={`Active Requests (${v.activeRequests.length})`}>
+              {v.activeRequests.length > 0 ? (
+                <div className="space-y-2">
+                  {v.activeRequests.map(r => (
+                    <div key={r.id} className="bg-green-50 border border-green-200 rounded-lg p-3 space-y-1">
+                      <p className="text-xs font-semibold text-green-800">{r.id}</p>
+                      <p className="text-xs text-green-700">Mentee: <strong>{r.menteeName}</strong></p>
+                      <p className="text-xs text-green-700">Skill: {r.skill}</p>
+                      <p className="text-xs text-gray-500">Since {r.startedAt}</p>
+                    </div>
+                  ))}
                 </div>
               ) : (
                 <p className="text-xs text-gray-400 italic">No active request</p>

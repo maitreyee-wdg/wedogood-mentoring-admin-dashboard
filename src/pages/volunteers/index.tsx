@@ -10,6 +10,7 @@ import {
 } from "@/data/volunteersData"
 import { commsTemplates, type CommTemplate } from "@/data/commsData"
 import { mockRequests, candidateActionTime } from "@/data/requestsData"
+import { mockSettings } from "@/data/settingsData"
 import { WaTemplateEditor, defaultMappings, type VarMapping } from "@/components/WaVariableMapper"
 import { formatTime12h } from "@/components/ClockTimeInput"
 import {
@@ -214,7 +215,7 @@ function AddVolunteerModal({ onSave, onClose }: { onSave: (v: Volunteer) => void
       orientationStatus: "Orientation Pending",
       signedUpDate: new Date().toISOString().split("T")[0],
       sessionAvailability: "Available",
-      pastRequests: [], activeProjects: [], pastProjects: [],
+      activeRequests: [], pastRequests: [], activeProjects: [], pastProjects: [],
     }
     onSave(newVol)
   }
@@ -398,7 +399,7 @@ function StarRating({ value }: { value: number }) {
 type SortKey = "name" | "signedUpDate" | "mentoringRating" | "projectsRating" | "totalYearsExp"
 type SortDir = "asc" | "desc"
 
-type ColKey = "name" | "signedUpDate" | "volunteeringType" | "status" | "orientationStatus" | "projectsRating" | "mentoringRating" | "group" | "sessionAvailability"
+type ColKey = "name" | "signedUpDate" | "volunteeringType" | "status" | "orientationStatus" | "projectsRating" | "mentoringRating" | "group" | "sessionAvailability" | "activeEngagements"
 
 const ALL_COLUMNS: { key: ColKey; label: string; always?: boolean }[] = [
   { key: "name", label: "Name", always: true },
@@ -410,6 +411,7 @@ const ALL_COLUMNS: { key: ColKey; label: string; always?: boolean }[] = [
   { key: "projectsRating", label: "Projects Rating" },
   { key: "group", label: "Group" },
   { key: "sessionAvailability", label: "Session Availability" },
+  { key: "activeEngagements", label: "Active Engagements" },
 ]
 
 const ORIENTATION_STATUSES: OrientationStatus[] = ["Orientation Pending", "Orientation Slot Booked", "Orientation Done", "Orientation Rescheduled"]
@@ -1010,13 +1012,17 @@ function ProfilePane({
               <div className="text-center py-8 text-gray-400 text-xs">This volunteer is not registered for mentoring.</div>
             ) : (
               <>
-                <PaneSection label="Active Mentoring">
-                  {v.activeRequest ? (
-                    <div className="bg-green-50 border border-green-200 rounded-lg p-3 space-y-1">
-                      <p className="text-xs font-semibold text-green-800">{v.activeRequest.id}</p>
-                      <p className="text-xs text-green-700">Mentee: <strong>{v.activeRequest.menteeName}</strong></p>
-                      <p className="text-xs text-green-600">Skill: {v.activeRequest.skill}</p>
-                      <p className="text-xs text-gray-400">Since {new Date(v.activeRequest.startedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "2-digit" })}</p>
+                <PaneSection label={`Active Mentoring (${v.activeRequests.length})`}>
+                  {v.activeRequests.length > 0 ? (
+                    <div className="space-y-2">
+                      {v.activeRequests.map(r => (
+                        <div key={r.id} className="bg-green-50 border border-green-200 rounded-lg p-3 space-y-1">
+                          <p className="text-xs font-semibold text-green-800">{r.id}</p>
+                          <p className="text-xs text-green-700">Mentee: <strong>{r.menteeName}</strong></p>
+                          <p className="text-xs text-green-600">Skill: {r.skill}</p>
+                          <p className="text-xs text-gray-400">Since {new Date(r.startedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "2-digit" })}</p>
+                        </div>
+                      ))}
                     </div>
                   ) : (
                     <p className="text-xs text-gray-400 italic">No active mentoring session</p>
@@ -1163,7 +1169,7 @@ export default function VolunteersList() {
   const [bulkOpen, setBulkOpen] = useState(false)
   const [showColPicker, setShowColPicker] = useState(false)
   const [visibleCols, setVisibleCols] = useState<Set<ColKey>>(
-    new Set(["name", "signedUpDate", "volunteeringType", "status", "orientationStatus", "mentoringRating", "projectsRating", "group"])
+    new Set(["name", "signedUpDate", "volunteeringType", "status", "orientationStatus", "mentoringRating", "projectsRating", "group", "activeEngagements"])
   )
   const [assignGroupFor, setAssignGroupFor] = useState<string[] | null>(null)
   const [changeStatusFor, setChangeStatusFor] = useState<string[] | null>(null)
@@ -1488,12 +1494,13 @@ export default function VolunteersList() {
                 )}
                 {visibleCols.has("group") && <th className="text-left px-4 py-3 font-medium text-gray-600">Group</th>}
                 {visibleCols.has("sessionAvailability") && <th className="text-left px-4 py-3 font-medium text-gray-600">Session Availability</th>}
+                {visibleCols.has("activeEngagements") && <th className="text-left px-4 py-3 font-medium text-gray-600">Active Engagements</th>}
                 <th className="px-4 py-3 w-10"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {filtered.length === 0 ? (
-                <tr><td colSpan={11} className="px-4 py-8 text-center text-gray-400">No volunteers match your filters</td></tr>
+                <tr><td colSpan={12} className="px-4 py-8 text-center text-gray-400">No volunteers match your filters</td></tr>
               ) : filtered.map((v) => (
                 <tr key={v.id} className={`hover:bg-gray-50 transition-colors ${v.status === "Archived" ? "opacity-50" : ""}`}>
                   <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
@@ -1549,6 +1556,13 @@ export default function VolunteersList() {
                     <td className="px-4 py-3">
                       <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${v.sessionAvailability === "Available" ? "bg-green-100 text-green-700" : v.sessionAvailability === "On Leave" ? "bg-yellow-100 text-yellow-700" : "bg-gray-100 text-gray-500"}`}>
                         {v.sessionAvailability}
+                      </span>
+                    </td>
+                  )}
+                  {visibleCols.has("activeEngagements") && (
+                    <td className="px-4 py-3">
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${v.activeRequests.length >= mockSettings.maxConcurrentEngagementsPerVolunteer ? "bg-red-100 text-red-700" : v.activeRequests.length > 0 ? "bg-amber-100 text-amber-700" : "bg-gray-100 text-gray-500"}`}>
+                        {v.activeRequests.length}
                       </span>
                     </td>
                   )}

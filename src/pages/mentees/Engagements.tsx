@@ -4,10 +4,11 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select } from "@/components/ui/select"
 import {
-  mockRequests, matchingTemplates, ACTIVE_STATUSES, ALL_STATUSES, candidateActionTime,
+  mockRequests, matchingTemplates, ACTIVE_STATUSES, ALL_STATUSES, INACTIVE_STATUSES, candidateActionTime,
   type MentoringRequest, type RequestStatus, type MatchCandidate, type InterestedVolunteer,
 } from "@/data/requestsData"
 import { mockVolunteers, type Volunteer } from "@/data/volunteersData"
+import { mockSettings } from "@/data/settingsData"
 import { mockPrograms } from "@/data/programsData"
 import { mockOrganizations } from "@/data/organizationsData"
 import { mockVolunteerGroups } from "@/data/groupsData"
@@ -63,6 +64,56 @@ function fmtRelative(iso: string) {
   if (hours < 24) return `${hours} hour${hours !== 1 ? "s" : ""} ago`
   const days = Math.floor(hours / 24)
   return `${days} day${days !== 1 ? "s" : ""} ago`
+}
+
+// ── Engagement-cap helpers — shared wherever a volunteer is shown for matchmaking ──
+
+function isAtEngagementCap(v: Volunteer) {
+  return v.activeRequests.length >= mockSettings.maxConcurrentEngagementsPerVolunteer
+}
+
+function latestEngagementStart(v: Volunteer): string | null {
+  if (v.activeRequests.length === 0) return null
+  return v.activeRequests.reduce((latest, r) => (r.startedAt > latest ? r.startedAt : latest), v.activeRequests[0].startedAt)
+}
+
+// "2 active · since 1 May 2026" — the engagement-count + latest-start line for matchmaking cards
+function engagementSummary(v: Volunteer): string {
+  const count = v.activeRequests.length
+  if (count === 0) return "No active engagements"
+  const latest = latestEngagementStart(v)
+  return `${count} active engagement${count !== 1 ? "s" : ""}${latest ? ` · latest since ${fmtDate(latest)}` : ""}`
+}
+
+// Some Interested Volunteers (self-signups via the Portal — "Direct sign-up" or a partner
+// org) aren't onboarded into mockVolunteers at all, so they carry no activeRequests. Fall
+// back to counting their other live matches directly from requests, by name.
+function activeEngagementCountFromRequests(name: string): number {
+  return mockRequests.filter(r => r.matchedMentor === name && !INACTIVE_STATUSES.includes(r.status)).length
+}
+
+function isNameAtEngagementCap(name: string): boolean {
+  const v = mockVolunteers.find(vol => vol.name === name)
+  if (v) return isAtEngagementCap(v)
+  return activeEngagementCountFromRequests(name) >= mockSettings.maxConcurrentEngagementsPerVolunteer
+}
+
+// Candidate/interested-volunteer cards only carry a name, not a reliable volunteerId
+// (AI-recommended and manually-added candidates never get a real one) — so this looks
+// the volunteer up by name, same workaround used for cross-referencing elsewhere in this file.
+function engagementLine(name: string) {
+  const v = mockVolunteers.find(vol => vol.name === name)
+  if (v) {
+    const cap = isAtEngagementCap(v)
+    return <p className={`text-[11px] mt-0.5 ${cap ? "text-red-500 font-medium" : "text-gray-400"}`}>{engagementSummary(v)}</p>
+  }
+  const count = activeEngagementCountFromRequests(name)
+  const cap = count >= mockSettings.maxConcurrentEngagementsPerVolunteer
+  return (
+    <p className={`text-[11px] mt-0.5 ${cap ? "text-red-500 font-medium" : "text-gray-400"}`}>
+      {count === 0 ? "No active engagements" : `${count} active engagement${count !== 1 ? "s" : ""}`}
+    </p>
+  )
 }
 
 // ── Match-from scope control — shown wherever matching is (re)triggered ───────
@@ -146,9 +197,11 @@ function ManualAssignModal({ req, pool, scope, onAssign, onClose, mode = "assign
   }, [pool, search])
 
   const availabilityBadge = (v: Volunteer) => {
-    if (v.sessionAvailability === "Available" && !v.activeRequest)
+    if (isAtEngagementCap(v))
+      return <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-red-100 text-red-700">At Engagement Cap</span>
+    if (v.sessionAvailability === "Available" && v.activeRequests.length === 0)
       return <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-700">Available</span>
-    if (v.sessionAvailability === "Available" && v.activeRequest)
+    if (v.sessionAvailability === "Available" && v.activeRequests.length > 0)
       return <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">Active Engagement</span>
     if (v.sessionAvailability === "On Leave")
       return <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">On Leave</span>
@@ -193,9 +246,11 @@ function ManualAssignModal({ req, pool, scope, onAssign, onClose, mode = "assign
           {mentors.length === 0 && (
             <p className="text-sm text-gray-400 italic text-center py-8">No mentors match your search</p>
           )}
-          {mentors.map(v => (
+          {mentors.map(v => {
+            const atCap = isAtEngagementCap(v)
+            return (
             <div key={v.id}
-              className="flex items-center gap-4 p-4 rounded-xl border border-gray-200 hover:border-blue-200 hover:bg-blue-50/20 transition-all group">
+              className={`flex items-center gap-4 p-4 rounded-xl border transition-all group ${atCap ? "border-gray-100 bg-gray-50/50" : "border-gray-200 hover:border-blue-200 hover:bg-blue-50/20"}`}>
               {/* Avatar */}
               <div className="w-9 h-9 rounded-full bg-indigo-100 text-indigo-700 text-sm font-bold flex items-center justify-center shrink-0">
                 {v.name.split(" ").map(n => n[0]).join("").slice(0, 2)}
@@ -208,6 +263,7 @@ function ManualAssignModal({ req, pool, scope, onAssign, onClose, mode = "assign
                   {availabilityBadge(v)}
                 </div>
                 <p className="text-xs text-gray-500">{v.currentRole} · {v.currentCompany}</p>
+                <p className={`text-[11px] mt-0.5 ${atCap ? "text-red-500 font-medium" : "text-gray-400"}`}>{engagementSummary(v)}</p>
                 <div className="flex flex-wrap gap-1 mt-1.5">
                   {v.skills.slice(0, 4).map(s => (
                     <span key={s} className="text-[10px] bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">{s}</span>
@@ -222,16 +278,21 @@ function ManualAssignModal({ req, pool, scope, onAssign, onClose, mode = "assign
                   <Star className="w-3 h-3 fill-amber-400" />
                   <span className="font-semibold">{v.mentoringRating}</span>
                 </div>
-                <button
-                  onClick={() => onAssign(v)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg transition-colors opacity-0 group-hover:opacity-100">
-                  {mode === "add"
-                    ? <><Plus className="w-3.5 h-3.5" /> Add to Queue</>
-                    : <><CheckCircle2 className="w-3.5 h-3.5" /> Assign</>}
-                </button>
+                {atCap ? (
+                  <span className="text-[10px] text-gray-400 italic px-3 py-1.5">Cap reached — can't assign</span>
+                ) : (
+                  <button
+                    onClick={() => onAssign(v)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg transition-colors opacity-0 group-hover:opacity-100">
+                    {mode === "add"
+                      ? <><Plus className="w-3.5 h-3.5" /> Add to Queue</>
+                      : <><CheckCircle2 className="w-3.5 h-3.5" /> Assign</>}
+                  </button>
+                )}
               </div>
             </div>
-          ))}
+            )
+          })}
         </div>
 
         <div className="px-6 py-3 border-t border-gray-100 shrink-0">
@@ -629,6 +690,10 @@ function RequestPane({ request: initial, onClose, onUpdate }: {
 
   // Direct manual assign (bypasses outreach queue)
   const handleManualAssign = (mentor: Volunteer) => {
+    // Hard block: a volunteer already at the configured engagement cap can't be
+    // matched to anything else, anywhere — this is the real enforcement point,
+    // the disabled state in ManualAssignModal is just the UI reflection of it.
+    if (isAtEngagementCap(mentor)) return
     // Rule 2: if this engagement has no Program yet, inherit one from the
     // assigned mentor's Volunteer Organization, if it's tagged to one.
     const inferredProgramId = req.programId ? undefined : volunteerOrgProgramId(mentor, mockOrganizations, mockPrograms)
@@ -645,6 +710,7 @@ function RequestPane({ request: initial, onClose, onUpdate }: {
         { id: `manual-${Date.now()}`, name: mentor.name, role: mentor.currentRole, company: mentor.currentCompany, matchPercent: 100, matchReason: "Manually assigned by admin", outreachStatus: "Accepted" as const },
       ],
     }
+    mentor.activeRequests.push({ id: req.id, menteeName: req.menteeName, skill: req.skillsNeeded.join(", "), startedAt: new Date().toISOString().slice(0, 10) })
     setReq(updated); setCandidates(updated.matchCandidates)
     onUpdate(updated); setShowAssignModal(false); setTab("match")
   }
@@ -696,6 +762,11 @@ function RequestPane({ request: initial, onClose, onUpdate }: {
   // is declined on the spot and notified via WhatsApp. Someone mid-outreach
   // (already sent an invite) gets a softer message than someone never contacted.
   const acceptInterestedDirectly = (iv: InterestedVolunteer) => {
+    const mentor = mockVolunteers.find(v => v.id === iv.volunteerId)
+    // Hard block: same engagement cap enforced here as everywhere else a match is made.
+    // Falls back to a name-based count for interested volunteers who aren't onboarded
+    // into mockVolunteers at all (e.g. "Direct sign-up" self-signups via the Portal).
+    if (isNameAtEngagementCap(iv.name)) return
     const now = new Date().toISOString()
     const alreadyContactedReason = "Another mentor has shown interest in the mentee. We'll reach out if another relevant request comes up."
     const notYetContactedReason = "Engagement matched with another volunteer"
@@ -731,6 +802,7 @@ function RequestPane({ request: initial, onClose, onUpdate }: {
         },
       ],
     }
+    mentor?.activeRequests.push({ id: req.id, menteeName: req.menteeName, skill: req.skillsNeeded.join(", "), startedAt: now.slice(0, 10) })
     setInterested([])
     setReq(updated); setCandidates(updated.matchCandidates); setPriorityOrder([])
     onUpdate(updated)
@@ -847,7 +919,7 @@ function RequestPane({ request: initial, onClose, onUpdate }: {
 
   // Small icon button with a custom hover tooltip explaining what it does.
   // A plain function call (not a JSX component) — avoids re-creating a component on every render.
-  const iconAction = (opts: { onClick: () => void; label: string; icon: React.ReactNode; theme: "green" | "blue" | "red" }) => {
+  const iconAction = (opts: { onClick: () => void; label: string; icon: React.ReactNode; theme: "green" | "blue" | "red"; disabled?: boolean }) => {
     const theme = {
       green: "bg-green-50 border-green-200 text-green-600 hover:bg-green-100",
       blue: "bg-blue-50 border-blue-200 text-blue-600 hover:bg-blue-100",
@@ -855,7 +927,7 @@ function RequestPane({ request: initial, onClose, onUpdate }: {
     }[opts.theme]
     return (
       <div className="relative group/tip">
-        <button onClick={opts.onClick} className={`w-7 h-7 flex items-center justify-center rounded-lg border transition-colors ${theme}`}>
+        <button onClick={opts.onClick} disabled={opts.disabled} className={`w-7 h-7 flex items-center justify-center rounded-lg border transition-colors ${opts.disabled ? "opacity-30 cursor-not-allowed" : theme}`}>
           {opts.icon}
         </button>
         <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 whitespace-nowrap rounded bg-gray-900 px-2 py-1 text-[10px] text-white opacity-0 group-hover/tip:opacity-100 transition-opacity z-20">
@@ -1052,6 +1124,7 @@ function RequestPane({ request: initial, onClose, onUpdate }: {
                               {sourceTag(c.source)}
                             </div>
                             <p className="text-xs text-gray-500">{c.role} · {c.company}</p>
+                            {engagementLine(c.name)}
                             {c.matchPercent > 0 && <p className="text-xs text-gray-400 mt-0.5 italic">"{c.matchReason}"</p>}
                           </div>
                         </div>
@@ -1085,13 +1158,21 @@ function RequestPane({ request: initial, onClose, onUpdate }: {
                                   <span className="text-[10px] text-gray-500 border border-gray-200 bg-white px-1.5 py-0.5 rounded-full">{iv.group}</span>
                                 </div>
                                 <p className="text-xs text-gray-500">{iv.role} · {iv.company}</p>
+                                {engagementLine(iv.name)}
                                 <p className="text-xs text-gray-400 mt-0.5 italic">"{iv.matchReason}"</p>
                                 <p className="text-[11px] text-gray-400 mt-0.5 flex items-center gap-1">
                                   <Clock className="w-3 h-3" /> Expressed interest {fmtRelative(iv.expressedAt)}
                                 </p>
                               </div>
                               <div className="flex items-center gap-1.5 shrink-0">
-                                {iconAction({ onClick: () => setAcceptTarget(iv), label: "Accept directly — match immediately", icon: <Check className="w-3.5 h-3.5" />, theme: "green" })}
+                                {(() => {
+                                  const atCap = isNameAtEngagementCap(iv.name)
+                                  return iconAction({
+                                    onClick: () => setAcceptTarget(iv),
+                                    label: atCap ? "At engagement cap — can't accept directly" : "Accept directly — match immediately",
+                                    icon: <Check className="w-3.5 h-3.5" />, theme: "green", disabled: atCap,
+                                  })
+                                })()}
                                 {iconAction({ onClick: () => addInterestedToPriority(iv), label: "Add to Priority Order", icon: <Plus className="w-3.5 h-3.5" />, theme: "blue" })}
                                 {iconAction({ onClick: () => setDeclineTarget(iv), label: "Decline — notifies the volunteer via WhatsApp", icon: <X className="w-3.5 h-3.5" />, theme: "red" })}
                               </div>
@@ -1126,6 +1207,7 @@ function RequestPane({ request: initial, onClose, onUpdate }: {
                                   </span>
                                 </div>
                                 <p className="text-xs text-gray-500">{c.role} · {c.company}</p>
+                                {engagementLine(c.name)}
                                 <p className="text-xs text-gray-400 mt-0.5 italic">"{c.matchReason}"</p>
                               </div>
                               <Button variant="outline" className="text-xs shrink-0" onClick={() => moveToPriority(c)}>
@@ -1194,13 +1276,21 @@ function RequestPane({ request: initial, onClose, onUpdate }: {
                                   <span className="text-[10px] text-gray-500 border border-gray-200 bg-white px-1.5 py-0.5 rounded-full">{iv.group}</span>
                                 </div>
                                 <p className="text-xs text-gray-500">{iv.role} · {iv.company}</p>
+                                {engagementLine(iv.name)}
                                 <p className="text-xs text-gray-400 mt-0.5 italic">"{iv.matchReason}"</p>
                                 <p className="text-[11px] text-gray-400 mt-0.5 flex items-center gap-1">
                                   <Clock className="w-3 h-3" /> Expressed interest {fmtRelative(iv.expressedAt)}
                                 </p>
                               </div>
                               <div className="flex items-center gap-1.5 shrink-0">
-                                {iconAction({ onClick: () => setAcceptTarget(iv), label: "Accept directly — match immediately", icon: <Check className="w-3.5 h-3.5" />, theme: "green" })}
+                                {(() => {
+                                  const atCap = isNameAtEngagementCap(iv.name)
+                                  return iconAction({
+                                    onClick: () => setAcceptTarget(iv),
+                                    label: atCap ? "At engagement cap — can't accept directly" : "Accept directly — match immediately",
+                                    icon: <Check className="w-3.5 h-3.5" />, theme: "green", disabled: atCap,
+                                  })
+                                })()}
                                 {iconAction({ onClick: () => addInterestedToPriority(iv), label: "Add to the outreach sequence, after those already contacted", icon: <Plus className="w-3.5 h-3.5" />, theme: "blue" })}
                                 {iconAction({ onClick: () => setDeclineTarget(iv), label: "Decline — notifies the volunteer via WhatsApp", icon: <X className="w-3.5 h-3.5" />, theme: "red" })}
                               </div>

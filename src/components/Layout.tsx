@@ -1,6 +1,6 @@
 import { NavLink } from "react-router-dom"
 import { cn } from "@/lib/utils"
-import { Heart, Users, UserCircle, MessageSquare, Layers, Building2, CalendarClock, CalendarCheck, UserCheck, FolderKanban, BrainCircuit, AlertTriangle, BookOpen, Bot } from "lucide-react"
+import { Heart, Users, UserCircle, MessageSquare, Layers, Building2, CalendarClock, CalendarCheck, UserCheck, FolderKanban, BrainCircuit, AlertTriangle, BookOpen, Bot, Settings } from "lucide-react"
 import { mockEscalations } from "@/data/escalationsData"
 
 const sections = [
@@ -35,6 +35,12 @@ const sections = [
     items: [
       { to: "/flow/ai-agents", label: "AI Agents", icon: BrainCircuit, end: false },
       { to: "/flow/cron-jobs", label: "System Triggers", icon: CalendarClock, end: false },
+    ],
+  },
+  {
+    label: "Settings",
+    items: [
+      { to: "/settings/configs", label: "Configs", icon: Settings, end: false },
     ],
   },
 ]

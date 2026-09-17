@@ -134,7 +134,7 @@ function MentorPane({ mentor, onClose, onSave }: {
             <p className="text-xs text-gray-500">{mentor.currentRole} · {mentor.currentCompany}</p>
             <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
               <StarRating value={mentor.mentoringRating} />
-              <Badge variant={!!mentor.activeRequest ? "success" : "secondary"}>{mentor.activeRequest ? "Active" : "Not Engaged"}</Badge>
+              <Badge variant={mentor.activeRequests.length > 0 ? "success" : "secondary"}>{mentor.activeRequests.length > 0 ? "Active" : "Not Engaged"}</Badge>
               <Badge variant={orientationVariant[mentor.orientationStatus]}>{orientationShort[mentor.orientationStatus]}</Badge>
             </div>
           </div>
@@ -314,12 +314,12 @@ function MentorPane({ mentor, onClose, onSave }: {
         {paneTab === "requests" && (
           <>
             <PaneSection label="Active Request">
-              {v.activeRequest ? (
+              {v.activeRequests.length > 0 ? (
                 <div className="bg-green-50 border border-green-200 rounded-lg p-3 space-y-1">
-                  <p className="text-xs font-semibold text-green-800">{v.activeRequest.id}</p>
-                  <p className="text-xs text-green-700">Mentee: <strong>{v.activeRequest.menteeName}</strong></p>
-                  <p className="text-xs text-green-600">Skill: {v.activeRequest.skill}</p>
-                  <p className="text-xs text-gray-400">Since {v.activeRequest.startedAt}</p>
+                  <p className="text-xs font-semibold text-green-800">{v.activeRequests[0].id}</p>
+                  <p className="text-xs text-green-700">Mentee: <strong>{v.activeRequests[0].menteeName}</strong></p>
+                  <p className="text-xs text-green-600">Skill: {v.activeRequests[0].skill}</p>
+                  <p className="text-xs text-gray-400">Since {v.activeRequests[0].startedAt}</p>
                 </div>
               ) : <p className="text-xs text-gray-400 italic">No active request</p>}
             </PaneSection>
@@ -403,7 +403,7 @@ export default function MentorsList() {
         (v.name.toLowerCase().includes(q) || v.currentRole.toLowerCase().includes(q) || v.skills.some((s) => s.toLowerCase().includes(q))) &&
         (filterOrientation === "All" || v.orientationStatus === filterOrientation) &&
         (filterGroup === "All" || v.group === filterGroup) &&
-        (filterEngagement === "All" || (filterEngagement === "Active" ? !!v.activeRequest : !v.activeRequest)) &&
+        (filterEngagement === "All" || (filterEngagement === "Active" ? v.activeRequests.length > 0 : v.activeRequests.length === 0)) &&
         (filterAvailability === "All" || v.sessionAvailability === filterAvailability)
       )
     })
@@ -451,7 +451,7 @@ export default function MentorsList() {
   const stats = {
     total: list.length,
     done: list.filter((v) => v.orientationStatus === "Orientation Done").length,
-    active: list.filter((v) => !!v.activeRequest).length,
+    active: list.filter((v) => v.activeRequests.length > 0).length,
     avgRating: list.length ? (list.reduce((s, v) => s + v.mentoringRating, 0) / list.length).toFixed(1) : "—",
   }
 
@@ -607,8 +607,8 @@ export default function MentorsList() {
                     <span className="text-xs bg-purple-50 text-purple-700 px-2 py-0.5 rounded-full font-medium">{v.group}</span>
                   </td>
                   <td className="px-4 py-3 text-xs">
-                    {v.activeRequest ? (
-                      <Badge variant="success">{v.activeRequest.menteeName}</Badge>
+                    {v.activeRequests.length > 0 ? (
+                      <Badge variant="success">{v.activeRequests[0].menteeName}</Badge>
                     ) : <span className="text-gray-400 italic">None</span>}
                   </td>
                   <td className="px-4 py-3"><StarRating value={v.mentoringRating} /></td>

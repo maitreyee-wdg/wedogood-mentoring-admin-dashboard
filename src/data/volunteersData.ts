@@ -76,7 +76,7 @@ export interface Volunteer {
   orientationCallMeetingLink?: string
   signedUpDate: string
   sessionAvailability: "Available" | "On Leave" | "Inactive"
-  activeRequest?: ActiveRequest
+  activeRequests: ActiveRequest[]   // however many concurrent engagements this volunteer currently has; capped by Settings > Configs
   pastRequests: PastRequest[]
   activeProjects: Project[]
   pastProjects: PastProject[]
@@ -114,7 +114,7 @@ export const mockVolunteers: Volunteer[] = [
     status: "Active",
     orientationStatus: "Orientation Done",
     signedUpDate: "2025-09-10",
-    activeRequest: { id: "REQ-001", menteeName: "Priya Sharma", skill: "Resume Writing", startedAt: "2026-05-01" },
+    activeRequests: [{ id: "REQ-001", menteeName: "Priya Sharma", skill: "Resume Writing", startedAt: "2026-05-01" }],
     pastRequests: [
       { id: "REQ-P01", menteeName: "Ankit Verma", skill: "Interview Prep", closedAt: "2026-03-10", feedback: "Very helpful and patient mentor.", rating: 5 },
     ],
@@ -151,7 +151,7 @@ export const mockVolunteers: Volunteer[] = [
     status: "Active",
     orientationStatus: "Orientation Done",
     signedUpDate: "2025-08-22",
-    activeRequest: { id: "REQ-002", menteeName: "Arjun Patel", skill: "Software Engineering", startedAt: "2026-05-03" },
+    activeRequests: [{ id: "REQ-002", menteeName: "Arjun Patel", skill: "Software Engineering", startedAt: "2026-05-03" }],
     pastRequests: [
       { id: "REQ-P02", menteeName: "Rohit Das", skill: "React", closedAt: "2026-02-20", feedback: "Excellent mentor, very knowledgeable.", rating: 4 },
       { id: "REQ-P03", menteeName: "Neha Singh", skill: "Career Guidance", closedAt: "2025-12-15", rating: 5 },
@@ -192,7 +192,7 @@ export const mockVolunteers: Volunteer[] = [
     orientationTime: "10:00",
     orientationCallMeetingLink: "meet.google.com/orientation-jul13-10",
     signedUpDate: "2025-10-05",
-    activeRequest: { id: "REQ-004", menteeName: "Rohan Das", skill: "Data Analysis", startedAt: "2026-05-08" },
+    activeRequests: [],
     pastRequests: [],
     activeProjects: [],
     pastProjects: [],
@@ -230,6 +230,7 @@ export const mockVolunteers: Volunteer[] = [
     orientationTime: "15:30",
     orientationCallMeetingLink: "meet.google.com/orientation-jul14-1530",
     signedUpDate: "2025-07-18",
+    activeRequests: [],
     pastRequests: [
       { id: "REQ-P04", menteeName: "Siddharth Kumar", skill: "Finance", closedAt: "2026-04-01", feedback: "Good guidance but could be more proactive.", rating: 4 },
     ],
@@ -266,6 +267,7 @@ export const mockVolunteers: Volunteer[] = [
     status: "Active",
     orientationStatus: "Orientation Pending",
     signedUpDate: "2025-11-02",
+    activeRequests: [],
     pastRequests: [],
     activeProjects: [],
     pastProjects: [],
@@ -300,6 +302,7 @@ export const mockVolunteers: Volunteer[] = [
     status: "Inactive",
     orientationStatus: "Orientation Done",
     signedUpDate: "2025-06-30",
+    activeRequests: [],
     pastRequests: [
       { id: "REQ-P05", menteeName: "Meena Iyer", skill: "Communication", closedAt: "2026-03-20", feedback: "Very inspiring mentor.", rating: 5 },
     ],
@@ -336,7 +339,7 @@ export const mockVolunteers: Volunteer[] = [
     status: "Active",
     orientationStatus: "Orientation Done",
     signedUpDate: "2025-09-25",
-    activeRequest: undefined,
+    activeRequests: [],
     pastRequests: [],
     activeProjects: [{ projectName: "Youth Employment Fair", programName: "Career Connect", ngo: "NavGurukul" }],
     pastProjects: [{ projectName: "NGO Operations Audit", programName: "Capacity Building", ngo: "Parivarthan", endDate: "2025-12-31" }],
@@ -370,6 +373,7 @@ export const mockVolunteers: Volunteer[] = [
     status: "Active",
     orientationStatus: "Orientation Done",
     signedUpDate: "2025-12-01",
+    activeRequests: [],
     pastRequests: [],
     activeProjects: [{ projectName: "App Redesign for NGO", programName: "Tech4Good", ngo: "Akanksha Foundation" }],
     pastProjects: [],
@@ -404,6 +408,7 @@ export const mockVolunteers: Volunteer[] = [
     status: "Inactive",
     orientationStatus: "Orientation Done",
     signedUpDate: "2025-05-15",
+    activeRequests: [],
     pastRequests: [],
     activeProjects: [{ projectName: "Entrepreneurship Workshop", programName: "BizBoost", ngo: "NavGurukul" }],
     pastProjects: [{ projectName: "Sales Training Camp", programName: "Skills Connect", ngo: "Parivarthan", endDate: "2026-01-20" }],
@@ -437,6 +442,7 @@ export const mockVolunteers: Volunteer[] = [
     status: "Active",
     orientationStatus: "Orientation Pending",
     signedUpDate: "2026-01-10",
+    activeRequests: [],
     pastRequests: [],
     activeProjects: [],
     pastProjects: [],

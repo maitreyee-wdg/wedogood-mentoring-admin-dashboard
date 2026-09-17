@@ -26,6 +26,9 @@ import CronJobs from "@/pages/flow/CronJobs"
 // Escalations
 import EscalationsPage from "@/pages/escalations/index"
 
+// Settings
+import Configs from "@/pages/settings/Configs"
+
 export default function App() {
   return (
     <BrowserRouter>
@@ -57,6 +60,9 @@ export default function App() {
 
           {/* Escalations */}
           <Route path="/escalations" element={<EscalationsPage />} />
+
+          {/* Settings */}
+          <Route path="/settings/configs" element={<Configs />} />
         </Routes>
       </Layout>
     </BrowserRouter>

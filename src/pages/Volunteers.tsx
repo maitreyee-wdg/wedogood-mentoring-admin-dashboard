@@ -204,6 +204,7 @@ function AddVolunteerModal({ onSave, onClose }: { onSave: (v: Volunteer) => void
       orientationStatus: "Orientation Pending",
       signedUpDate: new Date().toISOString().split("T")[0],
       sessionAvailability: "Available",
+      activeRequests: [],
       pastRequests: [],
       activeProjects: [],
       pastProjects: [],
@@ -394,7 +395,7 @@ export default function Volunteers() {
         matchesSearch &&
         (filterGroup === "All" || v.group === filterGroup) &&
         (filterOrientation === "All" || v.orientationStatus === filterOrientation) &&
-        (filterEngagement === "All" || (filterEngagement === "Active" ? !!v.activeRequest : !v.activeRequest)) &&
+        (filterEngagement === "All" || (filterEngagement === "Active" ? v.activeRequests.length > 0 : v.activeRequests.length === 0)) &&
         (filterAvailability === "All" || v.sessionAvailability === filterAvailability)
       )
     })
@@ -444,7 +445,7 @@ export default function Volunteers() {
 
   const stats = {
     total: volunteers.length,
-    active: volunteers.filter((v) => !!v.activeRequest).length,
+    active: volunteers.filter((v) => v.activeRequests.length > 0).length,
     done: volunteers.filter((v) => v.orientationStatus === "Orientation Done").length,
     avgRating: (volunteers.reduce((s, v) => s + v.rating, 0) / volunteers.length).toFixed(1),
   }
@@ -610,8 +611,8 @@ export default function Volunteers() {
                     <span className="text-xs bg-purple-50 text-purple-700 px-2 py-0.5 rounded-full font-medium">{v.group}</span>
                   </td>
                   <td className="px-4 py-3">
-                    <Badge variant={!!v.activeRequest ? "success" : "secondary"}>
-                      {v.activeRequest ? `Active · ${v.activeRequest.menteeName}` : "Not Engaged"}
+                    <Badge variant={v.activeRequests.length > 0 ? "success" : "secondary"}>
+                      {v.activeRequests.length > 0 ? `Active · ${v.activeRequests[0].menteeName}` : "Not Engaged"}
                     </Badge>
                   </td>
                   <td className="px-4 py-3"><StarRating value={v.rating} /></td>
