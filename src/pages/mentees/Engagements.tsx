@@ -16,11 +16,14 @@ import { eligibleVolunteers, orgsTaggedToProgram, volunteerOrgProgramId, type Ma
 import {
   Search, X, ChevronUp, ChevronDown, Plus, Check,
   MessageSquare, Users, Clock, ArrowRight, AlertCircle, RefreshCw,
-  Star, CheckCircle2, Pencil, Tag, Link2, FlaskConical,
+  Star, CheckCircle2, Pencil, Tag, Link2, FlaskConical, Copy,
 } from "lucide-react"
 import { WaTemplateEditor, defaultMappings, type VarMapping } from "@/components/WaVariableMapper"
 import { EditEngagementModal } from "@/components/EditEngagementModal"
 import { ProgramPicker } from "@/components/ProgramPicker"
+import { Link } from "react-router-dom"
+import { groupForMentee, inviteLinkUpdatedAt, formatWaTime, numberLabel } from "@/data/waGroupsData"
+import { plannedCreationFor } from "@/lib/waGroupDistribution"
 
 // ── Status config ─────────────────────────────────────────────────────────────
 
@@ -1011,21 +1014,45 @@ function RequestPane({ request: initial, onClose, onUpdate }: {
                 : <p className="text-gray-400 italic text-xs">No mentor matched yet</p>}
             </PaneSection>
 
-            <PaneSection label="WhatsApp Group Link *">
+            <PaneSection label="WhatsApp Group Link">
               <div className="flex items-center gap-1.5 mb-1.5 text-[11px] text-gray-400">
                 <Link2 className="w-3 h-3" />
                 Shared with the mentee/mentor when either requests the other's contact details
               </div>
-              <input
-                type="url"
-                value={req.whatsappGroupLink ?? ""}
-                onChange={e => {
-                  const updated = { ...req, whatsappGroupLink: e.target.value }
-                  setReq(updated); onUpdate(updated)
-                }}
-                placeholder="https://chat.whatsapp.com/…"
-                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 outline-none focus:border-blue-400"
-              />
+              {(() => {
+                const group = groupForMentee(req.menteeId)
+                if (group?.status === "Created" && req.whatsappGroupLink) {
+                  const updatedAt = inviteLinkUpdatedAt(group)
+                  return (
+                    <>
+                      <div className="flex items-center gap-2">
+                        <a href={req.whatsappGroupLink} target="_blank" rel="noreferrer"
+                          className="flex-1 min-w-0 truncate text-sm bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-blue-600 hover:underline">
+                          {req.whatsappGroupLink}
+                        </a>
+                        <button onClick={() => navigator.clipboard?.writeText(req.whatsappGroupLink ?? "")} title="Copy link"
+                          className="w-9 h-9 shrink-0 rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 flex items-center justify-center">
+                          <Copy className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                      <p className="text-[11px] text-gray-400 mt-1">
+                        Synced from {group.groupName}{updatedAt ? ` · updated ${formatWaTime(updatedAt)}` : ""}. Updates automatically when the group is created and whenever its invite link is reset.
+                      </p>
+                      <Link to={`/mentees/wa-groups?group=${group.id}`} className="text-[11px] font-medium text-blue-600 hover:underline">Open group chat</Link>
+                    </>
+                  )
+                }
+                const planned = group ? plannedCreationFor(group.id) : undefined
+                const slot = planned?.numberId && planned.at ? ` on ${numberLabel(planned.numberId)} at ${formatWaTime(planned.at)}` : ""
+                return (
+                  <div className="text-xs bg-gray-50 border border-dashed border-gray-200 rounded-lg px-3 py-2 text-gray-500">
+                    {!group ? "No WhatsApp group yet. The group is created when the mentee submits their first request."
+                      : group.status === "Failed" ? `Group creation failed: ${group.failureError ?? "error"}. Retrying${slot}.`
+                      : `Group queued for creation${slot}.`}
+                    {group && <span className="block mt-0.5 text-gray-400">The link appears here automatically once the group is created.</span>}
+                  </div>
+                )
+              })()}
               {!req.whatsappGroupLink && (
                 <p className="text-[11px] text-amber-600 mt-1">Required before outreach can start</p>
               )}
@@ -1483,7 +1510,7 @@ function RequestPane({ request: initial, onClose, onUpdate }: {
             Start Outreach — Contact Mentor #1
           </Button>
           {!req.whatsappGroupLink && (
-            <p className="text-xs text-amber-600 text-center">Save a WhatsApp Group Link in Overview before starting outreach.</p>
+            <p className="text-xs text-amber-600 text-center">Outreach starts once the mentee's WhatsApp group is created and its link appears in Overview.</p>
           )}
           <p className="text-xs text-gray-400 text-center">
             Only mentor #1 will be contacted first. The next mentor is only contacted if #1 doesn't respond within 4 hours.

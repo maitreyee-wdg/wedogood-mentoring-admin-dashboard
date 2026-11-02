@@ -18,6 +18,8 @@ import MenteesList from "@/pages/mentees/index"
 import Engagements from "@/pages/mentees/Engagements"
 import MenteesComms from "@/pages/mentees/Comms"
 import AIChatPage from "@/pages/mentees/AIChat"
+import WaGroupChats from "@/pages/mentees/WaGroupChats"
+import WaGroupActivity from "@/pages/mentees/WaGroupActivity"
 
 // Flow
 import AIAgents from "@/pages/flow/AIAgents"
@@ -53,6 +55,8 @@ export default function App() {
           <Route path="/mentees/engagements" element={<Engagements />} />
           <Route path="/mentees/comms" element={<MenteesComms />} />
           <Route path="/mentees/ai-chat" element={<AIChatPage />} />
+          <Route path="/mentees/wa-groups" element={<WaGroupChats />} />
+          <Route path="/mentees/wa-group-activity" element={<WaGroupActivity />} />
 
           {/* Flow */}
           <Route path="/flow/ai-agents" element={<AIAgents />} />
