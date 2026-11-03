@@ -116,7 +116,7 @@ export function resolveMessage(content: string, mappings: Record<number, VarMapp
 
 // ── Replace Variable popup ────────────────────────────────────────────────────
 
-function ReplaceVarPopup({
+export function ReplaceVarPopup({
   varIndex,
   current,
   allowedCategories,

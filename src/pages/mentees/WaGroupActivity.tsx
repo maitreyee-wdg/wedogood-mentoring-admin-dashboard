@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button"
 import {
   mockWaGroups, mockWaNumbers, formatWaTime, nextCreationSlot, numberName, numberLabel, WA_NOW,
   MEMBER_STATUS_CLS, NUMBER_STATUS_CLS, FIELD_DEFINITIONS, AI_NUMBER_NAME, BACKUP_NUMBER_NAME,
-  MAX_GROUPS_PER_NUMBER_PER_DAY, MIN_HOURS_BETWEEN_CREATIONS,
+  MIN_HOURS_BETWEEN_CREATIONS,
   activeRequest, currentMentor, pastMentors, menteeMember, lastMessageAt,
   type WaGroupStatus, type GroupEventType, type WaNumber, type WaNumberRole,
 } from "@/data/waGroupsData"
@@ -211,7 +211,7 @@ function NumberModal({ existing, numbers, onDone, onClose }: {
             <ul className="space-y-1 pl-1">
               <li>• Profile name set to <span className="font-semibold">{numberName(result)}</span></li>
               <li>• Webhooks set for messages, groups, statuses, users and channel events</li>
-              {result.role === "AI number" && <li>• Available for group creation from now: up to {MAX_GROUPS_PER_NUMBER_PER_DAY} groups a day, {mockSettings.maxGroupsPerNumber} groups in total</li>}
+              {result.role === "AI number" && <li>• Available for group creation from now, up to {mockSettings.maxGroupsPerNumber} groups in total, {MIN_HOURS_BETWEEN_CREATIONS} hours apart</li>}
             </ul>
             <Button className="w-full" onClick={() => onDone(result)}>Done</Button>
           </div>
@@ -408,7 +408,7 @@ export default function WaGroupActivity() {
       {view === "queue" && (
         <div className="space-y-3">
           <p className="text-xs text-gray-500">
-            Groups are created in the order requests were submitted. Each goes to a Connected AI number holding fewer than {batchSize} groups, at the earliest allowed slot ({MIN_HOURS_BETWEEN_CREATIONS} hours apart, at most {MAX_GROUPS_PER_NUMBER_PER_DAY} a day). Ties go to the number closest to full, so batches fill one at a time.
+            Groups are created in the order requests were submitted. Each goes to a Connected AI number holding fewer than {batchSize} groups, at the earliest allowed slot ({MIN_HOURS_BETWEEN_CREATIONS} hours after that number's last creation). Ties go to the number closest to full, so batches fill one at a time.
           </p>
           <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
             <table className="w-full text-xs">
@@ -479,7 +479,6 @@ export default function WaGroupActivity() {
                 {numbers.map(n => {
                   const isAi = n.role === "AI number"
                   const next = nextCreationSlot(n, batchSize)
-                  const atMax = n.groupsCreatedToday >= MAX_GROUPS_PER_NUMBER_PER_DAY
                   const full = isAi && n.groupsHeld >= batchSize
                   return (
                     <tr key={n.id} className="border-b border-gray-100">
@@ -518,11 +517,11 @@ export default function WaGroupActivity() {
                         ) : <span className="text-gray-700">{n.groupsHeld}</span>}
                       </td>
                       <td className={td}>
-                        {isAi ? <span className={atMax ? "text-red-600 font-medium" : "text-gray-700"}>{n.groupsCreatedToday} / {MAX_GROUPS_PER_NUMBER_PER_DAY}</span> : <span className="text-gray-400">—</span>}
+                        {isAi ? <span className="text-gray-700">{n.groupsCreatedToday}</span> : <span className="text-gray-400">—</span>}
                       </td>
                       <td className={`${td} text-gray-600 whitespace-nowrap`}>{isAi && n.lastGroupCreatedAt ? formatWaTime(n.lastGroupCreatedAt) : "—"}</td>
                       <td className={`${td} text-gray-600 whitespace-nowrap`}>
-                        {!isAi ? "—" : n.status !== "Connected" ? <span className="text-red-600">Not connected</span> : full ? <span className="text-red-600">Batch full</span> : atMax ? <span className="text-red-600">Daily maximum reached</span> : next ? formatWaTime(next) : "—"}
+                        {!isAi ? "—" : n.status !== "Connected" ? <span className="text-red-600">Not connected</span> : full ? <span className="text-red-600">Batch full</span> : next ? formatWaTime(next) : "—"}
                       </td>
                       <td className={`${td} text-gray-600 whitespace-nowrap`}>{n.linkedAt ? formatWaTime(n.linkedAt) : "—"}</td>
                       <td className={td}>

@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Zap, Plus, Play, Pause, Pencil, Trash2, X, ChevronDown, ChevronRight, Lock, ClipboardList, Moon } from "lucide-react"
+import { Zap, Plus, Play, Pause, Pencil, Trash2, X, ChevronDown, ChevronRight, Lock, ClipboardList, Moon, Users } from "lucide-react"
 import {
   defaultMappings, WaTemplateEditor,
   type VarCategory, type VarMapping,
 } from "@/components/WaVariableMapper"
+import WaGroupMessages from "@/pages/flow/WaGroupMessages"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -657,7 +658,7 @@ function LogTab({ logs }: { logs: TriggerLog[] }) {
 
 // ─── Main page ────────────────────────────────────────────────────────────────
 
-type PageTab = "triggers" | "log"
+type PageTab = "triggers" | "wa_group" | "log"
 
 export default function CronJobs() {
   const [triggers, setTriggers]   = useState<SystemTrigger[]>(PREDEFINED)
@@ -744,6 +745,10 @@ export default function CronJobs() {
             className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${pageTab === "triggers" ? "border-blue-600 text-blue-600" : "border-transparent text-gray-500 hover:text-gray-700"}`}>
             <Zap className="w-3.5 h-3.5" /> Triggers
           </button>
+          <button onClick={() => setPageTab("wa_group")}
+            className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${pageTab === "wa_group" ? "border-blue-600 text-blue-600" : "border-transparent text-gray-500 hover:text-gray-700"}`}>
+            <Users className="w-3.5 h-3.5" /> WA Group Messages
+          </button>
           <button onClick={() => setPageTab("log")}
             className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${pageTab === "log" ? "border-blue-600 text-blue-600" : "border-transparent text-gray-500 hover:text-gray-700"}`}>
             <ClipboardList className="w-3.5 h-3.5" /> Log
@@ -763,6 +768,8 @@ export default function CronJobs() {
               />
             ))}
           </div>
+        ) : pageTab === "wa_group" ? (
+          <WaGroupMessages />
         ) : (
           <LogTab logs={MOCK_LOGS} />
         )}

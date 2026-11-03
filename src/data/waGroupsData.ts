@@ -4,7 +4,6 @@
 import { mockRequests, type RequestStatus } from "@/data/requestsData"
 import { mockVolunteers } from "@/data/volunteersData"
 
-export const MAX_GROUPS_PER_NUMBER_PER_DAY = 10
 export const MIN_HOURS_BETWEEN_CREATIONS = 2
 
 // Display names set on the WhatsApp profile of each number (PATCH /users/profile).
@@ -376,7 +375,6 @@ export function lastMessageAt(g: WaGroup, role?: SenderRole): string | undefined
 export function nextCreationSlot(n: WaNumber, maxGroupsPerNumber: number): string | null {
   if (n.role !== "AI number" || n.status !== "Connected") return null
   if (n.groupsHeld >= maxGroupsPerNumber) return null
-  if (n.groupsCreatedToday >= MAX_GROUPS_PER_NUMBER_PER_DAY) return null
   const now = new Date(WA_NOW).getTime()
   if (!n.lastGroupCreatedAt) return WA_NOW
   const earliest = new Date(n.lastGroupCreatedAt).getTime() + MIN_HOURS_BETWEEN_CREATIONS * 60 * 60 * 1000
@@ -423,14 +421,14 @@ export const FIELD_DEFINITIONS: { field: string; definition: string }[] = [
   { field: "Created", definition: "Time Whapi returned the group ID for this group." },
   { field: "Last message", definition: "Time of the most recent message posted in the group by anyone: mentee, mentor, Ops team or admin. Joins, removals, link sends and other member events don't count." },
   { field: "Queued at", definition: "Time the mentee submitted their first request and the group entered the creation queue." },
-  { field: "Next attempt", definition: "Earliest creation slot on a Connected AI number that is below its batch size, under 10 groups today and 2+ hours past its last creation." },
+  { field: "Next attempt", definition: "Earliest creation slot on a Connected AI number that is below its batch size and 2+ hours past its last creation." },
   { field: "Groups created", definition: "Groups with status Created." },
   { field: "Created today", definition: "Groups created since 00:00 IST today, across all AI numbers (per number on the Numbers tab)." },
   { field: "Waiting to be created", definition: "Groups with status Queued or Failed." },
   { field: "Mentee not joined", definition: "Created groups where the mentee's status is Link sent or Did not join." },
   { field: "Mentor not joined", definition: "Created groups where the current mentor's status is Link sent." },
   { field: "Numbers not connected", definition: "Ops team numbers whose status is anything other than Connected." },
-  { field: "Next allowed creation", definition: "Later of now and the number's last creation + 2 hours. Not shown if the number isn't connected or has created 10 groups today." },
+  { field: "Next allowed creation", definition: "Later of now and the number's last creation + 2 hours. Not shown if the number isn't connected or its batch is full." },
   { field: "Linked since", definition: "When the number was first connected to Whapi by QR code or pairing code." },
   { field: "Groups held", definition: "Groups the number is admin of. AI number: groups created on it. Backup admin: groups it backs up. Groups are not deleted, so this only goes up." },
   { field: "Batch capacity left", definition: "Sum over Connected AI numbers of (max groups per number minus groups held)." },
